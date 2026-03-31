@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version }}" />
 </head>
 <body>
-  <div class="app-shell">
+  <div class="app-shell desktop-shell">
     <header class="app-header modern-header">
       <div class="brand-left">
         <div id="store-logo" class="logo-slot">LOGO</div>
@@ -33,20 +33,23 @@
         <button class="main-tab" data-screen="system">ระบบ</button>
       </nav>
 
-      <section id="customer" class="screen section-card">
+      <section id="customer" class="screen section-card hidden-overflow">
         <div class="section-head">
           <h2>แผนผังโต๊ะ</h2>
-          <span class="pill">คลิกโต๊ะเพื่อรับออเดอร์และสั่งเพิ่ม</span>
+          <span class="pill">คลิกการ์ดโต๊ะเพื่อแสดงออร์เดอร์ใน Cart Sidebar</span>
         </div>
-        <div class="customer-layout">
-          <section><div id="table-grid" class="table-grid"></div></section>
-          <aside class="order-workspace">
-            <div id="order-panel-empty" class="empty">เลือกโต๊ะก่อนเริ่มทำรายการ</div>
+        <div class="customer-layout split-desktop">
+          <section class="floor-map-area">
+            <div id="table-grid" class="table-grid"></div>
+          </section>
+
+          <aside class="order-workspace cart-sidebar">
+            <div id="order-panel-empty" class="empty">เลือกโต๊ะทางซ้ายเพื่อเริ่มจัดการออร์เดอร์</div>
             <div id="order-panel-active" class="hidden">
               <div class="order-meta-strip">
                 <span id="order-meta-table" class="meta-chip"></span>
                 <span id="order-meta-status" class="meta-chip"></span>
-                <button id="accept-table-order" class="btn-primary hidden">รับออเดอร์โต๊ะนี้</button>
+                <button id="accept-table-order" class="btn-primary hidden">✅ รับออร์เดอร์โต๊ะนี้</button>
               </div>
               <div class="order-panel-layout">
                 <section class="order-panel">
@@ -54,12 +57,12 @@
                   <div id="order-menu-grid" class="menu-choice-grid"></div>
                 </section>
                 <section class="order-panel">
-                  <h4>เพิ่มรายการ</h4>
+                  <h4>ตะกร้าปัจจุบัน</h4>
                   <div class="quick-add-box">
                     <input id="order-selected-menu" disabled placeholder="เลือกเมนู" />
                     <select id="order-addon"><option value="">+ add-on</option></select>
                     <input id="order-note" placeholder="หมายเหตุ" />
-                    <button id="order-add-item" class="btn-primary">เพิ่มลงตะกร้า</button>
+                    <button id="order-add-item" class="btn-primary">+ เพิ่มลงตะกร้า</button>
                   </div>
                   <div id="order-cart-list" class="order-list"></div>
                   <div id="order-cart-total" class="order-total"></div>
@@ -157,8 +160,8 @@
 
         <div id="system-qr" class="panel-block system-panel hidden">
           <h3>QR แยกโต๊ะ</h3>
-          <p class="muted">[รื้อหน้าต่าง QR Code ที่รก] เลือกเฉพาะโต๊ะที่ต้องการพิมพ์</p>
-          <div id="table-qr-list" class="table-picker"></div>
+          <p class="muted">เลือกรายการโต๊ะ แล้วเปิด QR แบบโมดัลทีละโต๊ะ</p>
+          <div id="table-qr-list" class="table-picker horizontal-picker"></div>
         </div>
 
         <button id="save-system" class="btn-primary big-save">บันทึกการตั้งค่า</button>
@@ -167,7 +170,7 @@
   </div>
 
   <div id="qr-modal" class="modal hidden">
-    <div class="modal-card compact">
+    <div class="modal-card compact centered-modal">
       <div class="section-head"><h3 id="qr-modal-title">QR</h3><button id="close-qr-modal" class="btn-soft">ปิด</button></div>
       <img id="client-qr-image" class="qr-preview large" alt="QR" />
       <div class="btn-row">
