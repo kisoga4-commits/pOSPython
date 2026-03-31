@@ -6,20 +6,19 @@
   <title>Customer Ordering</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
 </head>
-<body>
-  <header><h1>📱 ลูกค้าสั่งเพิ่ม</h1></header>
-  <main>
-    <section class="screen">
-      <label>โหมด
-        <select id="target-type">
-          <option value="table">โต๊ะ</option>
-          <option value="queue">คิว</option>
-        </select>
-      </label>
-      <input id="target-id" type="number" min="1" placeholder="หมายเลขโต๊ะ/คิว" />
-      <div id="menu-list"></div>
-      <div id="cart-list"></div>
-      <button id="submit-order">สั่งเพิ่ม</button>
+<body data-table-id="{{ table_id or '' }}">
+  <main class="mobile-shell">
+    <section class="section-card customer-mobile">
+      <h1>📱 สั่งอาหารเพิ่ม</h1>
+      <p class="muted">สั่งได้เฉพาะโต๊ะของคุณ</p>
+      <div id="table-badge" class="badge status-accepted_order"></div>
+      <div id="menu-list" class="chip-grid mobile-menu"></div>
+      <h3>รายการที่เลือก</h3>
+      <div id="cart-list" class="order-list"></div>
+      <div class="btn-row">
+        <button id="submit-order" class="btn-primary">สั่งเพิ่ม</button>
+        <button id="request-checkout" class="btn-secondary">เรียกเช็คบิล</button>
+      </div>
       <p id="message"></p>
     </section>
   </main>

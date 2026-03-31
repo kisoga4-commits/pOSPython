@@ -12,6 +12,8 @@ log.setLevel(logging.ERROR)
 
 app = Flask(__name__)
 
+TABLE_STATUSES = {"available", "pending_order", "accepted_order", "checkout_requested", "closed"}
+
 
 def bootstrap() -> None:
     ensure_db_exists()
@@ -29,7 +31,8 @@ def index():
 
 @app.route("/customer")
 def customer_page():
-    return render_template("customer.html")
+    table_id = request.args.get("table", type=int)
+    return render_template("customer.html", table_id=table_id)
 
 
 @app.route("/staff")
@@ -90,7 +93,7 @@ def api_order():
     if target == "table" and isinstance(target_id, int):
         for table in db["tables"]:
             if table["id"] == target_id:
-                table["status"] = "occupied"
+                table["status"] = "pending_order"
                 table["items"].extend(cart)
                 break
 
@@ -134,6 +137,52 @@ def api_checkout():
 
     db = save_db(db)
     return jsonify({"status": "success", "sale_record": sale_record, "version": db["meta"]["version"]})
+
+
+@app.route("/api/table/accept", methods=["POST"])
+@require_license
+def api_table_accept():
+    payload = read_json()
+    table_id = payload.get("table_id")
+    if not isinstance(table_id, int):
+        return jsonify({"error": "invalid table_id"}), 400
+
+    db = load_db()
+    touched = False
+    for order in db["orders"]:
+        if order["target"] == "table" and order["target_id"] == table_id and order["status"] == "new":
+            order["status"] = "preparing"
+            order["updated_at"] = utc_now()
+            touched = True
+
+    for table in db["tables"]:
+        if table["id"] == table_id:
+            table["status"] = "accepted_order"
+            touched = True
+            break
+
+    if not touched:
+        return jsonify({"error": "table not found or no pending order"}), 404
+
+    db = save_db(db)
+    return jsonify({"status": "success", "version": db["meta"]["version"]})
+
+
+@app.route("/api/table/checkout-request", methods=["POST"])
+@require_license
+def api_table_checkout_request():
+    payload = read_json()
+    table_id = payload.get("table_id")
+    if not isinstance(table_id, int):
+        return jsonify({"error": "invalid table_id"}), 400
+
+    db = load_db()
+    for table in db["tables"]:
+        if table["id"] == table_id:
+            table["status"] = "checkout_requested"
+            db = save_db(db)
+            return jsonify({"status": "success", "version": db["meta"]["version"]})
+    return jsonify({"error": "table not found"}), 404
 
 
 @app.route("/api/settings", methods=["POST"])
@@ -197,8 +246,14 @@ def api_staff_live():
     db = load_db()
     if db["meta"]["version"] <= since:
         return jsonify({"changed": False, "version": db["meta"]["version"]})
+
     orders = [o for o in db["orders"] if o["status"] in {"new", "preparing", "served"}]
-    return jsonify({"changed": True, "orders": orders, "version": db["meta"]["version"]})
+    return jsonify({
+        "changed": True,
+        "orders": orders,
+        "tables": db["tables"],
+        "version": db["meta"]["version"],
+    })
 
 
 @app.route("/api/customer/live", methods=["GET"])

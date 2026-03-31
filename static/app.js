@@ -2,6 +2,15 @@ let db = null;
 let currentTable = null;
 let cart = [];
 let version = 0;
+let pendingSeen = new Set();
+
+const TABLE_STATUS_META = {
+  available: { label: 'ว่าง', className: 'status-available' },
+  pending_order: { label: 'รอพนักงานรับ', className: 'status-pending_order' },
+  accepted_order: { label: 'รับออร์เดอร์แล้ว', className: 'status-accepted_order' },
+  checkout_requested: { label: 'รอเช็คบิล', className: 'status-checkout_requested' },
+  closed: { label: 'ปิดบิล', className: 'status-closed' },
+};
 
 async function api(path, options = {}) {
   const res = await fetch(path, {
@@ -9,6 +18,10 @@ async function api(path, options = {}) {
     ...options,
   });
   return res.json();
+}
+
+function getStatusMeta(status) {
+  return TABLE_STATUS_META[status] || TABLE_STATUS_META.available;
 }
 
 function showScreen(id) {
@@ -42,24 +55,43 @@ function bindKitchenSubtabs() {
 
 function renderLinks() {
   const base = window.location.origin;
-  const customer = `${base}/customer`;
   const staff = `${base}/staff`;
-  const customerNode = document.getElementById('customer-link');
   const staffNode = document.getElementById('staff-link');
-  customerNode.href = customer;
-  customerNode.textContent = customer;
   staffNode.href = staff;
   staffNode.textContent = staff;
+
+  const customerNode = document.getElementById('customer-link');
+  customerNode.href = `${base}/customer?table=1`;
+  customerNode.textContent = `${base}/customer?table={table_id}`;
+
+  const wrap = document.getElementById('customer-qr-links');
+  wrap.innerHTML = '';
+  db.tables.forEach((table) => {
+    const link = document.createElement('a');
+    link.href = `${base}/customer?table=${table.id}`;
+    link.target = '_blank';
+    link.textContent = `โต๊ะ ${table.id}`;
+    link.className = 'badge';
+    wrap.appendChild(link);
+  });
 }
 
 function renderTables() {
   const grid = document.getElementById('table-grid');
   grid.innerHTML = '';
   db.tables.forEach((table) => {
+    const meta = getStatusMeta(table.status);
     const btn = document.createElement('button');
-    const occupied = table.status !== 'free' && table.status !== 'ว่าง';
-    btn.className = `table-card ${occupied ? 'occupied' : ''}`;
-    btn.innerHTML = `<p class="table-id">โต๊ะ ${table.id}</p><span class="badge table-status">${table.status}</span>`;
+    btn.className = `table-card ${meta.className}`;
+    btn.innerHTML = `<p class="table-id">โต๊ะ ${table.id}</p><span class="badge table-status ${meta.className}">${meta.label}</span>`;
+
+    if (table.status === 'pending_order') {
+      const dot = document.createElement('span');
+      dot.className = 'dot-notify';
+      dot.textContent = '● ใหม่';
+      btn.appendChild(dot);
+    }
+
     btn.addEventListener('click', () => {
       currentTable = table.id;
       cart = [];
@@ -124,17 +156,11 @@ function renderCashier() {
   const list = document.getElementById('checkout-list');
   const count = document.getElementById('checkout-count');
   list.innerHTML = '';
-  const grouped = {};
-  db.orders.forEach((o) => {
-    const key = `${o.target}:${o.target_id}`;
-    grouped[key] = grouped[key] || [];
-    grouped[key].push(...o.items);
-  });
 
-  const entries = Object.entries(grouped);
-  count.textContent = `${entries.length} รายการ`;
+  const checkoutTables = db.tables.filter((table) => table.status === 'checkout_requested');
+  count.textContent = `${checkoutTables.length} รายการ`;
 
-  if (!entries.length) {
+  if (!checkoutTables.length) {
     const empty = document.createElement('div');
     empty.className = 'empty-state';
     empty.innerHTML = '🧾 ยังไม่มีคิวเช็คบิล';
@@ -142,16 +168,17 @@ function renderCashier() {
     return;
   }
 
-  entries.forEach(([key, items]) => {
-    const [target, targetId] = key.split(':');
+  checkoutTables.forEach((table) => {
+    const tableOrders = db.orders.filter((o) => o.target === 'table' && o.target_id === table.id);
+    const items = tableOrders.flatMap((o) => o.items || []);
     const total = items.reduce((sum, i) => sum + Number(i.price || 0), 0);
     const btn = document.createElement('button');
     btn.className = 'list-item';
-    btn.textContent = `Checkout ${target} ${targetId} (${total})`;
+    btn.textContent = `Checkout โต๊ะ ${table.id} (${total})`;
     btn.addEventListener('click', async () => {
       await api('/api/checkout', {
         method: 'POST',
-        body: JSON.stringify({ target, target_id: Number(targetId) }),
+        body: JSON.stringify({ target: 'table', target_id: table.id }),
       });
       await loadData();
     });
@@ -202,11 +229,26 @@ function renderSettings() {
   document.getElementById('table-count').value = db.tableCount;
 }
 
+function playPendingAlertIfNeeded() {
+  const currentPending = new Set(db.tables.filter((table) => table.status === 'pending_order').map((table) => table.id));
+  const hasNewPending = [...currentPending].some((id) => !pendingSeen.has(id));
+  if (hasNewPending) {
+    const audio = document.getElementById('new-order-sound');
+    if (audio) {
+      audio.currentTime = 0;
+      audio.play().catch(() => {});
+    }
+  }
+  pendingSeen = currentPending;
+}
+
 async function loadData() {
   const data = await api('/api/data');
   if (data.error) return;
   db = data;
   version = db.meta.version;
+  playPendingAlertIfNeeded();
+  renderLinks();
   renderTables();
   renderMenu();
   renderCashier();
@@ -272,8 +314,7 @@ function registerServiceWorker() {
   bindNav();
   bindKitchenSubtabs();
   bindActions();
-  renderLinks();
   registerServiceWorker();
   checkLicense();
-  setInterval(pollLive, 2500);
+  setInterval(pollLive, 2000);
 })();

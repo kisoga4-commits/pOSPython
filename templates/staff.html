@@ -3,14 +3,27 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Staff/Kitchen</title>
+  <title>Staff Panel</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
 </head>
 <body>
-  <header><h1>👨‍🍳 หน้าพนักงาน/ครัว</h1></header>
-  <main>
-    <section class="screen">
-      <div id="orders"></div>
+  <main class="mobile-shell">
+    <section class="section-card staff-mobile">
+      <h1>👨‍🍳 หน้าพนักงาน</h1>
+      <div class="segmented">
+        <button class="seg-btn is-active" data-staff-tab="customer" type="button">ลูกค้า</button>
+        <button class="seg-btn" data-staff-tab="checkout" type="button">เช็คบิล</button>
+      </div>
+
+      <section id="staff-tab-customer">
+        <h3>โต๊ะที่ต้องดูแล</h3>
+        <div id="staff-customer-list" class="order-list"></div>
+      </section>
+
+      <section id="staff-tab-checkout" class="hidden">
+        <h3>โต๊ะรอเช็คบิล</h3>
+        <div id="staff-checkout-list" class="order-list"></div>
+      </section>
     </section>
   </main>
   <audio id="new-order-sound" src="{{ url_for('static', filename='sounds/new_order.mp3') }}"></audio>

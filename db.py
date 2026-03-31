@@ -12,6 +12,14 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+
+
+def normalize_table_status(status: str) -> str:
+    mapping = {"occupied": "accepted_order", "free": "available", "ว่าง": "available"}
+    normalized = mapping.get(str(status), str(status))
+    valid = {"available", "pending_order", "accepted_order", "checkout_requested", "closed"}
+    return normalized if normalized in valid else "available"
+
 def default_db() -> dict:
     table_count = 8
     return {
@@ -45,6 +53,10 @@ def _normalize_db(data: dict) -> dict:
     merged = deepcopy(base)
     merged.update(data or {})
     merged["settings"] = {**base["settings"], **(data or {}).get("settings", {})}
+    merged["tables"] = [
+        {**table, "status": normalize_table_status(table.get("status", "available")), "items": table.get("items", [])}
+        for table in merged.get("tables", [])
+    ]
     if "meta" not in merged:
         merged["meta"] = {"version": 1, "updated_at": now_iso()}
     merged["meta"].setdefault("version", 1)
