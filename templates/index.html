@@ -16,25 +16,18 @@
         <div class="brand-left">
           <div id="store-logo" class="logo-slot">LOGO</div>
           <div>
-            <p class="muted-light" id="master-hint">FAKDU POS</p>
+            <p class="muted-light">FAKDU POS</p>
             <h1 id="header-store-name">FAKDU</h1>
           </div>
         </div>
-        <button id="header-action" class="btn-gold">หน้าโต๊ะ</button>
-      </div>
-      <div class="header-meta-row">
-        <span class="badge online" id="online-badge">LAN {{ local_ip }}:5000</span>
-        <span class="badge" id="sync-badge">Sync: Session -</span>
+        <div class="header-actions">
+          <button id="open-client-qr" class="btn-soft light">เปิด QR เครื่องลูก</button>
+          <button id="header-action" class="btn-soft light">หน้าโต๊ะ</button>
+          <button id="open-admin-login" class="btn-gold">เข้าสู่ระบบแอดมิน</button>
+          <button id="admin-logout" class="btn-soft light hidden">ออกจากระบบ</button>
+        </div>
       </div>
     </header>
-
-    <section id="pwa-install-banner" class="section-card pwa-banner hidden">
-      <div>
-        <strong>ติดตั้งแอปบนมือถือ/แท็บเล็ต</strong>
-        <p class="muted">เพิ่ม FAKDU POS ไปหน้าโฮมเพื่อใช้งานแบบแอป (PWA)</p>
-      </div>
-      <button id="install-pwa" class="btn-primary">ติดตั้งแอป</button>
-    </section>
 
     <main>
       <nav class="section-card tab-bar">
@@ -46,20 +39,12 @@
 
       <section id="customer" class="screen section-card">
         <div class="section-head">
-          <div>
-            <h2>โซนลูกค้า (โต๊ะ/คิว)</h2>
-          </div>
+          <h2>จัดการโต๊ะ/คิว</h2>
           <div class="control-pack">
             <button id="quick-down" class="btn-soft">-</button>
             <button id="quick-mid" class="btn-soft">M</button>
             <button id="quick-up" class="btn-soft">+</button>
           </div>
-        </div>
-        <div class="legend">
-          <span class="pill status-available">⚪ ว่าง</span>
-          <span class="pill status-pending_order">🟠 ออร์เดอร์ค้าง/ลูกค้าสั่งเอง</span>
-          <span class="pill status-accepted_order">🟢 มีลูกค้า</span>
-          <span class="pill status-checkout_requested">🟢 รอเช็คบิล</span>
         </div>
         <div id="table-grid" class="table-grid"></div>
       </section>
@@ -74,7 +59,7 @@
 
       <section id="backstore" class="screen section-card hidden">
         <div class="section-head">
-            <h2>หลังร้านและรายงาน</h2>
+            <h2>หลังร้าน</h2>
           <div class="admin-head-actions">
             <div class="subtabs">
               <button class="subtab is-active" data-subtab="sales">💰</button>
@@ -167,19 +152,9 @@
         </div>
         <div class="panel-block">
           <div class="section-head">
-            <h3>QR สำหรับลูกค้าแยกตามโต๊ะ</h3>
+            <h3>QR แยกตามโต๊ะ</h3>
           </div>
-          <p class="muted">แต่ละโต๊ะสแกนได้เฉพาะโต๊ะของตัวเอง เช่น โต๊ะ 1 จะเข้าหน้า /scan/customer/1 เท่านั้น</p>
           <div id="table-qr-list" class="qr-table-grid"></div>
-        </div>
-        <div class="panel-block">
-          <h3>Master / Client Session</h3>
-          <div class="form-grid">
-            <input id="sync-session" placeholder="Session ID" />
-            <input id="sync-queue" placeholder="Queue Channel" />
-            <input id="sync-snapshot" type="number" min="1" placeholder="Snapshot Version" />
-            <input id="master-node" placeholder="Master Node Name" />
-          </div>
         </div>
         <div class="panel-block">
           <h3>สำรองและกู้คืนข้อมูล</h3>
@@ -214,6 +189,31 @@
         <button id="close-insight" class="btn-soft">ปิด</button>
       </div>
       <div id="insight-body"></div>
+    </div>
+  </div>
+
+  <div id="qr-modal" class="modal hidden">
+    <div class="modal-card compact">
+      <div class="section-head">
+        <h3>QR สำหรับเครื่องลูก</h3>
+        <button id="close-qr-modal" class="btn-soft">ปิด</button>
+      </div>
+      <div class="qr-modal-body">
+        <img id="client-qr-image" class="qr-preview large" alt="Client QR" />
+      </div>
+    </div>
+  </div>
+
+  <div id="admin-login-modal" class="modal hidden">
+    <div class="modal-card compact">
+      <div class="section-head">
+        <h3>เข้าสู่ระบบแอดมิน</h3>
+        <button id="close-admin-login" class="btn-soft">ปิด</button>
+      </div>
+      <div class="form-grid single">
+        <input id="admin-login-pin" type="password" placeholder="กรอกรหัส PIN" />
+        <button id="admin-login-submit" class="btn-primary">เข้าสู่ระบบ</button>
+      </div>
     </div>
   </div>
 

@@ -3,7 +3,7 @@ let version = 0;
 let menuEditIndex = -1;
 let filteredSales = [];
 let activeBill = null;
-let pwaDeferredPrompt = null;
+let adminUnlocked = false;
 
 const statusMap = {
   available: { label: '⚪', note: '' },
@@ -47,8 +47,6 @@ function applyTheme() {
   qs('header-store-name').textContent = s.storeName || 'FAKDU';
   const logoSlot = qs('store-logo');
   logoSlot.textContent = s.logoName || 'LOGO';
-  const sync = s.sync || {};
-  qs('sync-badge').textContent = `Sync: Session ${sync.session || '-'} · Queue ${sync.queue || '-'}`;
 }
 
 function showScreen(id) {
@@ -84,7 +82,6 @@ function renderTables() {
     });
     grid.appendChild(card);
   });
-  qs('master-hint').textContent = `FAKDU POS · ${unit}`;
 }
 
 function waitingMinutes(openedAt) {
@@ -316,13 +313,31 @@ function renderSystem() {
   qs('promptpay').value = s.promptPay || '';
   qs('admin-pin').value = s.adminPin || 'admin';
   qs('dynamic-qr').checked = Boolean(s.dynamicPromptPay);
-  qs('sync-session').value = s.sync?.session || '';
-  qs('sync-queue').value = s.sync?.queue || '';
-  qs('sync-snapshot').value = s.sync?.snapshotVersion || 1;
-  qs('master-node').value = s.masterNode || 'main';
   if (s.themeColor) qs('theme-color').value = s.themeColor;
   if (s.bgColor) qs('bg-color').value = s.bgColor;
   renderTableQRCodes();
+}
+
+function openModal(id) {
+  qs(id).classList.remove('hidden');
+}
+
+function closeModal(id) {
+  qs(id).classList.add('hidden');
+}
+
+function syncAdminUI() {
+  qs('open-admin-login').classList.toggle('hidden', adminUnlocked);
+  qs('admin-logout').classList.toggle('hidden', !adminUnlocked);
+}
+
+function requestAdminAccess(targetScreen) {
+  if (adminUnlocked) {
+    showScreen(targetScreen);
+    return;
+  }
+  openModal('admin-login-modal');
+  qs('admin-login-submit').dataset.targetScreen = targetScreen;
 }
 
 function renderTableQRCodes() {
@@ -360,7 +375,13 @@ async function loadData() {
 }
 
 function bind() {
-  document.querySelectorAll('[data-screen]').forEach((btn) => btn.addEventListener('click', () => showScreen(btn.dataset.screen)));
+  document.querySelectorAll('[data-screen]').forEach((btn) => btn.addEventListener('click', () => {
+    if (['backstore', 'system'].includes(btn.dataset.screen)) {
+      requestAdminAccess(btn.dataset.screen);
+      return;
+    }
+    showScreen(btn.dataset.screen);
+  }));
   document.querySelectorAll('[data-subtab]').forEach((btn) => btn.addEventListener('click', () => {
     document.querySelectorAll('[data-subtab]').forEach((s) => s.classList.toggle('is-active', s === btn));
     qs('panel-sales').classList.toggle('hidden', btn.dataset.subtab !== 'sales');
@@ -368,6 +389,31 @@ function bind() {
   }));
 
   qs('header-action').addEventListener('click', () => showScreen('customer'));
+  qs('open-client-qr').addEventListener('click', () => {
+    qs('client-qr-image').src = buildQrImageUrl(`${window.location.origin}/scan/staff`);
+    openModal('qr-modal');
+  });
+  qs('close-qr-modal').addEventListener('click', () => closeModal('qr-modal'));
+  qs('open-admin-login').addEventListener('click', () => openModal('admin-login-modal'));
+  qs('close-admin-login').addEventListener('click', () => closeModal('admin-login-modal'));
+  qs('admin-logout').addEventListener('click', () => {
+    adminUnlocked = false;
+    window.localStorage.removeItem('fakdu_admin_auth');
+    syncAdminUI();
+    showScreen('customer');
+  });
+  qs('admin-login-submit').addEventListener('click', () => {
+    const pin = qs('admin-login-pin').value.trim();
+    if (pin && pin === (db.settings?.adminPin || 'admin')) {
+      adminUnlocked = true;
+      window.localStorage.setItem('fakdu_admin_auth', '1');
+      qs('admin-login-pin').value = '';
+      closeModal('admin-login-modal');
+      syncAdminUI();
+      const target = qs('admin-login-submit').dataset.targetScreen || 'backstore';
+      showScreen(target);
+    }
+  });
 
   qs('quick-down').addEventListener('click', () => { qs('table-count').value = Math.max(1, Number(qs('table-count').value) - 1); qs('update-table-count').click(); });
   qs('quick-mid').addEventListener('click', () => { qs('table-count').value = db.tableCount || 8; qs('update-table-count').click(); });
@@ -409,6 +455,9 @@ function bind() {
   qs('open-insight').addEventListener('click', () => qs('insight-modal').classList.remove('hidden'));
   qs('close-insight').addEventListener('click', () => qs('insight-modal').classList.add('hidden'));
   qs('close-bill').addEventListener('click', () => qs('bill-modal').classList.add('hidden'));
+  document.querySelectorAll('.modal').forEach((modalEl) => modalEl.addEventListener('click', (event) => {
+    if (event.target === modalEl) modalEl.classList.add('hidden');
+  }));
 
   qs('save-system').addEventListener('click', async () => {
     let qrImage = db.settings?.qrImage || '';
@@ -433,13 +482,6 @@ function bind() {
         promptPay: qs('promptpay').value.trim(),
         adminPin: qs('admin-pin').value.trim() || 'admin',
         dynamicPromptPay: qs('dynamic-qr').checked,
-        masterNode: qs('master-node').value.trim() || 'main',
-        sync: {
-          session: qs('sync-session').value.trim() || 'main-session',
-          queue: qs('sync-queue').value.trim() || 'default',
-          snapshotVersion: Number(qs('sync-snapshot').value || 1),
-          lastSyncAt: new Date().toISOString(),
-        },
         qrImage,
       } }),
     });
@@ -465,19 +507,6 @@ function bind() {
     await loadData();
   });
 
-  window.addEventListener('beforeinstallprompt', (event) => {
-    event.preventDefault();
-    pwaDeferredPrompt = event;
-    qs('pwa-install-banner').classList.remove('hidden');
-  });
-
-  qs('install-pwa').addEventListener('click', async () => {
-    if (!pwaDeferredPrompt) return;
-    pwaDeferredPrompt.prompt();
-    await pwaDeferredPrompt.userChoice;
-    pwaDeferredPrompt = null;
-    qs('pwa-install-banner').classList.add('hidden');
-  });
 }
 
 async function poll() {
@@ -491,6 +520,8 @@ async function poll() {
 }
 
 (async function init() {
+  adminUnlocked = window.localStorage.getItem('fakdu_admin_auth') === '1';
+  syncAdminUI();
   bind();
   await loadData();
   setInterval(poll, 2500);
