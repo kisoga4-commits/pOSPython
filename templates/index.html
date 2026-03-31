@@ -31,12 +31,31 @@
       <section class="section-card landing-highlight">
         <h2>FAKDU 4 ระบบ</h2>
         <p class="new-ui-proof">FAKDU 4 ระบบ พร้อมใช้งาน</p>
-        <p class="section-subtitle">เริ่มใช้งานได้ทันทีจากเมนูหลักด้านล่าง</p>
-        <div class="landing-grid">
-          <button class="landing-pill" data-screen="customer" type="button">👨‍👩‍👧‍👦 ลูกค้า</button>
-          <button class="landing-pill" data-screen="cashier" type="button">🧾 เช็คบิล</button>
-          <button class="landing-pill" data-screen="kitchen" type="button">📊 หลังร้าน</button>
-          <button class="landing-pill" data-screen="settings" type="button">⚙️ ระบบ</button>
+        <p class="section-subtitle">เข้าใช้งานแต่ละระบบได้ทันทีจากหน้าหลัก</p>
+        <div class="landing-grid system-grid-4">
+          <div class="landing-system-card">
+            <h3>👨‍👩‍👧‍👦 ระบบลูกค้า</h3>
+            <p>เปิดหน้าสแกน QR ของลูกค้าเพื่อสั่งอาหารตามโต๊ะจริง</p>
+            <div class="inline-actions">
+              <input id="landing-customer-table" type="number" min="1" value="1" />
+              <button id="open-customer-system" class="landing-pill" type="button">เปิดระบบ</button>
+            </div>
+          </div>
+          <div class="landing-system-card">
+            <h3>🧾 ระบบเช็คบิล</h3>
+            <p>ดูคิวโต๊ะที่เรียกเก็บเงินและปิดบิลได้ทันที</p>
+            <button class="landing-pill" data-screen="cashier" type="button">เปิดระบบ</button>
+          </div>
+          <div class="landing-system-card">
+            <h3>📊 ระบบพนักงาน</h3>
+            <p>เข้าโหมดพนักงานมือถือเพื่อรับออเดอร์และดูคิวเช็คบิล</p>
+            <button id="open-staff-system" class="landing-pill" type="button">เปิดระบบ</button>
+          </div>
+          <div class="landing-system-card">
+            <h3>⚙️ ระบบจัดการร้าน</h3>
+            <p>ตั้งค่าเมนู โต๊ะ รายงาน และข้อมูลร้าน (เฉพาะแอดมิน)</p>
+            <button class="landing-pill" data-screen="settings" type="button">เปิดระบบ</button>
+          </div>
         </div>
       </section>
 
