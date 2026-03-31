@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version }}" />
 </head>
 <body>
-  <main class="mobile-shell">
+  <main class="mobile-shell staff-shell">
     <header class="mobile-header">
       <div class="brand-zone">
         <div class="logo-slot">LOGO</div>
@@ -16,33 +16,28 @@
           <h1 class="mobile-title">พนักงาน</h1>
         </div>
       </div>
-      <p class="mobile-subtitle">🔔 ลูกค้า · 🧾 เช็คบิล</p>
     </header>
 
     <section class="mobile-content staff-mobile">
-      <div class="mobile-panel">
-        <div class="segmented">
-          <button class="seg-btn is-active" data-staff-tab="customer" type="button">🔔 ลูกค้า</button>
-          <button class="seg-btn" data-staff-tab="checkout" type="button">🧾 เช็คบิล</button>
-        </div>
-      </div>
-
       <section id="staff-tab-customer" class="mobile-panel">
         <div class="section-head">
-          <h3>🔔 โต๊ะที่ต้องดูแล</h3>
-          <span class="status-badge">ลูกค้า</span>
+          <h3>🔔 จัดการออเดอร์</h3>
         </div>
         <div id="staff-customer-list" class="order-list"></div>
       </section>
 
       <section id="staff-tab-checkout" class="mobile-panel hidden">
         <div class="section-head">
-          <h3>🧾 คิวเช็คบิล</h3>
-          <span class="status-badge">เช็คบิล</span>
+          <h3>🧾 เช็คบิล</h3>
         </div>
         <div id="staff-checkout-list" class="order-list"></div>
       </section>
     </section>
+
+    <nav class="staff-bottom-nav">
+      <button class="staff-nav-btn is-active" data-staff-tab="customer" type="button">🍽️</button>
+      <button class="staff-nav-btn" data-staff-tab="checkout" type="button">💳</button>
+    </nav>
   </main>
   <audio id="new-order-sound" src="{{ url_for('static', filename='sounds/new_order.mp3') }}"></audio>
   <audio id="checkout-request-sound" src="{{ url_for('static', filename='sounds/checkout.mp3') }}"></audio>

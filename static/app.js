@@ -2,9 +2,9 @@ let db;
 let version = 0;
 let selectedTableId = null;
 let orderCart = [];
-let menuEditIndex = -1;
 let activeCashierTableId = null;
 let menuImagePreviewData = '';
+let uiSoundEnabled = localStorage.getItem('uiSoundEnabled') !== '0';
 let lastPendingTableIds = new Set();
 let lastCheckoutRequestIds = new Set();
 const RECOVERY_COLORS = ['แดง', 'ส้ม', 'เหลือง', 'เขียว', 'ฟ้า', 'น้ำเงิน', 'ม่วง'];
@@ -52,11 +52,26 @@ function resolveRuntimeHost() {
 function customerScanUrl(tableId) { return `${resolveRuntimeHost()}/customer?table=${tableId}`; }
 function buildQrImageUrl(text) { return `${qrApiBase}?size=320x320&margin=8&data=${encodeURIComponent(text)}`; }
 function playAlert(id) {
+  if (!uiSoundEnabled) return;
   const audio = qs(id);
   if (!audio) return;
   audio.volume = 1;
   audio.currentTime = 0;
   audio.play().catch(() => {});
+}
+
+function playUISound() {
+  if (!uiSoundEnabled) return;
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+  o.type = 'triangle';
+  o.frequency.value = 660;
+  g.gain.value = 0.03;
+  o.connect(g);
+  g.connect(ctx.destination);
+  o.start();
+  o.stop(ctx.currentTime + 0.05);
 }
 
 async function api(path, options = {}) {
@@ -147,15 +162,30 @@ function renderOrderCart() {
 }
 
 function renderExistingOrders(tableId) {
-  const { items, total } = getTableSummary(tableId);
   const list = qs('order-existing-list');
   list.innerHTML = '';
-  if (!items.length) list.innerHTML = '<div class="empty">ยังไม่มีรายการที่สั่งแล้ว</div>';
-  items.forEach((item) => {
-    const row = document.createElement('div');
-    row.className = 'list-card';
-    row.textContent = `${item.name} • ${money(item.price)} บาท`;
-    list.appendChild(row);
+  const orders = getTableOrders(tableId);
+  const total = orders.flatMap((o) => o.items || []).reduce((sum, item) => sum + Number(item.price || 0), 0);
+  if (!orders.length) {
+    list.innerHTML = '<div class="empty">ยังไม่มีรายการที่สั่งแล้ว</div>';
+  }
+  orders.forEach((order) => {
+    (order.items || []).forEach((item, idx) => {
+      const locked = ['preparing', 'served'].includes(order.status) || order.source === 'customer';
+      const row = document.createElement('div');
+      row.className = 'list-card';
+      row.innerHTML = `<strong>${item.name}</strong> • ${money(item.price)} บาท ${locked ? '<span class="pill">sent</span>' : '<button class="btn-soft">ลบ</button>'}`;
+      const btn = row.querySelector('button');
+      if (btn) {
+        btn.addEventListener('click', async () => {
+          playUISound();
+          await api('/api/order/item', { method: 'DELETE', body: JSON.stringify({ order_id: order.id, item_index: idx }) });
+          await loadData();
+          renderExistingOrders(tableId);
+        });
+      }
+      list.appendChild(row);
+    });
   });
   qs('order-existing-total').textContent = `ยอดรวมตอนนี้ ${money(total)} บาท`;
 }
@@ -317,15 +347,7 @@ function renderMenu() {
   db.menu.forEach((item, idx) => {
     const row = document.createElement('div');
     row.className = 'list-card menu-admin-row';
-    row.innerHTML = `<div class="menu-admin-meta"><div class="menu-thumb">${item.image ? `<img src="${item.image}" alt="${item.name}" />` : 'IMG'}</div><div><strong>${item.name}</strong><small>${money(item.price)} บาท</small></div></div><div><button data-a="e" class="btn-soft">แก้ไข</button> <button data-a="d" class="btn-soft">ลบ</button></div>`;
-    row.querySelector('[data-a="e"]').addEventListener('click', () => {
-      menuEditIndex = idx;
-      qs('menu-name').value = item.name;
-      qs('menu-price').value = item.price;
-      qs('menu-addons').value = (item.addons || []).join(',');
-      menuImagePreviewData = item.image || '';
-      qs('menu-image-preview').src = menuImagePreviewData;
-    });
+    row.innerHTML = `<div class="menu-admin-meta"><div class="menu-thumb">${item.image ? `<img src="${item.image}" alt="${item.name}" />` : 'IMG'}</div><div><strong>${item.name}</strong><small>${money(item.price)} บาท</small></div></div><div><button data-a="d" class="btn-soft">ลบ</button></div>`;
     row.querySelector('[data-a="d"]').addEventListener('click', async () => { db.menu.splice(idx, 1); await api('/api/settings', { method: 'POST', body: JSON.stringify({ menu: db.menu }) }); await loadData(); });
     list.appendChild(row);
   });
@@ -338,60 +360,29 @@ function renderSales() {
   if (from || to) {
     sales = sales.filter((s) => {
       const d = new Date(s.timestamp || s.created_at || Date.now());
-      const passFrom = from ? d >= new Date(`${from}T00:00:00`) : true;
-      const passTo = to ? d <= new Date(`${to}T23:59:59`) : true;
-      return passFrom && passTo;
+      return (!from || d >= new Date(`${from}T00:00:00`)) && (!to || d <= new Date(`${to}T23:59:59`));
     });
   }
-  const inRange = (days) => {
-    const now = new Date();
-    const start = new Date(now);
-    start.setDate(now.getDate() - (days - 1));
-    start.setHours(0, 0, 0, 0);
-    return sales.filter((s) => new Date(s.timestamp || s.created_at || Date.now()) >= start);
-  };
-  const sumTotal = (list) => list.reduce((sum, s) => sum + Number(s.total || 0), 0);
-  const todaySales = inRange(1);
-  const sevenSales = inRange(7);
-  const monthSales = inRange(30);
-  const total = sumTotal(sales);
+  const daily = {};
+  sales.forEach((sale) => {
+    const key = new Date(sale.paid_at || sale.timestamp || Date.now()).toISOString().slice(0, 10);
+    daily[key] = (daily[key] || 0) + Number(sale.total || 0);
+  });
+  const total = sales.reduce((sum, s) => sum + Number(s.total || 0), 0);
   const cash = sales.filter((s) => s.payment_method === 'cash').reduce((sum, s) => sum + Number(s.total || 0), 0);
   const qr = sales.filter((s) => s.payment_method === 'qr').reduce((sum, s) => sum + Number(s.total || 0), 0);
-  qs('sales-overview').innerHTML = `
-    <div class="list-card sales-kpi"><strong>Today</strong><div>฿${money(sumTotal(todaySales))}</div></div>
-    <div class="list-card sales-kpi"><strong>7 Days</strong><div>฿${money(sumTotal(sevenSales))}</div></div>
-    <div class="list-card sales-kpi"><strong>30 Days</strong><div>฿${money(sumTotal(monthSales))}</div></div>
-    <div class="list-card sales-kpi"><strong>Cash</strong><div>฿${money(cash)}</div></div>
-    <div class="list-card sales-kpi"><strong>Transfer</strong><div>฿${money(qr)}</div></div>
-    <div class="list-card sales-kpi total"><strong>Grand Total</strong><div>฿${money(total)}</div></div>`;
-  qs('sales-list').innerHTML = '';
+  qs('sales-overview').innerHTML = `<div class="list-card sales-kpi total"><strong>Total</strong><div>฿${money(total)}</div></div><div class="list-card sales-kpi"><strong>Cash</strong><div>฿${money(cash)}</div></div><div class="list-card sales-kpi"><strong>QR</strong><div>฿${money(qr)}</div></div><div class="list-card sales-kpi"><strong>Txns</strong><div>${sales.length}</div></div>`;
+  const chart = qs('sales-chart');
+  const points = Object.entries(daily).sort((a, b) => a[0].localeCompare(b[0])).slice(-7);
+  const max = Math.max(1, ...points.map(([, val]) => val));
+  chart.innerHTML = points.map(([day, val]) => `<div class="chart-col"><div class="chart-bar" style="height:${Math.max(8, (val / max) * 100)}%"></div><small>${day.slice(5)}</small></div>`).join('') || '<div class="empty">ยังไม่มีข้อมูลกราฟ</div>';
+  const body = qs('sales-list');
+  body.innerHTML = '';
   sales.slice().reverse().forEach((sale) => {
-    const paymentIcon = sale.payment_method === 'qr' ? '📱' : '💵';
-    const itemSummary = (sale.items || []).map((item) => `${item.name}`).join(', ') || '-';
-    const row = document.createElement('div');
-    row.className = 'list-card sales-row-card';
-    row.innerHTML = `
-      <div class="sales-row-head">
-        <strong>${unitLabel()} ${sale.target_id}</strong>
-        <span class="sales-pay-icon" title="${sale.payment_method}">${paymentIcon}</span>
-      </div>
-      <div class="muted">${itemSummary}</div>
-      <div class="sales-row-foot"><strong>฿${money(sale.total)}</strong></div>
-    `;
-    qs('sales-list').appendChild(row);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${new Date(sale.paid_at || Date.now()).toLocaleString('th-TH')}</td><td>${sale.target_id}</td><td>${sale.payment_method}</td><td>฿${money(sale.total)}</td>`;
+    body.appendChild(tr);
   });
-
-  const bestWrap = qs('sales-best-list');
-  const itemTotals = {};
-  sales.forEach((sale) => (sale.items || []).forEach((item) => { itemTotals[item.name] = (itemTotals[item.name] || 0) + 1; }));
-  bestWrap.innerHTML = '';
-  Object.entries(itemTotals).sort((a, b) => b[1] - a[1]).slice(0, 8).forEach(([name, qty]) => {
-    const row = document.createElement('div');
-    row.className = 'list-card';
-    row.textContent = `${name} • ${qty} จาน`;
-    bestWrap.appendChild(row);
-  });
-  if (!bestWrap.innerHTML) bestWrap.innerHTML = '<div class="empty">ยังไม่มีข้อมูลยอดฮิต</div>';
 }
 
 function renderSystem() {
@@ -582,10 +573,23 @@ function bind() {
     await loadData();
   });
 
+  const addAddonRow = (addon = { name: '', price: 0 }) => {
+    const row = document.createElement('div');
+    row.className = 'form-grid three-col';
+    row.innerHTML = `<input class="addon-name" placeholder="ชื่อ Add-on" value="${addon.name || ''}" /><input class="addon-price" type="number" min="0" placeholder="ราคาเพิ่ม" value="${addon.price || 0}" /><button class="btn-soft" type="button">ลบ</button>`;
+    row.querySelector('button').addEventListener('click', () => row.remove());
+    qs('addon-rows').appendChild(row);
+  };
+  qs('open-menu-modal')?.addEventListener('click', () => { qs('menu-modal').classList.remove('hidden'); if (!qs('addon-rows').children.length) addAddonRow(); });
+  qs('close-menu-modal')?.addEventListener('click', () => qs('menu-modal').classList.add('hidden'));
+  qs('add-addon-row')?.addEventListener('click', () => addAddonRow());
+
   qs('menu-image-file').addEventListener('change', async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
     menuImagePreviewData = await new Promise((resolve) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.readAsDataURL(file); });
+    const compressed = await api('/api/menu/upload-image', { method: 'POST', body: JSON.stringify({ image: menuImagePreviewData }) });
+    menuImagePreviewData = compressed.image || menuImagePreviewData;
     qs('menu-image-preview').src = menuImagePreviewData;
   });
 
@@ -593,17 +597,17 @@ function bind() {
     const name = qs('menu-name').value.trim();
     const price = Number(qs('menu-price').value || 0);
     if (!name || price <= 0) return;
-    const payload = { name, price, addons: qs('menu-addons').value.split(',').map((x) => x.trim()).filter(Boolean), image: menuImagePreviewData || '' };
-    if (menuEditIndex >= 0) db.menu[menuEditIndex] = { ...db.menu[menuEditIndex], ...payload };
-    else db.menu.push({ id: Date.now(), ...payload });
+    const addons = [...document.querySelectorAll('#addon-rows .form-grid')].map((row) => ({ name: row.querySelector('.addon-name').value.trim(), price: Number(row.querySelector('.addon-price').value || 0) })).filter((a) => a.name);
+    const payload = { name, price, addons: addons.map((a) => `${a.name} (+${a.price})`), addon_json: addons, image: menuImagePreviewData || '' };
+    db.menu.push({ id: Date.now(), ...payload });
     await api('/api/settings', { method: 'POST', body: JSON.stringify({ menu: db.menu }) });
+    qs('menu-modal').classList.add('hidden');
     qs('menu-name').value = '';
     qs('menu-price').value = '';
-    qs('menu-addons').value = '';
+    qs('addon-rows').innerHTML = '';
     qs('menu-image-file').value = '';
     qs('menu-image-preview').src = '';
     menuImagePreviewData = '';
-    menuEditIndex = -1;
     await loadData();
   });
 
@@ -673,6 +677,21 @@ function bind() {
     qs('forgot-admin-modal').classList.add('hidden');
     alert('รีเซ็ตรหัส Admin สำเร็จ');
     await loadData();
+  });
+
+  document.body.addEventListener('click', (event) => { if (event.target.closest('button')) playUISound(); });
+  const soundToggle = qs('ui-sound-toggle');
+  if (soundToggle) {
+    soundToggle.checked = uiSoundEnabled;
+    qs('ui-sound-label').textContent = uiSoundEnabled ? '🔊' : '🔇';
+    soundToggle.addEventListener('change', () => {
+      uiSoundEnabled = soundToggle.checked;
+      localStorage.setItem('uiSoundEnabled', uiSoundEnabled ? '1' : '0');
+      qs('ui-sound-label').textContent = uiSoundEnabled ? '🔊' : '🔇';
+    });
+  }
+  qs('table-zoom')?.addEventListener('input', (e) => {
+    document.documentElement.style.setProperty('--table-scale', Number(e.target.value) / 100);
   });
 
   qs('save-system').addEventListener('click', async () => {

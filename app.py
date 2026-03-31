@@ -1,7 +1,10 @@
 import logging
+import base64
+import io
 from datetime import datetime, timezone
 
 from flask import Flask, abort, jsonify, render_template, request
+from PIL import Image
 
 from db import ensure_db_exists, load_db, reset_tables, save_db
 
@@ -233,6 +236,8 @@ def api_order_item():
             return jsonify({"error": "item not found"}), 404
 
         if request.method == "DELETE":
+            if order.get("status") in {"preparing", "served"}:
+                return jsonify({"error": "submitted_order_locked"}), 403
             if str(order.get("source", "customer")) == "customer":
                 return jsonify({"error": "customer_order_locked"}), 403
             items.pop(item_index)
@@ -263,6 +268,32 @@ def api_order_item():
         return jsonify({"status": "success", "version": db["meta"]["version"]})
 
     return jsonify({"error": "order not found"}), 404
+
+
+@app.route("/api/menu/upload-image", methods=["POST"])
+@require_license
+def api_menu_upload_image():
+    payload = read_json()
+    raw_image = str(payload.get("image", ""))
+    if not raw_image.startswith("data:image/"):
+        return jsonify({"error": "invalid_image"}), 400
+    try:
+        header, encoded = raw_image.split(",", 1)
+        binary = base64.b64decode(encoded)
+        image = Image.open(io.BytesIO(binary)).convert("RGB")
+    except Exception:
+        return jsonify({"error": "decode_failed"}), 400
+
+    max_width = 800
+    if image.width > max_width:
+        ratio = max_width / float(image.width)
+        new_size = (max_width, int(image.height * ratio))
+        image = image.resize(new_size, Image.Resampling.LANCZOS)
+
+    out = io.BytesIO()
+    image.save(out, format="JPEG", optimize=True, quality=70)
+    compressed = base64.b64encode(out.getvalue()).decode("utf-8")
+    return jsonify({"status": "success", "image": f"data:image/jpeg;base64,{compressed}"})
 
 
 @app.route("/api/table/accept", methods=["POST"])

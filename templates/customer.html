@@ -8,12 +8,12 @@
 </head>
 <body data-table-id="{{ table_id or '' }}" class="customer-app">
   <main class="mobile-shell app-mobile delivery-app-shell">
-    <header class="mobile-header delivery-header">
+    <header class="mobile-header delivery-header compact-header">
       <div class="brand-zone">
         <div class="logo-slot">LOGO</div>
         <div>
           <small class="on-dark">FAKDU POS</small>
-          <h1 class="mobile-title">Table: {{ table_id }}</h1>
+          <h1 class="mobile-title">Table {{ table_id }}</h1>
           <p id="table-mode-note" class="mobile-subtitle"></p>
         </div>
       </div>
@@ -21,17 +21,16 @@
     </header>
 
     <section class="mobile-content customer-mobile">
-      <section class="mobile-panel menu-panel">
-        <h3>Popular Menu</h3>
-        <div id="menu-list" class="mobile-menu-list delivery-grid"></div>
+      <section class="mobile-panel menu-panel compact-panel">
+        <h3>เมนู</h3>
+        <div id="menu-list" class="mobile-menu-list delivery-grid compact-grid"></div>
       </section>
 
-      <section class="mobile-panel">
-        <h3>📋 รายการที่ส่งแล้ว</h3>
+      <section class="mobile-panel compact-panel">
+        <h3>รายการที่ส่งแล้ว</h3>
         <div id="existing-order-list" class="order-list"></div>
         <div id="existing-order-total" class="order-total"></div>
-        <div id="existing-order-time" class="muted"></div>
-        <button id="call-staff-bill" class="btn-call-staff" type="button">🔔 เรียกพนักงานเช็คบิล</button>
+        <button id="call-staff-bill" class="btn-call-staff" type="button">🔔 Call Staff</button>
       </section>
     </section>
   </main>
@@ -41,7 +40,7 @@
       <span id="floating-cart-count">0 รายการ</span>
       <strong id="floating-cart-total">฿0.00</strong>
     </div>
-    <strong>Review Order / Send to Kitchen</strong>
+    <strong>Send Order</strong>
   </button>
 
   <div id="cart-modal" class="modal hidden">
@@ -66,14 +65,8 @@
         <button id="close-item-detail-modal" class="btn-soft" type="button">ปิด</button>
       </div>
       <div class="order-list">
-        <label>
-          ตัวเลือกเพิ่มเติม
-          <select id="item-addon-select"></select>
-        </label>
-        <label>
-          หมายเหตุ
-          <input id="item-note-input" type="text" maxlength="120" placeholder="เช่น ไม่ใส่ผักชี" />
-        </label>
+        <label>ตัวเลือกเพิ่มเติม<select id="item-addon-select"></select></label>
+        <label>หมายเหตุ<input id="item-note-input" type="text" maxlength="120" placeholder="เช่น ไม่ใส่ผักชี" /></label>
       </div>
       <div class="btn-row">
         <button id="item-detail-add-btn" class="btn-primary" type="button">เพิ่มลงตะกร้า</button>
