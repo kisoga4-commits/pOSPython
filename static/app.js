@@ -382,14 +382,18 @@ function renderTableQRCodes() {
 
 function selectMenuItem(item) {
   selectedMenuItem = item;
-  qs('order-selected-menu').value = `${item.name} · ${money(item.price)} บาท`;
+  qs('order-selected-menu').value = `${item.name} · ${money(item.price)}฿`;
   const addon = qs('order-addon');
-  addon.innerHTML = '<option value="">ไม่เลือก add-on</option>';
+  addon.innerHTML = '<option value="">+ add-on</option>';
   (item.addons || []).forEach((add) => {
     const option = document.createElement('option');
     option.value = add;
     option.textContent = add;
     addon.appendChild(option);
+  });
+
+  document.querySelectorAll('#order-menu-grid .menu-choice').forEach((btn) => {
+    btn.classList.toggle('is-active', Number(btn.dataset.menuId) === Number(item.id));
   });
 }
 
@@ -400,7 +404,8 @@ function renderOrderMenuChoices() {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'menu-choice';
-    btn.innerHTML = `<strong>${item.name}</strong><small>${money(item.price)} บาท</small>`;
+    btn.dataset.menuId = item.id;
+    btn.innerHTML = `<strong>${item.name}</strong><small>฿${money(item.price)}</small>`;
     btn.addEventListener('click', () => selectMenuItem(item));
     grid.appendChild(btn);
   });
@@ -410,21 +415,40 @@ function renderOrderCart() {
   const list = qs('order-cart-list');
   list.innerHTML = '';
   if (!orderCart.length) {
-    list.innerHTML = '<div class="empty">ยังไม่มีรายการในตะกร้า</div>';
-    qs('order-cart-total').textContent = 'รวมชั่วคราว 0.00 บาท';
+    list.innerHTML = '<div class="empty order-empty">🧺 ยังไม่มีรายการในตะกร้า</div>';
+    qs('order-cart-total').textContent = 'Subtotal ฿0.00';
     return;
   }
 
   orderCart.forEach((item, idx) => {
     const row = document.createElement('div');
-    row.className = 'list-card';
+    row.className = 'order-line-item';
+    const lineTotal = Number(item.price) * Number(item.qty);
     row.innerHTML = `
-      <strong>${item.name}</strong>
-      <div>${item.qty} x ${money(item.price)} บาท ${item.addon ? `· ${item.addon}` : ''}</div>
-      <div>${item.note ? `หมายเหตุ: ${item.note}` : ''}</div>
-      <button class="btn-soft danger" data-rm="${idx}">ลบ</button>
+      <div class="order-line-main">
+        <div>
+          <div class="order-line-name">${item.name}</div>
+          <div class="order-line-meta">${item.addon ? `+ ${item.addon}` : 'ไม่เพิ่ม add-on'} ${item.note ? `• ${item.note}` : ''}</div>
+        </div>
+        <div class="order-line-price">฿${money(lineTotal)}</div>
+      </div>
+      <div class="order-line-actions">
+        <button class="order-mini-btn" data-act="minus">−</button>
+        <span class="order-line-meta">${item.qty} จาน</span>
+        <button class="order-mini-btn" data-act="plus">＋</button>
+        <button class="order-mini-btn danger" data-act="remove">ลบ</button>
+      </div>
     `;
-    row.querySelector('[data-rm]').addEventListener('click', () => {
+
+    row.querySelector('[data-act="minus"]').addEventListener('click', () => {
+      item.qty = Math.max(1, Number(item.qty) - 1);
+      renderOrderCart();
+    });
+    row.querySelector('[data-act="plus"]').addEventListener('click', () => {
+      item.qty = Number(item.qty) + 1;
+      renderOrderCart();
+    });
+    row.querySelector('[data-act="remove"]').addEventListener('click', () => {
       orderCart.splice(idx, 1);
       renderOrderCart();
     });
@@ -432,7 +456,7 @@ function renderOrderCart() {
   });
 
   const total = orderCart.reduce((sum, item) => sum + (Number(item.price) * Number(item.qty)), 0);
-  qs('order-cart-total').textContent = `รวมชั่วคราว ${money(total)} บาท`;
+  qs('order-cart-total').textContent = `Subtotal ฿${money(total)}`;
 }
 
 function renderExistingOrders(tableId) {
@@ -440,21 +464,25 @@ function renderExistingOrders(tableId) {
   const { items, total, latestOrder } = getTableSummary(tableId);
   list.innerHTML = '';
   if (!items.length) {
-    list.innerHTML = '<div class="empty">ยังไม่มีออร์เดอร์จากลูกค้า</div>';
+    list.innerHTML = '<div class="empty order-empty">🍽️ ยังไม่มีรายการที่สั่งแล้ว</div>';
   } else {
     items.forEach((item) => {
       const row = document.createElement('div');
-      row.className = 'list-card';
+      row.className = 'order-line-item';
       row.innerHTML = `
-        <strong>${item.name}</strong>
-        <div>จำนวน ${item.qty || 1} · ${money(item.price)} บาท</div>
-        <div>${item.addon ? `add-on: ${item.addon}` : ''} ${item.note ? ` · หมายเหตุ: ${item.note}` : ''}</div>
+        <div class="order-line-main">
+          <div class="order-line-name">${item.name}</div>
+          <div class="order-line-price">฿${money((item.qty || 1) * Number(item.price || 0))}</div>
+        </div>
+        <div class="order-line-meta">${item.qty || 1} จาน ${item.addon ? `• + ${item.addon}` : ''} ${item.note ? `• ${item.note}` : ''}</div>
       `;
       list.appendChild(row);
     });
   }
-  qs('order-existing-total').textContent = `ยอดรวมตอนนี้ ${money(total)} บาท`;
-  qs('order-latest-time').textContent = `เวลาออร์เดอร์ล่าสุด: ${formatDateTime(latestOrder?.updated_at || latestOrder?.created_at)}`;
+
+  const latest = latestOrder?.updated_at || latestOrder?.created_at;
+  qs('order-existing-total').textContent = `ยอดรวมตอนนี้ ฿${money(total)}`;
+  qs('order-latest-time').textContent = `🕒 ล่าสุด ${latest ? formatDateTime(latest) : '-'} `;
 }
 
 function openOrderModal(tableId) {
@@ -463,10 +491,11 @@ function openOrderModal(tableId) {
   orderCart = [];
   const table = db.tables.find((t) => t.id === tableId);
   const meta = statusMap[table?.status] || statusMap.available;
-  qs('order-modal-title').textContent = `สั่งออร์เดอร์ ${unitLabel()} ${tableId}`;
-  qs('order-modal-status').textContent = `สถานะปัจจุบัน: ${meta.label}`;
+  qs('order-modal-title').textContent = `${unitLabel()} ${tableId}`;
+  qs('order-meta-table').textContent = `🪑 ${unitLabel()} ${tableId}`;
+  qs('order-meta-status').textContent = `🔖 ${meta.label}`;
   qs('order-selected-menu').value = '';
-  qs('order-addon').innerHTML = '<option value="">ไม่เลือก add-on</option>';
+  qs('order-addon').innerHTML = '<option value="">+ add-on</option>';
   qs('order-qty').value = 1;
   qs('order-note').value = '';
   renderOrderMenuChoices();
@@ -574,6 +603,15 @@ function bind() {
   qs('quick-up').addEventListener('click', () => {
     tableGridColumns = Math.min(6, tableGridColumns + 1);
     renderTables();
+  });
+
+  qs('order-qty-minus').addEventListener('click', () => {
+    const input = qs('order-qty');
+    input.value = Math.max(1, Number(input.value || 1) - 1);
+  });
+  qs('order-qty-plus').addEventListener('click', () => {
+    const input = qs('order-qty');
+    input.value = Number(input.value || 1) + 1;
   });
 
   qs('order-add-item').addEventListener('click', () => {

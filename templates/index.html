@@ -219,42 +219,50 @@
 
   <div id="order-modal" class="modal hidden">
     <div class="modal-card order-modal-card">
-      <div class="section-head">
-        <h3 id="order-modal-title">สั่งออร์เดอร์</h3>
-        <div class="btn-row">
-          <button id="order-back" class="btn-soft">ย้อนกลับ</button>
-          <button id="order-close" class="btn-soft">ปิด</button>
+      <header class="order-modal-header">
+        <div>
+          <p class="order-kicker">🍽️ POS สั่งอาหาร</p>
+          <h3 id="order-modal-title">สั่งออร์เดอร์</h3>
         </div>
+        <div class="btn-row order-head-actions">
+          <button id="order-back" class="btn-soft">↩</button>
+          <button id="order-close" class="btn-soft">✕</button>
+        </div>
+      </header>
+      <div class="order-meta-strip">
+        <span id="order-meta-table" class="meta-chip">🪑 โต๊ะ -</span>
+        <span id="order-meta-status" class="meta-chip">🔖 สถานะ -</span>
+        <span id="order-latest-time" class="meta-chip">🕒 --:--</span>
       </div>
-      <div id="order-modal-status" class="order-status-line"></div>
       <div class="order-modal-layout">
-        <section class="panel-block">
-          <h4>เมนู</h4>
+        <section class="order-panel menu-panel">
+          <h4>เมนูอาหาร</h4>
           <div id="order-menu-grid" class="menu-choice-grid"></div>
         </section>
-        <section class="panel-block">
-          <h4>เพิ่มรายการ</h4>
-          <div class="form-grid single">
-            <input id="order-selected-menu" disabled placeholder="เลือกเมนูก่อน" />
-            <select id="order-addon"><option value="">ไม่เลือก add-on</option></select>
-            <input id="order-qty" type="number" min="1" value="1" />
-            <input id="order-note" placeholder="หมายเหตุ เช่น ไม่เผ็ด / แยกผัก" />
-            <button id="order-add-item" class="btn-primary">เพิ่มลงตะกร้า</button>
+        <section class="order-panel cart-panel">
+          <h4>กำลังเพิ่ม</h4>
+          <div class="quick-add-box">
+            <input id="order-selected-menu" disabled placeholder="แตะเมนูทางซ้าย" />
+            <div class="inline-controls">
+              <select id="order-addon"><option value="">+ add-on</option></select>
+              <div class="qty-control">
+                <button id="order-qty-minus" type="button" class="btn-soft">−</button>
+                <input id="order-qty" type="number" min="1" value="1" />
+                <button id="order-qty-plus" type="button" class="btn-soft">＋</button>
+              </div>
+            </div>
+            <input id="order-note" placeholder="📝 หมายเหตุ" />
+            <button id="order-add-item" class="btn-primary order-primary-btn">เพิ่มลงตะกร้า</button>
           </div>
-          <div>
-            <h4>ตะกร้าปัจจุบัน</h4>
-            <div id="order-cart-list" class="order-list"></div>
-            <div id="order-cart-total" class="order-total"></div>
-          </div>
+          <div class="order-section-title">ตะกร้า</div>
+          <div id="order-cart-list" class="order-list"></div>
+          <div id="order-cart-total" class="order-total"></div>
+          <button id="order-submit" class="btn-primary order-submit-btn">ส่งออเดอร์</button>
         </section>
-        <section class="panel-block">
+        <section class="order-panel existing-panel">
           <h4>ลูกค้าสั่งไปแล้ว</h4>
           <div id="order-existing-list" class="order-list"></div>
           <div id="order-existing-total" class="order-total"></div>
-          <div id="order-latest-time" class="muted"></div>
-          <div class="btn-row">
-            <button id="order-submit" class="btn-primary">ส่งออร์เดอร์</button>
-          </div>
         </section>
       </div>
     </div>
