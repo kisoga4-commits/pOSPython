@@ -76,6 +76,26 @@ main { padding: 14px 0 30px; display: grid; gap: 14px; }
 .section-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .section-head h2, .section-head h3 { margin: 0; }
 .section-subtitle { margin: 4px 0 0; color: var(--muted); font-size: .92rem; }
+.landing-highlight {
+  background: linear-gradient(140deg, #fff9f2, #ffffff);
+  border: 1px solid #efdccf;
+}
+.landing-highlight h2 { margin: 0; color: #6f1b25; }
+.landing-grid {
+  margin-top: 12px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.landing-pill {
+  border: 1px solid #ebd7ca;
+  background: #fff;
+  color: #6f1b25;
+  border-radius: 14px;
+  padding: 12px;
+  font-weight: 800;
+}
+.landing-pill:hover { background: #fff5ec; }
 
 .main-tab-wrap {
   display: grid;
