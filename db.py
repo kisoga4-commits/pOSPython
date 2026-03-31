@@ -1,10 +1,12 @@
 import json
+import os
+import sqlite3
 from copy import deepcopy
 from datetime import datetime, timezone
-from pathlib import Path
 from threading import Lock
 
-DB_FILE = Path("shabu_database.json")
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+DB_FILE = os.path.join(BASE_DIR, "pos_local.sqlite3")
 _db_lock = Lock()
 
 
@@ -12,13 +14,12 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-
-
 def normalize_table_status(status: str) -> str:
     mapping = {"occupied": "accepted_order", "free": "available", "ว่าง": "available"}
     normalized = mapping.get(str(status), str(status))
     valid = {"available", "pending_order", "accepted_order", "checkout_requested", "closed"}
     return normalized if normalized in valid else "available"
+
 
 def default_db() -> dict:
     table_count = 8
@@ -64,8 +65,26 @@ def default_db() -> dict:
 
 
 def ensure_db_exists() -> None:
-    if not DB_FILE.exists():
-        save_db(default_db())
+    with _db_lock:
+        with sqlite3.connect(DB_FILE) as conn:
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS app_state (
+                    state_key TEXT PRIMARY KEY,
+                    state_json TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                )
+                """
+            )
+            cur = conn.execute("SELECT state_json FROM app_state WHERE state_key = ?", ("main",))
+            row = cur.fetchone()
+            if row is None:
+                payload = json.dumps(default_db(), ensure_ascii=False)
+                conn.execute(
+                    "INSERT INTO app_state(state_key, state_json, updated_at) VALUES(?, ?, ?)",
+                    ("main", payload, now_iso()),
+                )
+            conn.commit()
 
 
 def _normalize_db(data: dict) -> dict:
@@ -95,13 +114,12 @@ def _normalize_db(data: dict) -> dict:
 def load_db() -> dict:
     ensure_db_exists()
     with _db_lock:
-        with DB_FILE.open("r", encoding="utf-8") as f:
-            return _normalize_db(json.load(f))
-
-
-def _write_db(data: dict) -> None:
-    with DB_FILE.open("w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+        with sqlite3.connect(DB_FILE) as conn:
+            cur = conn.execute("SELECT state_json FROM app_state WHERE state_key = ?", ("main",))
+            row = cur.fetchone()
+            if row is None:
+                return default_db()
+            return _normalize_db(json.loads(row[0]))
 
 
 def save_db(data: dict) -> dict:
@@ -109,7 +127,19 @@ def save_db(data: dict) -> dict:
     with _db_lock:
         normalized["meta"]["version"] = int(normalized["meta"].get("version", 0)) + 1
         normalized["meta"]["updated_at"] = now_iso()
-        _write_db(normalized)
+        payload = json.dumps(normalized, ensure_ascii=False)
+        with sqlite3.connect(DB_FILE) as conn:
+            conn.execute(
+                """
+                INSERT INTO app_state(state_key, state_json, updated_at)
+                VALUES(?, ?, ?)
+                ON CONFLICT(state_key) DO UPDATE SET
+                    state_json = excluded.state_json,
+                    updated_at = excluded.updated_at
+                """,
+                ("main", payload, normalized["meta"]["updated_at"]),
+            )
+            conn.commit()
     return normalized
 
 

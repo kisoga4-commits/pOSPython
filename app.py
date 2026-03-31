@@ -15,7 +15,7 @@ log = logging.getLogger("werkzeug")
 log.setLevel(logging.ERROR)
 
 app = Flask(__name__)
-ASSET_VERSION = "20260331-modern-pos-mto"
+ASSET_VERSION = "20260331-offline-lan-sync"
 
 
 def bootstrap() -> None:
@@ -69,17 +69,41 @@ def customer_page():
     table_id = request.args.get("table", type=int)
     if table_id is None or table_id < 1:
         abort(400, description="missing_or_invalid_table")
-    return render_template("customer.html", table_id=table_id, asset_version=ASSET_VERSION)
+    local_ip = get_local_ip()
+    port = request.environ.get("SERVER_PORT", "5000")
+    local_base_url = f"{request.scheme}://{local_ip}:{port}"
+    return render_template(
+        "customer.html",
+        table_id=table_id,
+        asset_version=ASSET_VERSION,
+        local_base_url=local_base_url,
+    )
 
 
 @app.route("/scan/customer/<int:table_id>")
 def customer_scan_page(table_id: int):
-    return render_template("customer.html", table_id=table_id, asset_version=ASSET_VERSION)
+    local_ip = get_local_ip()
+    port = request.environ.get("SERVER_PORT", "5000")
+    local_base_url = f"{request.scheme}://{local_ip}:{port}"
+    return render_template(
+        "customer.html",
+        table_id=table_id,
+        asset_version=ASSET_VERSION,
+        local_base_url=local_base_url,
+    )
 
 
 @app.route("/table/<int:table_id>")
 def customer_table_page(table_id: int):
-    return render_template("customer.html", table_id=table_id, asset_version=ASSET_VERSION)
+    local_ip = get_local_ip()
+    port = request.environ.get("SERVER_PORT", "5000")
+    local_base_url = f"{request.scheme}://{local_ip}:{port}"
+    return render_template(
+        "customer.html",
+        table_id=table_id,
+        asset_version=ASSET_VERSION,
+        local_base_url=local_base_url,
+    )
 
 
 @app.route("/staff")
@@ -106,12 +130,19 @@ def api_data():
 @app.route("/api/order", methods=["POST"])
 def api_order():
     payload = read_json()
+    try:
+        return jsonify(_create_order(payload))
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
+
+def _create_order(payload: dict) -> dict:
     target = str(payload.get("target", "table"))
     target_id = payload.get("target_id")
     cart = payload.get("cart", [])
 
     if not cart:
-        return jsonify({"error": "cart is empty"}), 400
+        raise ValueError("cart is empty")
 
     db = load_db()
     order_id = f"ORD-{int(datetime.now().timestamp())}-{len(db['orders']) + 1}"
@@ -141,7 +172,32 @@ def api_order():
                 break
 
     db = save_db(db)
-    return jsonify({"status": "success", "order": new_order, "version": db["meta"]["version"]})
+    return {"status": "success", "order": new_order, "version": db["meta"]["version"]}
+
+
+@app.route("/api/ping", methods=["GET"])
+def api_ping():
+    return jsonify({"status": "ok", "server_time": utc_now()})
+
+
+@app.route("/api/sync/pending-orders", methods=["POST"])
+def api_sync_pending_orders():
+    payload = read_json()
+    pending_orders = payload.get("pending_orders", [])
+    if not isinstance(pending_orders, list):
+        return jsonify({"error": "invalid_pending_orders"}), 400
+
+    accepted = []
+    for order_payload in pending_orders:
+        try:
+            result = _create_order(order_payload)
+            accepted.append({
+                "client_order_id": order_payload.get("client_order_id"),
+                "server_order_id": result["order"]["id"],
+            })
+        except Exception:
+            continue
+    return jsonify({"status": "success", "accepted": accepted, "accepted_count": len(accepted)})
 
 
 @app.route("/api/checkout", methods=["POST"])

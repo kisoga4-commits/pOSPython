@@ -7,6 +7,7 @@ let activeItemDraft = null;
 let toastTimer = null;
 const params = new URLSearchParams(window.location.search);
 const lockedTableId = Number(params.get('table') || document.body.dataset.tableId || 0);
+let masterBaseUrl = document.body.dataset.localBaseUrl || `${window.location.protocol}//${window.location.host}`;
 
 const TABLE_STATUS_META = {
   available: { label: 'ว่าง', className: 'status-available' },
@@ -17,7 +18,8 @@ const TABLE_STATUS_META = {
 };
 
 async function api(path, options = {}) {
-  const res = await fetch(path, {
+  const url = path.startsWith('http') ? path : `${masterBaseUrl}${path}`;
+  const res = await fetch(url, {
     headers: { 'Content-Type': 'application/json' },
     ...options,
   });
@@ -232,16 +234,26 @@ function renderExistingOrders() {
 }
 
 async function loadLive() {
-  const data = await api(`/api/customer/live?since=${version}`);
-  if (!data.changed) return;
-  menu = data.menu || [];
-  currentSettings = data.settings || {};
-  currentTables = data.tables || [];
-  version = data.version || version;
-  setLockedTableUI();
-  updateTableStatus(data.tables || []);
-  renderMenu();
-  renderExistingOrders();
+  try {
+    const data = await api(`/api/customer/live?since=${version}`);
+    if (!data.changed) return;
+    menu = data.menu || [];
+    currentSettings = data.settings || {};
+    currentTables = data.tables || [];
+    version = data.version || version;
+    await window.posDB.saveMenu(menu);
+    setLockedTableUI();
+    updateTableStatus(data.tables || []);
+    renderMenu();
+    renderExistingOrders();
+  } catch (error) {
+    const cachedMenu = await window.posDB.loadMenu();
+    if (cachedMenu.length) {
+      menu = cachedMenu;
+      renderMenu();
+      document.getElementById('message').textContent = 'กำลังแสดงเมนูจากเครื่อง (Offline)';
+    }
+  }
 }
 
 function setLockedTableUI() {
@@ -295,19 +307,35 @@ function bind() {
       }
     });
 
-    const res = await api('/api/order', {
-      method: 'POST',
-      body: JSON.stringify({ target: 'table', target_id: lockedTableId, cart: payloadCart, source: 'customer' }),
-    });
+    const pendingPayload = {
+      client_order_id: `mobile-${Date.now()}`,
+      target: 'table',
+      target_id: lockedTableId,
+      cart: payloadCart,
+      source: 'customer',
+    };
 
-    if (res.status === 'success') {
-      document.getElementById('message').textContent = 'ส่งออเดอร์เรียบร้อย';
+    try {
+      const res = await api('/api/order', {
+        method: 'POST',
+        body: JSON.stringify(pendingPayload),
+      });
+
+      if (res.status === 'success') {
+        document.getElementById('message').textContent = 'ส่งออเดอร์เรียบร้อย';
+        cart = [];
+        renderCart();
+        document.getElementById('cart-modal').classList.add('hidden');
+        await loadLive();
+        return;
+      }
+      document.getElementById('message').textContent = res.error || 'ส่งไม่สำเร็จ';
+    } catch (error) {
+      await window.posDB.enqueuePendingOrder(pendingPayload);
+      document.getElementById('message').textContent = 'บันทึกคำสั่งซื้อไว้แล้ว จะซิงก์อัตโนมัติเมื่อเชื่อมต่อ LAN ได้';
       cart = [];
       renderCart();
       document.getElementById('cart-modal').classList.add('hidden');
-      await loadLive();
-    } else {
-      document.getElementById('message').textContent = res.error || 'ส่งไม่สำเร็จ';
     }
   });
 
@@ -323,8 +351,12 @@ function bind() {
 }
 
 (function init() {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/static/sw.js').catch(() => {});
+  }
   bind();
   renderCart();
+  window.posSync.startSync(masterBaseUrl);
   loadLive().then(setLockedTableUI);
   setInterval(loadLive, 2000);
 })();
