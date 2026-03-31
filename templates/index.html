@@ -7,16 +7,6 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version }}" />
 </head>
 <body>
-  <div id="license-screen" class="overlay">
-    <div class="card">
-      <h2>🔒 Activate License</h2>
-      <p>Machine ID: <span id="machine-id"></span></p>
-      <input id="license-key" placeholder="License Key" maxlength="16" />
-      <button id="activate-btn" class="btn-primary primary-button">Activate</button>
-      <p id="license-message"></p>
-    </div>
-  </div>
-
   <div class="app-shell">
     <header class="app-header">
       <div class="header-top">
@@ -38,27 +28,27 @@
     <main>
       <section class="section-card landing-highlight">
         <h2>FAKDU 4 ระบบ</h2>
-        <p class="new-ui-proof">FAKDU 4 ระบบ NEW UI</p>
+        <p class="new-ui-proof">FAKDU 4 ระบบ พร้อมใช้งาน</p>
         <p class="section-subtitle">เริ่มใช้งานได้ทันทีจากเมนูหลักด้านล่าง</p>
         <div class="landing-grid">
-          <button class="landing-pill" data-screen="customer" type="button">ลูกค้า</button>
-          <button class="landing-pill" data-screen="cashier" type="button">เช็คบิล</button>
-          <button class="landing-pill" data-screen="kitchen" type="button">หลังร้าน</button>
-          <button class="landing-pill" data-screen="settings" type="button">ระบบ</button>
+          <button class="landing-pill" data-screen="customer" type="button">👨‍👩‍👧‍👦 ลูกค้า</button>
+          <button class="landing-pill" data-screen="cashier" type="button">🧾 เช็คบิล</button>
+          <button class="landing-pill" data-screen="kitchen" type="button">📊 หลังร้าน</button>
+          <button class="landing-pill" data-screen="settings" type="button">⚙️ ระบบ</button>
         </div>
       </section>
 
       <nav class="main-tab-wrap section-card">
-        <button class="main-tab is-active" data-screen="customer"><span>ลูกค้า</span></button>
-        <button class="main-tab" data-screen="cashier"><span>เช็คบิล</span></button>
-        <button class="main-tab" data-screen="kitchen"><span>หลังร้าน</span></button>
-        <button class="main-tab" data-screen="settings"><span>ระบบ</span></button>
+        <button class="main-tab is-active" data-screen="customer"><span>👨‍👩‍👧‍👦 ลูกค้า</span></button>
+        <button class="main-tab" data-screen="cashier"><span>🧾 เช็คบิล</span></button>
+        <button class="main-tab" data-screen="kitchen"><span>📊 หลังร้าน</span></button>
+        <button class="main-tab" data-screen="settings"><span>⚙️ ระบบ</span></button>
       </nav>
 
       <section id="customer" class="screen section-card">
         <div class="section-head with-controls">
           <div>
-            <h2>ลูกค้า</h2>
+            <h2>👨‍👩‍👧‍👦 ลูกค้า</h2>
             <p class="section-subtitle">จัดการโต๊ะและคิวออเดอร์แบบเรียลไทม์</p>
           </div>
           <div class="queue-controls">
@@ -85,7 +75,7 @@
 
       <section id="cashier" class="screen hidden section-card">
         <div class="section-head">
-          <h2>คิวเช็คบิล</h2>
+          <h2>🧾 คิวเช็คบิล</h2>
           <span id="checkout-count" class="status-badge">0 รายการ</span>
         </div>
         <div id="checkout-list" class="checkout-list"></div>
@@ -93,7 +83,7 @@
 
       <section id="kitchen" class="screen hidden section-card">
         <div class="section-head">
-          <h2>หลังร้าน</h2>
+          <h2>📊 หลังร้าน</h2>
           <div class="sub-tab" id="kitchen-subtabs">
             <button class="sub-tab-btn is-active" data-subtab="sales" type="button">ยอดขาย</button>
             <button class="sub-tab-btn" data-subtab="manage" type="button">จัดการร้าน</button>
@@ -155,7 +145,7 @@
       </section>
 
       <section id="settings" class="screen hidden section-card">
-        <div class="section-head"><h2>ระบบ</h2></div>
+        <div class="section-head"><h2>⚙️ ระบบ</h2></div>
         <div class="section-card soft">
           <div class="section-head">
             <h3>ข้อมูลร้านค้า</h3>
@@ -172,7 +162,6 @@
           </div>
           <div class="input-shell"><label>หมายเหตุใบเสร็จ</label><input id="store-receipt-note" type="text" placeholder="ขอบคุณที่ใช้บริการ" /></div>
           <div class="input-shell"><label>โลโก้ร้าน</label><input id="store-logo" type="file" accept="image/*" /></div>
-          <div class="input-shell"><label>Admin PIN</label><input id="admin-pin" type="password" placeholder="••••" /></div>
           <div class="btn-row">
             <button id="save-system-settings" class="btn-primary primary-button">บันทึกการตั้งค่า</button>
             <button id="reset-system-settings" class="btn-secondary" type="button">คืนค่าเริ่มต้น</button>
@@ -190,11 +179,6 @@
             <p class="muted">นำเข้าข้อมูลจากไฟล์ที่เคยสำรองไว้</p>
             <div class="input-shell"><input id="import-file" type="file" accept="application/json" /></div>
             <button id="import-data" class="btn-secondary" type="button">นำเข้าข้อมูล</button>
-          </div>
-          <div class="section-card soft">
-            <h3>Admin Pin</h3>
-            <p class="muted">บันทึกรหัสสำหรับเมนูผู้ดูแลระบบ</p>
-            <button id="save-admin-pin" class="btn-secondary" type="button">บันทึก PIN</button>
           </div>
         </div>
 
