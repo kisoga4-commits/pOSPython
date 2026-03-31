@@ -39,7 +39,7 @@ def default_db() -> dict:
             "pollingMs": 2500,
             "serviceChargePct": 0,
             "vatPct": 0,
-            "adminPin": "2468",
+            "adminPin": "admin",
             "storeName": "FAKDU",
             "serviceMode": "table",
             "promptPay": "",

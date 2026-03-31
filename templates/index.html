@@ -6,7 +6,7 @@
 
   <meta name="theme-color" content="#8f1d2a" />
   <link rel="manifest" href="/manifest.webmanifest" />
-  <title>FAKDU POS เครื่องแม่</title>
+  <title>FAKDU POS</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version }}" />
 </head>
 <body>
@@ -16,41 +16,30 @@
         <div class="brand-left">
           <div id="store-logo" class="logo-slot">LOGO</div>
           <div>
-            <p class="muted-light" id="master-hint">FAKDU POS · หน้าเครื่องแม่</p>
+            <p class="muted-light" id="master-hint">FAKDU POS</p>
             <h1 id="header-store-name">FAKDU</h1>
           </div>
         </div>
-        <button id="header-action" class="btn-gold">เปิดรับออเดอร์</button>
+        <button id="header-action" class="btn-gold">🏠</button>
       </div>
-      <p class="muted-light">รองรับ Staff / Manage / Master-Client sync</p>
       <div class="header-meta-row">
         <span class="badge online" id="online-badge">LAN {{ local_ip }}:5000</span>
         <span class="badge" id="sync-badge">Sync: Session -</span>
       </div>
     </header>
 
-    <section id="pwa-banner" class="section-card pwa-banner hidden">
-      <strong>ติดตั้งแอป FAKDU</strong>
-      <p class="muted">เพิ่มไปยังหน้าจอหลักเพื่อใช้งานเหมือนแอป และเปิดหน้าเครื่องแม่ได้ไวขึ้น</p>
-      <div class="btn-row">
-        <button id="install-pwa" class="btn-primary">ติดตั้ง PWA</button>
-        <button id="dismiss-pwa" class="btn-soft">ภายหลัง</button>
-      </div>
-    </section>
-
     <main>
       <nav class="section-card tab-bar">
-        <button class="main-tab is-active" data-screen="customer">ลูกค้า</button>
-        <button class="main-tab" data-screen="cashier">เช็คบิล</button>
-        <button class="main-tab" data-screen="backstore">หลังร้าน</button>
-        <button class="main-tab" data-screen="system">ระบบ</button>
+        <button class="main-tab is-active" data-screen="customer">🪑</button>
+        <button class="main-tab" data-screen="cashier">💵</button>
+        <button class="main-tab" data-screen="backstore">📊</button>
+        <button class="main-tab" data-screen="system">⚙️</button>
       </nav>
 
       <section id="customer" class="screen section-card">
         <div class="section-head">
           <div>
-            <h2>จัดการโต๊ะ / คิวลูกค้า</h2>
-            <p class="muted">แตะการ์ดเพื่อเปิดหน้าออเดอร์ และดับเบิลคลิกเพื่อรับออเดอร์</p>
+            <h2>🪑 / 🎫</h2>
           </div>
           <div class="control-pack">
             <button id="quick-down" class="btn-soft">-</button>
@@ -59,17 +48,17 @@
           </div>
         </div>
         <div class="legend">
-          <span class="pill status-available">ว่าง</span>
-          <span class="pill status-pending_order">รอรับออเดอร์</span>
-          <span class="pill status-accepted_order">ใช้งาน</span>
-          <span class="pill status-checkout_requested">รอเช็คบิล</span>
+          <span class="pill status-available">🟢</span>
+          <span class="pill status-pending_order">🟠</span>
+          <span class="pill status-accepted_order">🔵</span>
+          <span class="pill status-checkout_requested">🟣</span>
         </div>
         <div id="table-grid" class="table-grid"></div>
       </section>
 
       <section id="cashier" class="screen section-card hidden">
         <div class="section-head">
-          <h2>คิวเช็คบิล</h2>
+          <h2>💵</h2>
           <span id="checkout-count" class="pill">0 รายการ</span>
         </div>
         <div id="checkout-list"></div>
@@ -77,11 +66,11 @@
 
       <section id="backstore" class="screen section-card hidden">
         <div class="section-head">
-          <h2>หลังร้าน</h2>
+          <h2>📊</h2>
           <div class="admin-head-actions">
             <div class="subtabs">
-              <button class="subtab is-active" data-subtab="sales">ยอดขาย</button>
-              <button class="subtab" data-subtab="manage">จัดการร้าน</button>
+              <button class="subtab is-active" data-subtab="sales">💰</button>
+              <button class="subtab" data-subtab="manage">🧩</button>
             </div>
             <button id="logout-backstore" class="btn-soft danger">Logout</button>
           </div>
@@ -152,7 +141,7 @@
 
       <section id="system" class="screen section-card hidden">
         <div class="section-head">
-          <h2>ระบบ</h2>
+          <h2>⚙️</h2>
           <button id="logout-system" class="btn-soft danger">Logout</button>
         </div>
         <div class="panel-block">

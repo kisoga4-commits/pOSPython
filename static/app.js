@@ -3,16 +3,15 @@ let version = 0;
 let menuEditIndex = -1;
 let filteredSales = [];
 let activeBill = null;
-let deferredInstallPrompt = null;
 
 const ADMIN_SESSION_KEY = 'fakdu_admin_logged_in';
 let isAdminAuthenticated = localStorage.getItem(ADMIN_SESSION_KEY) === '1';
 
 const statusMap = {
-  available: { label: 'ว่าง', note: 'พร้อมรับลูกค้า' },
-  pending_order: { label: 'รอรับออเดอร์', note: 'มีออเดอร์ใหม่รอรับ' },
-  accepted_order: { label: 'ใช้งาน', note: 'กำลังให้บริการ' },
-  checkout_requested: { label: 'รอเช็คบิล', note: 'ลูกค้าเรียกเก็บเงิน' },
+  available: { label: '🟢', note: '' },
+  pending_order: { label: '🟠', note: '' },
+  accepted_order: { label: '🔵', note: '' },
+  checkout_requested: { label: '🟣', note: '' },
 };
 
 const qs = (id) => document.getElementById(id);
@@ -44,7 +43,7 @@ function showScreen(id) {
 }
 
 function getAdminPin() {
-  return String(db?.settings?.adminPin || '2468').trim();
+  return String(db?.settings?.adminPin || 'admin').trim();
 }
 
 function ensureAdminSession() {
@@ -81,8 +80,7 @@ function renderTables() {
     card.innerHTML = `
       <p class="table-no">${table.id}</p>
       <span class="pill">${meta.label}</span>
-      <div class="table-note">${meta.note}</div>
-      <small class="muted">แตะเพื่อสั่งอาหารต่อ</small>
+      <small class="muted">👆</small>
       ${table.status === 'pending_order' ? '<div class="alert-dot">● New Order</div>' : ''}
     `;
     card.addEventListener('click', () => openCustomerFlow(table.id));
@@ -94,7 +92,7 @@ function renderTables() {
     });
     grid.appendChild(card);
   });
-  qs('master-hint').textContent = `FAKDU POS · หน้าเครื่องแม่ (${unit})`;
+  qs('master-hint').textContent = `FAKDU POS · ${unit}`;
 }
 
 function waitingMinutes(openedAt) {
@@ -323,7 +321,7 @@ function renderSystem() {
   qs('store-logo-name').value = s.logoName || '';
   qs('bank-name').value = s.bankName || '';
   qs('promptpay').value = s.promptPay || '';
-  qs('admin-pin').value = s.adminPin || '2468';
+  qs('admin-pin').value = s.adminPin || 'admin';
   qs('dynamic-qr').checked = Boolean(s.dynamicPromptPay);
   qs('sync-session').value = s.sync?.session || '';
   qs('sync-queue').value = s.sync?.queue || '';
@@ -343,24 +341,6 @@ async function loadData() {
   renderSales();
   renderMenu();
   renderSystem();
-}
-
-function bindPwa() {
-  window.addEventListener('beforeinstallprompt', (event) => {
-    event.preventDefault();
-    deferredInstallPrompt = event;
-    qs('pwa-banner').classList.remove('hidden');
-  });
-
-  qs('install-pwa').addEventListener('click', async () => {
-    if (!deferredInstallPrompt) return;
-    deferredInstallPrompt.prompt();
-    await deferredInstallPrompt.userChoice;
-    deferredInstallPrompt = null;
-    qs('pwa-banner').classList.add('hidden');
-  });
-
-  qs('dismiss-pwa').addEventListener('click', () => qs('pwa-banner').classList.add('hidden'));
 }
 
 function bind() {
@@ -435,7 +415,7 @@ function bind() {
         bgColor: qs('bg-color').value,
         bankName: qs('bank-name').value.trim(),
         promptPay: qs('promptpay').value.trim(),
-        adminPin: qs('admin-pin').value.trim() || '2468',
+        adminPin: qs('admin-pin').value.trim() || 'admin',
         dynamicPromptPay: qs('dynamic-qr').checked,
         masterNode: qs('master-node').value.trim() || 'main',
         sync: {
@@ -485,10 +465,6 @@ async function poll() {
 
 (async function init() {
   bind();
-  bindPwa();
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/static/sw.js').catch(() => {});
-  }
   await loadData();
   setInterval(poll, 2500);
 })();
