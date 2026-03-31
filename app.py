@@ -97,15 +97,17 @@ def api_order():
 
     db = load_db()
     order_id = f"ORD-{int(datetime.now().timestamp())}-{len(db['orders']) + 1}"
+    source = payload.get("source", "customer")
+    initial_status = "new" if source == "customer" else "preparing"
     new_order = {
         "id": order_id,
         "target": target,
         "target_id": target_id,
         "items": cart,
-        "status": "new",
+        "status": initial_status,
         "created_at": utc_now(),
         "updated_at": utc_now(),
-        "source": payload.get("source", "customer"),
+        "source": source,
         "note": payload.get("note", ""),
     }
     db["orders"].append(new_order)
@@ -113,7 +115,10 @@ def api_order():
     if target == "table" and isinstance(target_id, int):
         for table in db["tables"]:
             if table["id"] == target_id:
-                table["status"] = "pending_order"
+                if source == "customer":
+                    table["status"] = "pending_order"
+                else:
+                    table["status"] = "accepted_order"
                 table["items"].extend(cart)
                 break
 

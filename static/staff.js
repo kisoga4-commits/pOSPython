@@ -45,7 +45,7 @@ function tableCard(table, actions = []) {
   if (table.status === 'pending_order') {
     const notify = document.createElement('div');
     notify.className = 'dot-notify';
-    notify.textContent = '● แจ้งเตือนออเดอร์ใหม่';
+    notify.textContent = '🔔 ลูกค้าสั่งจาก QR';
     card.appendChild(notify);
   }
 
@@ -75,8 +75,10 @@ function renderCustomerTab() {
   }
 
   customerTables.forEach((table) => {
+    const tableOrders = state.orders.filter((order) => order.target === 'table' && order.target_id === table.id && order.status !== 'cancelled');
+    const hasCustomerNewOrder = tableOrders.some((order) => order.source === 'customer' && order.status === 'new');
     const actions = [];
-    if (table.status === 'pending_order') {
+    if (hasCustomerNewOrder) {
       actions.push({
         label: 'รับออร์เดอร์',
         className: 'btn-primary',
