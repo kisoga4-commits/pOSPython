@@ -35,19 +35,11 @@ function applyTheme() {
 }
 
 function showScreen(id) {
-
   if (['backstore', 'system'].includes(id) && !ensureAdminSession()) return;
+
   document.querySelectorAll('.screen').forEach((s) => s.classList.add('hidden'));
   qs(id).classList.remove('hidden');
   document.querySelectorAll('[data-screen]').forEach((b) => b.classList.toggle('is-active', b.dataset.screen === id));
-
-  document.querySelectorAll('.screen').forEach((el) => el.classList.add('hidden'));
-  document.getElementById(id).classList.remove('hidden');
-
-  document.querySelectorAll('.tabs .tab').forEach((el) => el.classList.remove('is-active'));
-  const activeTab = document.querySelector(`.tabs .tab[data-screen="${id}"]`);
-  if (activeTab) activeTab.classList.add('is-active');
-
 }
 
 function getAdminPin() {
@@ -352,7 +344,6 @@ async function loadData() {
   renderSystem();
 }
 
-
 function bindPwa() {
   window.addEventListener('beforeinstallprompt', (event) => {
     event.preventDefault();
@@ -367,6 +358,7 @@ function bindPwa() {
     deferredInstallPrompt = null;
     qs('pwa-banner').classList.add('hidden');
   });
+
   qs('dismiss-pwa').addEventListener('click', () => qs('pwa-banner').classList.add('hidden'));
 }
 
@@ -378,9 +370,11 @@ function bind() {
     qs('panel-manage').classList.toggle('hidden', btn.dataset.subtab !== 'manage');
   }));
 
-  qs('quick-down').addEventListener('click', async () => { qs('table-count').value = Math.max(1, Number(qs('table-count').value) - 1); qs('update-table-count').click(); });
-  qs('quick-mid').addEventListener('click', async () => { qs('table-count').value = db.tableCount || 8; qs('update-table-count').click(); });
-  qs('quick-up').addEventListener('click', async () => { qs('table-count').value = Number(qs('table-count').value || 0) + 1; qs('update-table-count').click(); });
+  qs('header-action').addEventListener('click', () => showScreen('customer'));
+
+  qs('quick-down').addEventListener('click', () => { qs('table-count').value = Math.max(1, Number(qs('table-count').value) - 1); qs('update-table-count').click(); });
+  qs('quick-mid').addEventListener('click', () => { qs('table-count').value = db.tableCount || 8; qs('update-table-count').click(); });
+  qs('quick-up').addEventListener('click', () => { qs('table-count').value = Number(qs('table-count').value || 0) + 1; qs('update-table-count').click(); });
 
   qs('update-table-count').addEventListener('click', async () => {
     await api('/api/settings', { method: 'POST', body: JSON.stringify({ tableCount: Number(qs('table-count').value), settings: { serviceMode: qs('service-mode').value } }) });
@@ -404,15 +398,13 @@ function bind() {
     const payload = { name, price, image, addons };
     if (menuEditIndex >= 0) db.menu[menuEditIndex] = { ...db.menu[menuEditIndex], ...payload };
     else db.menu.push({ id: Date.now(), ...payload });
+
     await api('/api/settings', { method: 'POST', body: JSON.stringify({ menu: db.menu }) });
     menuEditIndex = -1;
-
-function bindActions() {
-  document.getElementById('submit-order').addEventListener('click', async () => {
-    if (!currentTable || !cart.length) return;
-    await api('/api/order', { method: 'POST', body: JSON.stringify({ table_id: currentTable, cart }) });
-    document.getElementById('menu-area').classList.add('hidden');
-
+    qs('menu-name').value = '';
+    qs('menu-price').value = '';
+    qs('menu-image').value = '';
+    qs('menu-addons').value = '';
     await loadData();
   });
 
@@ -432,6 +424,7 @@ function bindActions() {
         r.readAsDataURL(file);
       });
     }
+
     await api('/api/settings', {
       method: 'POST',
       body: JSON.stringify({ settings: {
@@ -479,7 +472,6 @@ function bindActions() {
   qs('logout-system').addEventListener('click', logoutAdmin);
 }
 
-
 async function poll() {
   const info = await api(`/api/staff/live?since=${version}`);
   if (info.changed) {
@@ -498,16 +490,4 @@ async function poll() {
   }
   await loadData();
   setInterval(poll, 2500);
-
-(async function init() {
-  bindNav();
-  bindActions();
-
-  const mode = new URLSearchParams(window.location.search).get('mode');
-  if (mode && ['order', 'cashier', 'report'].includes(mode)) {
-    showScreen(mode);
-  }
-
-  await loadData();
-
 })();
