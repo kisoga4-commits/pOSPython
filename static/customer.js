@@ -30,6 +30,13 @@ function money(n) {
   return Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function updateFloatingCart() {
+  const count = cart.length;
+  const total = cart.reduce((sum, item) => sum + (Number(item.price || 0) * Number(item.qty || 1)), 0);
+  document.getElementById('floating-cart-count').textContent = `${count} รายการ`;
+  document.getElementById('floating-cart-total').textContent = `฿${money(total)}`;
+}
+
 function renderMenu() {
   const list = document.getElementById('menu-list');
   list.innerHTML = '';
@@ -37,6 +44,7 @@ function renderMenu() {
     const card = document.createElement('article');
     card.className = 'menu-mobile-card';
     card.innerHTML = `
+      <div class="menu-thumb">รูปอาหาร</div>
       <div>
         <strong>${item.name}</strong>
         <small>${money(item.price)} บาท</small>
@@ -59,17 +67,23 @@ function renderCart() {
   if (!cart.length) {
     list.innerHTML = '<div class="empty">ยังไม่มีรายการ</div>';
     totalNode.textContent = 'รวม 0.00 บาท';
+    updateFloatingCart();
     return;
   }
 
   cart.forEach((item, idx) => {
     const row = document.createElement('div');
     row.className = 'list-item';
-    row.innerHTML = `${idx + 1}. ${item.name} · ${item.qty} x ${money(item.price)} บาท ${item.addon ? `· ${item.addon}` : ''} ${item.note ? `· ${item.note}` : ''}`;
+    row.innerHTML = `${idx + 1}. ${item.name} · ${item.qty} x ${money(item.price)} บาท <button class="btn-soft">ลบ</button>`;
+    row.querySelector('button').addEventListener('click', () => {
+      cart.splice(idx, 1);
+      renderCart();
+    });
     list.appendChild(row);
   });
   const total = cart.reduce((sum, item) => sum + (Number(item.price || 0) * Number(item.qty || 1)), 0);
   totalNode.textContent = `รวม ${money(total)} บาท`;
+  updateFloatingCart();
 }
 
 function updateTableStatus(tables = []) {
@@ -134,17 +148,28 @@ function setLockedTableUI() {
   const note = document.getElementById('table-mode-note');
   if (lockedTableId > 0) {
     tableBadge.textContent = `${unit} ${lockedTableId}`;
-    note.textContent = `เชื่อมต่อ${unit}นี้แล้ว`; 
+    note.textContent = `เชื่อมต่อ${unit}นี้แล้ว`;
   } else {
     tableBadge.className = 'badge status-checkout_requested';
     tableBadge.textContent = 'ไม่พบเลขโต๊ะ';
     note.textContent = 'กรุณาสแกน QR ที่โต๊ะเพื่อเข้าโหมดลูกค้า';
     document.getElementById('submit-order').disabled = true;
     document.getElementById('request-checkout').disabled = true;
+    document.getElementById('floating-cart-btn').disabled = true;
   }
 }
 
 function bind() {
+  document.getElementById('floating-cart-btn').addEventListener('click', () => {
+    document.getElementById('cart-modal').classList.remove('hidden');
+  });
+  document.getElementById('close-cart-modal').addEventListener('click', () => {
+    document.getElementById('cart-modal').classList.add('hidden');
+  });
+  document.getElementById('cart-modal').addEventListener('click', (event) => {
+    if (event.target.id === 'cart-modal') document.getElementById('cart-modal').classList.add('hidden');
+  });
+
   document.getElementById('submit-order').addEventListener('click', async () => {
     if (!lockedTableId || !cart.length) return;
 
@@ -165,6 +190,7 @@ function bind() {
       document.getElementById('message').textContent = 'ส่งออเดอร์เรียบร้อย';
       cart = [];
       renderCart();
+      document.getElementById('cart-modal').classList.add('hidden');
       await loadLive();
     } else {
       document.getElementById('message').textContent = res.error || 'ส่งไม่สำเร็จ';
@@ -184,6 +210,7 @@ function bind() {
 
 (function init() {
   bind();
+  renderCart();
   loadLive().then(setLockedTableUI);
   setInterval(loadLive, 2000);
 })();

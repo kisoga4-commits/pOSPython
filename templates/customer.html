@@ -6,49 +6,56 @@
   <title>FAKDU โต๊ะลูกค้า</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version }}" />
 </head>
-<body data-table-id="{{ table_id or '' }}">
-  <main class="mobile-shell">
-    <header class="mobile-header">
+<body data-table-id="{{ table_id or '' }}" class="customer-app">
+  <main class="mobile-shell app-mobile">
+    <header class="mobile-header delivery-header">
       <div class="brand-zone">
         <div class="logo-slot">LOGO</div>
         <div>
           <small class="on-dark">FAKDU POS</small>
           <h1 class="mobile-title">สั่งอาหารที่โต๊ะ</h1>
+          <p id="table-mode-note" class="mobile-subtitle"></p>
         </div>
       </div>
-      <p class="mobile-subtitle">เลือกเมนู เพิ่มหมายเหตุ แล้วกดส่งออร์เดอร์ได้ทันที</p>
+      <div id="table-badge" class="badge status-accepted_order"></div>
     </header>
 
     <section class="mobile-content customer-mobile">
       <section class="mobile-panel">
-        <div class="section-head">
-          <h3>โต๊ะของคุณ</h3>
-          <div id="table-badge" class="badge status-accepted_order"></div>
-        </div>
-        <div id="table-mode-note" class="muted"></div>
+        <h3>เมนูแนะนำ</h3>
+        <div id="menu-list" class="mobile-menu-list"></div>
       </section>
 
       <section class="mobile-panel">
-        <h3>เลือกเมนู</h3>
-        <div id="menu-list" class="chip-grid mobile-menu"></div>
-      </section>
-
-      <section class="mobile-panel">
-        <h3>ตะกร้าปัจจุบัน</h3>
-        <div id="cart-list" class="order-list"></div>
-        <div id="cart-total" class="order-total"></div>
         <h3>รายการที่สั่งไปแล้ว</h3>
         <div id="existing-order-list" class="order-list"></div>
         <div id="existing-order-total" class="order-total"></div>
         <div id="existing-order-time" class="muted"></div>
-        <div class="btn-row">
-          <button id="submit-order" class="btn-primary">สั่งเพิ่ม</button>
-          <button id="request-checkout" class="btn-secondary">เรียกเช็คบิล</button>
-        </div>
-        <p id="message"></p>
       </section>
     </section>
   </main>
+
+  <button id="floating-cart-btn" class="floating-cart-btn" type="button">
+    <span id="floating-cart-count">0 รายการ</span>
+    <strong id="floating-cart-total">฿0.00</strong>
+  </button>
+
+  <div id="cart-modal" class="modal hidden">
+    <div class="modal-card cart-modal-card">
+      <div class="section-head">
+        <h3>ตะกร้าของฉัน</h3>
+        <button id="close-cart-modal" class="btn-soft">ปิด</button>
+      </div>
+      <div id="cart-list" class="order-list"></div>
+      <div id="cart-total" class="order-total"></div>
+      <div class="btn-row two-col">
+        <button id="submit-order" class="btn-primary">สั่งเพิ่ม</button>
+        <button id="request-checkout" class="btn-secondary">เรียกเช็คบิล</button>
+      </div>
+      <p id="message"></p>
+    </div>
+  </div>
+
   <script src="{{ url_for('static', filename='customer.js') }}?v={{ asset_version }}"></script>
 </body>
 </html>
