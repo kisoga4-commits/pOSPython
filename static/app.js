@@ -8,10 +8,10 @@ let menuEditIndex = -1;
 let activeCashierTableId = null;
 
 const statusMap = {
-  available: { label: 'ว่าง', tone: 'available' },
-  pending_order: { label: 'ออร์เดอร์ใหม่', tone: 'pending' },
-  accepted_order: { label: 'รับออร์เดอร์แล้ว', tone: 'accepted' },
-  checkout_requested: { label: 'รอเช็คบิล', tone: 'checkout' },
+  available: { label: 'ว่าง', tone: 'available', icon: '○' },
+  pending_order: { label: 'รอรับออร์เดอร์', tone: 'pending', icon: '🔔' },
+  accepted_order: { label: 'รับออร์เดอร์แล้ว', tone: 'accepted', icon: '✅' },
+  checkout_requested: { label: 'รอเช็คบิล', tone: 'checkout', icon: '🧾' },
 };
 
 const qs = (id) => document.getElementById(id);
@@ -63,7 +63,7 @@ function renderTables() {
     card.type = 'button';
     card.className = `table-card ${meta.tone} ${selectedTableId === table.id ? 'is-selected' : ''}`;
     card.innerHTML = `
-      <div class="table-head-row"><strong>${unitLabel()} ${table.id}</strong><span class="status-chip ${meta.tone}">${meta.label}</span></div>
+      <div class="table-head-row"><strong>${unitLabel()} ${table.id}</strong><span class="status-chip ${meta.tone}">${meta.icon} ${meta.label}</span></div>
       <div>${items.length} รายการ • ${money(total)} บาท</div>
       <small>${items.slice(-2).map((i) => i.name).join(' • ') || 'ยังไม่มีรายการ'}</small>
     `;
@@ -228,7 +228,7 @@ function renderTableQRList() {
   wrap.innerHTML = '';
   db.tables.forEach((table) => {
     const btn = document.createElement('button');
-    btn.className = 'btn-soft';
+    btn.className = 'btn-soft table-pick-btn';
     btn.textContent = `${unitLabel()} ${table.id}`;
     btn.addEventListener('click', () => {
       const url = customerScanUrl(table.id);
@@ -270,10 +270,6 @@ function bind() {
     ['profile', 'payment', 'backup', 'qr'].forEach((name) => qs(`system-${name}`).classList.toggle('hidden', name !== btn.dataset.systemTab));
   }));
 
-  qs('header-search').addEventListener('click', () => {
-    const id = Number(window.prompt(`ค้นหา${unitLabel()}เลขอะไร?`, String(selectedTableId || '1')) || 0);
-    if (id > 0 && db.tables.some((t) => t.id === id)) selectTable(id);
-  });
   qs('open-client-qr').addEventListener('click', () => openQRModal('staff-mode', `${window.location.origin}/scan/staff`, buildQrImageUrl(`${window.location.origin}/scan/staff`)));
   qs('close-qr-modal').addEventListener('click', () => qs('qr-modal').classList.add('hidden'));
 
@@ -363,5 +359,5 @@ async function poll() {
   syncAdminUI();
   bind();
   await loadData();
-  setInterval(poll, 2000);
+  setInterval(poll, 1200);
 })();
