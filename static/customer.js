@@ -33,7 +33,7 @@ function money(n) {
 function updateFloatingCart() {
   const count = cart.length;
   const total = cart.reduce((sum, item) => sum + (Number(item.price || 0) * Number(item.qty || 1)), 0);
-  document.getElementById('floating-cart-count').textContent = `${count} รายการ`;
+  document.getElementById('floating-cart-count').textContent = `${count} items`;
   document.getElementById('floating-cart-total').textContent = `฿${money(total)}`;
   const badge = document.getElementById('table-badge');
   if (lockedTableId) {
@@ -50,16 +50,17 @@ function renderMenu() {
     card.className = 'menu-mobile-card';
     card.innerHTML = `
       <div class="menu-thumb">${item.image ? `<img src="${item.image}" alt="${item.name}" />` : '🍜'}</div>
-      <div>
+      <div class="menu-mobile-meta">
         <strong>${item.name}</strong>
         <small>${money(item.price)} บาท</small>
       </div>
+      <button class="menu-add-btn" type="button">+</button>
     `;
-    card.addEventListener('click', () => {
+    card.querySelector('.menu-add-btn').addEventListener('click', (event) => {
+      event.stopPropagation();
       if (!lockedTableId) return;
       cart.push({ ...item, addon: '', qty: 1, note: '' });
       renderCart();
-      document.getElementById('cart-modal').classList.remove('hidden');
     });
     list.appendChild(card);
   });

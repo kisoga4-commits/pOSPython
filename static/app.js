@@ -119,6 +119,40 @@ function renderExistingOrders(tableId) {
   qs('order-existing-total').textContent = `ยอดรวมตอนนี้ ${money(total)} บาท`;
 }
 
+function renderDeskSummary() {
+  const metaNode = qs('desk-selected-table');
+  const statusNode = qs('desk-selected-status');
+  const list = qs('desk-selected-items');
+  const totalNode = qs('desk-selected-total');
+  if (!metaNode || !statusNode || !list || !totalNode) return;
+
+  if (!selectedTableId) {
+    metaNode.textContent = 'ยังไม่ได้เลือกโต๊ะ';
+    statusNode.textContent = 'เลือกโต๊ะเพื่อดูสรุปคำสั่งซื้อ';
+    list.innerHTML = '<div class="empty">ยังไม่มีข้อมูล</div>';
+    totalNode.textContent = 'รวม 0.00 บาท';
+    return;
+  }
+
+  const table = db.tables.find((t) => t.id === selectedTableId);
+  const meta = statusMap[table?.status] || statusMap.available;
+  const { items, total } = getTableSummary(selectedTableId);
+  metaNode.textContent = `${unitLabel()} ${selectedTableId}`;
+  statusNode.textContent = `สถานะ: ${meta.label}`;
+  list.innerHTML = '';
+  if (!items.length) {
+    list.innerHTML = '<div class="empty">ยังไม่มีรายการอาหาร</div>';
+  } else {
+    items.slice().reverse().forEach((item) => {
+      const row = document.createElement('div');
+      row.className = 'list-card';
+      row.textContent = `${item.name} • ${money(item.price)} บาท`;
+      list.appendChild(row);
+    });
+  }
+  totalNode.textContent = `รวม ${money(total)} บาท`;
+}
+
 function selectTable(tableId) {
   selectedTableId = tableId;
   orderCart = [];
@@ -129,6 +163,7 @@ function selectTable(tableId) {
   renderOrderMenuChoices();
   renderOrderCart();
   renderExistingOrders(tableId);
+  renderDeskSummary();
   qs('table-order-modal').classList.remove('hidden');
 }
 
@@ -259,6 +294,7 @@ async function loadData() {
   renderMenu();
   renderSales();
   renderSystem();
+  renderDeskSummary();
 }
 
 function bind() {
@@ -327,6 +363,15 @@ function bind() {
     if (!file) return;
     const dataUrl = await new Promise((resolve) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.readAsDataURL(file); });
     qs('shop-logo-preview').src = dataUrl;
+  });
+
+
+  qs('desk-open-order-modal')?.addEventListener('click', () => { if (selectedTableId) selectTable(selectedTableId); });
+  qs('desk-open-bill-modal')?.addEventListener('click', () => { if (selectedTableId) openBill(selectedTableId); });
+  qs('desk-open-table-qr')?.addEventListener('click', () => {
+    if (!selectedTableId) return;
+    const url = customerScanUrl(selectedTableId);
+    openQRModal(`Table-${selectedTableId}`, url, buildQrImageUrl(url));
   });
 
   qs('save-system').addEventListener('click', async () => {
