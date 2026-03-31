@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FAKDU Customer</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version }}" />
+</head>
+<body data-table-id="{{ table_id or '' }}">
+  <main class="mobile-shell">
+    <header class="mobile-header">
+      <div class="brand-zone">
+        <div class="logo-slot">LOGO</div>
+        <div>
+          <small class="on-dark">FAKDU Customer</small>
+          <h1 class="mobile-title">สั่งอาหาร</h1>
+        </div>
+      </div>
+      <p class="mobile-subtitle">สแกนแล้วเข้าสู่โต๊ะของคุณทันที</p>
+    </header>
+
+    <section class="mobile-content customer-mobile">
+      <section class="mobile-panel">
+        <div class="section-head">
+          <h3>โต๊ะของคุณ</h3>
+          <div id="table-badge" class="badge status-accepted_order"></div>
+        </div>
+        <div id="table-mode-note" class="muted"></div>
+      </section>
+
+      <section class="mobile-panel">
+        <h3>เมนูแนะนำ</h3>
+        <div id="menu-list" class="chip-grid mobile-menu"></div>
+      </section>
+
+      <section class="mobile-panel">
+        <h3>รายการที่เลือก</h3>
+        <div id="cart-list" class="order-list"></div>
+        <div class="btn-row">
+          <button id="submit-order" class="btn-primary">สั่งเพิ่ม</button>
+          <button id="request-checkout" class="btn-secondary">เรียกเช็คบิล</button>
+        </div>
+        <p id="message"></p>
+      </section>
+    </section>
+  </main>
+  <script src="{{ url_for('static', filename='customer.js') }}?v={{ asset_version }}"></script>
+</body>
+</html>

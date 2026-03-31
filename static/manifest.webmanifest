@@ -1,0 +1,26 @@
+{
+  "name": "FAKDU POS เครื่องแม่",
+  "short_name": "FAKDU POS",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f6efe9",
+  "theme_color": "#8f1d2a",
+  "description": "POS ร้านอาหาร FAKDU รองรับหน้าเครื่องแม่และโหมดหลายอุปกรณ์",
+  "shortcuts": [
+    {
+      "name": "หน้าเครื่องแม่",
+      "short_name": "Master",
+      "url": "/"
+    },
+    {
+      "name": "Staff",
+      "short_name": "Staff",
+      "url": "/staff"
+    },
+    {
+      "name": "Customer",
+      "short_name": "Customer",
+      "url": "/customer"
+    }
+  ]
+}

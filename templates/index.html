@@ -3,6 +3,216 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <meta name="theme-color" content="#8f1d2a" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <title>FAKDU POS เครื่องแม่</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version }}" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="app-header" id="app-header">
+      <div class="brand-row">
+        <div class="brand-left">
+          <div id="store-logo" class="logo-slot">LOGO</div>
+          <div>
+            <p class="muted-light" id="master-hint">FAKDU POS · หน้าเครื่องแม่</p>
+            <h1 id="header-store-name">FAKDU</h1>
+          </div>
+        </div>
+        <button id="header-action" class="btn-gold">เปิดรับออเดอร์</button>
+      </div>
+      <p class="muted-light">รองรับ Staff / Manage / Master-Client sync</p>
+      <div class="header-meta-row">
+        <span class="badge online" id="online-badge">LAN {{ local_ip }}:5000</span>
+        <span class="badge" id="sync-badge">Sync: Session -</span>
+      </div>
+    </header>
+
+    <section id="pwa-banner" class="section-card pwa-banner hidden">
+      <strong>ติดตั้งแอป FAKDU</strong>
+      <p class="muted">เพิ่มไปยังหน้าจอหลักเพื่อใช้งานเหมือนแอป และเปิดหน้าเครื่องแม่ได้ไวขึ้น</p>
+      <div class="btn-row">
+        <button id="install-pwa" class="btn-primary">ติดตั้ง PWA</button>
+        <button id="dismiss-pwa" class="btn-soft">ภายหลัง</button>
+      </div>
+    </section>
+
+    <main>
+      <nav class="section-card tab-bar">
+        <button class="main-tab is-active" data-screen="customer">ลูกค้า</button>
+        <button class="main-tab" data-screen="cashier">เช็คบิล</button>
+        <button class="main-tab" data-screen="backstore">หลังร้าน</button>
+        <button class="main-tab" data-screen="system">ระบบ</button>
+      </nav>
+
+      <section id="customer" class="screen section-card">
+        <div class="section-head">
+          <div>
+            <h2>จัดการโต๊ะ / คิวลูกค้า</h2>
+            <p class="muted">แตะการ์ดเพื่อเปิดหน้าออเดอร์ และดับเบิลคลิกเพื่อรับออเดอร์</p>
+          </div>
+          <div class="control-pack">
+            <button id="quick-down" class="btn-soft">-</button>
+            <button id="quick-mid" class="btn-soft">M</button>
+            <button id="quick-up" class="btn-soft">+</button>
+          </div>
+        </div>
+        <div class="legend">
+          <span class="pill status-available">ว่าง</span>
+          <span class="pill status-pending_order">รอรับออเดอร์</span>
+          <span class="pill status-accepted_order">ใช้งาน</span>
+          <span class="pill status-checkout_requested">รอเช็คบิล</span>
+        </div>
+        <div id="table-grid" class="table-grid"></div>
+      </section>
+
+      <section id="cashier" class="screen section-card hidden">
+        <div class="section-head">
+          <h2>คิวเช็คบิล</h2>
+          <span id="checkout-count" class="pill">0 รายการ</span>
+        </div>
+        <div id="checkout-list"></div>
+      </section>
+
+      <section id="backstore" class="screen section-card hidden">
+        <div class="section-head">
+          <h2>หลังร้าน</h2>
+          <div class="admin-head-actions">
+            <div class="subtabs">
+              <button class="subtab is-active" data-subtab="sales">ยอดขาย</button>
+              <button class="subtab" data-subtab="manage">จัดการร้าน</button>
+            </div>
+            <button id="logout-backstore" class="btn-soft danger">Logout</button>
+          </div>
+        </div>
+
+        <div id="panel-sales" class="subpanel">
+          <div class="filter-row">
+            <label>ตัวกรองวันที่</label>
+            <input id="date-from" type="date" />
+            <input id="date-to" type="date" />
+            <button id="apply-filter" class="btn-soft">กรอง</button>
+          </div>
+          <div class="stats-grid">
+            <div class="stat"><small>วันนี้</small><strong id="sale-today">0</strong></div>
+            <div class="stat"><small>7 วัน</small><strong id="sale-week">0</strong></div>
+            <div class="stat"><small>30 วัน</small><strong id="sale-month">0</strong></div>
+          </div>
+          <div class="stats-grid">
+            <div class="stat"><small>เงินสดสะสม</small><strong id="cash-total">0</strong></div>
+            <div class="stat"><small>โอนสะสม</small><strong id="qr-total">0</strong></div>
+            <div class="stat highlight"><small>รวมสะสม</small><strong id="grand-total">0</strong></div>
+          </div>
+          <div class="panel-block">
+            <div class="section-head">
+              <h3>Insight</h3>
+              <button id="open-insight" class="btn-soft">เทียบช่วงก่อนหน้า</button>
+            </div>
+            <p id="insight-summary" class="muted"></p>
+          </div>
+          <div class="panel-block">
+            <h3>ประวัติการขาย</h3>
+            <div id="sales-history"></div>
+          </div>
+          <div class="panel-block">
+            <h3>ยอดฮิต</h3>
+            <div id="hot-menu"></div>
+          </div>
+        </div>
+
+        <div id="panel-manage" class="subpanel hidden">
+          <div class="panel-block">
+            <h3>ตั้งค่าจำนวนโต๊ะ/คิว</h3>
+            <div class="manage-row">
+              <select id="service-mode">
+                <option value="table">โต๊ะ</option>
+                <option value="queue">คิว</option>
+              </select>
+              <input id="table-count" type="number" min="1" />
+              <button id="update-table-count" class="btn-primary">อัปเดต</button>
+            </div>
+          </div>
+          <div class="panel-block">
+            <div class="section-head">
+              <h3>รายการเมนู</h3>
+              <button id="open-add-menu" class="btn-soft">+ เพิ่ม</button>
+            </div>
+            <div class="menu-form">
+              <input id="menu-name" placeholder="ชื่อเมนู" />
+              <input id="menu-price" type="number" min="1" placeholder="ราคา" />
+              <input id="menu-image" placeholder="URL รูปเมนู" />
+              <input id="menu-addons" placeholder="add-on (คั่นด้วย ,)" />
+              <button id="save-menu" class="btn-primary">บันทึกเมนู</button>
+            </div>
+            <div id="menu-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="system" class="screen section-card hidden">
+        <div class="section-head">
+          <h2>ระบบ</h2>
+          <button id="logout-system" class="btn-soft danger">Logout</button>
+        </div>
+        <div class="panel-block">
+          <h3>ข้อมูลร้านค้า</h3>
+          <div class="form-grid">
+            <input id="store-name" placeholder="ชื่อร้าน" />
+            <input id="store-logo-name" placeholder="โลโก้ (emoji/url)" />
+            <input id="theme-color" type="color" value="#8f1d2a" />
+            <input id="bg-color" type="color" value="#f6efe9" />
+            <input id="bank-name" placeholder="ธนาคาร" />
+            <input id="promptpay" placeholder="พร้อมเพย์" />
+            <label class="check-row"><input id="dynamic-qr" type="checkbox" /> ใช้ Dynamic PromptPay ตามยอด</label>
+            <input id="admin-pin" type="password" placeholder="ADMIN PIN" />
+            <input id="qr-image" type="file" accept="image/*" />
+          </div>
+          <button id="save-system" class="btn-primary big-save">บันทึกการตั้งค่า</button>
+        </div>
+        <div class="panel-block">
+          <h3>Master / Client Session</h3>
+          <div class="form-grid">
+            <input id="sync-session" placeholder="Session ID" />
+            <input id="sync-queue" placeholder="Queue Channel" />
+            <input id="sync-snapshot" type="number" min="1" placeholder="Snapshot Version" />
+            <input id="master-node" placeholder="Master Node Name" />
+          </div>
+        </div>
+        <div class="panel-block">
+          <h3>สำรองและกู้คืนข้อมูล</h3>
+          <div class="manage-row">
+            <button id="backup-db" class="btn-soft">Backup JSON</button>
+            <input id="restore-file" type="file" accept="application/json" />
+            <button id="restore-db" class="btn-primary">Restore JSON</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="bill-modal" class="modal hidden">
+    <div class="modal-card">
+      <div class="section-head">
+        <h3 id="bill-title">รายละเอียดบิล</h3>
+        <button id="close-bill" class="btn-soft">ปิด</button>
+      </div>
+      <div id="bill-items"></div>
+      <div class="bill-foot">
+        <strong>รวม: <span id="bill-total">0</span> บาท</strong>
+        <div id="bill-qr-preview" class="hidden"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="insight-modal" class="modal hidden">
+    <div class="modal-card">
+      <div class="section-head">
+        <h3>Insight เทียบช่วงก่อนหน้า</h3>
+        <button id="close-insight" class="btn-soft">ปิด</button>
+      </div>
+      <div id="insight-body"></div>
+
   <title>FAKDU POS</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
 </head>
@@ -67,9 +277,11 @@
       <p>Order: <code id="order-url"></code></p>
       <p>Cashier: <code id="cashier-url"></code></p>
       <button id="close-qr" class="btn">ปิด</button>
+
     </div>
   </div>
 
-  <script src="{{ url_for('static', filename='app.js') }}"></script>
+  <audio id="new-order-sound" src="{{ url_for('static', filename='sounds/new_order.mp3') }}"></audio>
+  <script src="{{ url_for('static', filename='app.js') }}?v={{ asset_version }}"></script>
 </body>
 </html>
