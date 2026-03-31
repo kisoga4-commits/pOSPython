@@ -33,7 +33,7 @@ function money(n) {
 function updateFloatingCart() {
   const count = cart.length;
   const total = cart.reduce((sum, item) => sum + (Number(item.price || 0) * Number(item.qty || 1)), 0);
-  document.getElementById('floating-cart-count').textContent = `${count} items`;
+  document.getElementById('floating-cart-count').textContent = `${count} รายการ`;
   document.getElementById('floating-cart-total').textContent = `฿${money(total)}`;
   const badge = document.getElementById('table-badge');
   if (lockedTableId) {
@@ -161,8 +161,8 @@ function setLockedTableUI() {
     tableBadge.textContent = 'ไม่พบเลขโต๊ะ';
     note.textContent = 'กรุณาสแกน QR ที่โต๊ะเพื่อเข้าโหมดลูกค้า';
     document.getElementById('submit-order').disabled = true;
-    document.getElementById('request-checkout').disabled = true;
     document.getElementById('floating-cart-btn').disabled = true;
+    document.getElementById('call-staff-bill').disabled = true;
   }
 }
 
@@ -204,13 +204,13 @@ function bind() {
     }
   });
 
-  document.getElementById('request-checkout').addEventListener('click', async () => {
+  document.getElementById('call-staff-bill').addEventListener('click', async () => {
     if (!lockedTableId) return;
     const res = await api('/api/table/checkout-request', {
       method: 'POST',
       body: JSON.stringify({ table_id: lockedTableId }),
     });
-    document.getElementById('message').textContent = res.status === 'success' ? 'เรียกพนักงานเช็คบิลแล้ว' : (res.error || 'ทำรายการไม่สำเร็จ');
+    document.getElementById('message').textContent = res.status === 'success' ? 'ส่งสัญญาณเรียกพนักงานแล้ว' : (res.error || 'ทำรายการไม่สำเร็จ');
     await loadLive();
   });
 }

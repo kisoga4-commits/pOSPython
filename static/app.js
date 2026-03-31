@@ -5,6 +5,8 @@ let orderCart = [];
 let menuEditIndex = -1;
 let activeCashierTableId = null;
 let menuImagePreviewData = '';
+let lastPendingTableIds = new Set();
+let lastCheckoutRequestIds = new Set();
 const RECOVERY_COLORS = ['แดง', 'ส้ม', 'เหลือง', 'เขียว', 'ฟ้า', 'น้ำเงิน', 'ม่วง'];
 const CELEBRITIES = ['ณเดชน์ คูกิมิยะ', 'ญาญ่า อุรัสยา', 'ใหม่ ดาวิกา', 'มาริโอ้ เมาเร่อ', 'เบลล่า ราณี', 'ชมพู่ อารยา', 'อั้ม พัชราภา', 'แพนเค้ก เขมนิจ', 'เวียร์ ศุกลวัฒน์', 'โป๊ป ธนวรรธน์', 'เจมส์ จิรายุ', 'คิมเบอร์ลี่', 'บอย ปกรณ์', 'เต้ย จรินทร์พร', 'ใบเฟิร์น พิมพ์ชนก', 'โตโน่ ภาคิน', 'แพทริเซีย กู๊ด', 'แอฟ ทักษอร', 'นนกุล ชานน', 'กลัฟ คณาวุฒิ'];
 const THEME_PRESETS = [
@@ -23,7 +25,7 @@ const statusMap = {
 
 const qs = (id) => document.getElementById(id);
 const money = (n) => Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const unitLabel = () => (db?.settings?.serviceMode === 'queue' ? 'คิว' : 'Table');
+const unitLabel = () => (db?.settings?.serviceMode === 'queue' ? 'คิว' : 'โต๊ะ');
 const qrApiBase = 'https://api.qrserver.com/v1/create-qr-code/';
 let networkBaseUrl = document.body.dataset.localBaseUrl || '';
 
@@ -49,6 +51,13 @@ function resolveRuntimeHost() {
 
 function customerScanUrl(tableId) { return `${resolveRuntimeHost()}/customer?table=${tableId}`; }
 function buildQrImageUrl(text) { return `${qrApiBase}?size=320x320&margin=8&data=${encodeURIComponent(text)}`; }
+function playAlert(id) {
+  const audio = qs(id);
+  if (!audio) return;
+  audio.volume = 1;
+  audio.currentTime = 0;
+  audio.play().catch(() => {});
+}
 
 async function api(path, options = {}) {
   const res = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...options });
@@ -156,6 +165,7 @@ function renderDeskSummary() {
   const statusNode = qs('desk-selected-status');
   const list = qs('desk-selected-items');
   const totalNode = qs('desk-selected-total');
+  const acceptBtn = qs('desk-accept-order');
   if (!metaNode || !statusNode || !list || !totalNode) return;
 
   if (!selectedTableId) {
@@ -163,6 +173,7 @@ function renderDeskSummary() {
     statusNode.textContent = 'เลือกโต๊ะเพื่อดูสรุปคำสั่งซื้อ';
     list.innerHTML = '<div class="empty">ยังไม่มีข้อมูล</div>';
     totalNode.textContent = 'รวม 0.00 บาท';
+    if (acceptBtn) acceptBtn.disabled = true;
     return;
   }
 
@@ -183,6 +194,11 @@ function renderDeskSummary() {
     });
   }
   totalNode.textContent = `รวม ${money(total)} บาท`;
+  const hasCustomerNewOrder = getTableOrders(selectedTableId).some((o) => o.source === 'customer' && o.status === 'new');
+  if (acceptBtn) {
+    acceptBtn.disabled = !hasCustomerNewOrder;
+    acceptBtn.textContent = hasCustomerNewOrder ? '🟠 ออเดอร์ใหม่ / Accept' : '✅ รับออเดอร์แล้ว';
+  }
 }
 
 function selectTable(tableId) {
@@ -224,9 +240,52 @@ async function openBill(targetId) {
     qs('bill-items').appendChild(row);
   });
   qs('bill-total').textContent = money(bill.total);
-  const paymentImage = db.settings?.qrImage || buildQrImageUrl(`promptpay:${db.settings?.promptPay || ''}|amount:${Number(bill.total || 0).toFixed(2)}`);
+  const paymentImage = db.settings?.qrImage || buildPromptPayQrImage(db.settings?.promptPay || '', Number(bill.total || 0), Boolean(db.settings?.dynamicPromptPay));
   qs('bill-payment-qr-image').src = paymentImage;
   qs('payment-modal').classList.remove('hidden');
+}
+
+function sanitizePromptPay(raw) {
+  return String(raw || '').replace(/\D/g, '');
+}
+
+function crc16ccitt(input) {
+  let crc = 0xFFFF;
+  for (let c = 0; c < input.length; c += 1) {
+    crc ^= input.charCodeAt(c) << 8;
+    for (let i = 0; i < 8; i += 1) {
+      crc = (crc & 0x8000) !== 0 ? ((crc << 1) ^ 0x1021) : (crc << 1);
+      crc &= 0xFFFF;
+    }
+  }
+  return crc.toString(16).toUpperCase().padStart(4, '0');
+}
+
+function tlv(id, value) {
+  const val = String(value);
+  return `${id}${String(val.length).padStart(2, '0')}${val}`;
+}
+
+function buildPromptPayPayload(promptPayId, amount = 0, dynamic = true) {
+  const id = sanitizePromptPay(promptPayId);
+  if (!id) return '';
+  const formattedId = id.length === 10 && id.startsWith('0') ? `0066${id.slice(1)}` : id;
+  const merchantInfo = `0016A000000677010111${tlv('01', formattedId)}`;
+  let payload = '';
+  payload += tlv('00', '01');
+  payload += tlv('01', dynamic ? '12' : '11');
+  payload += tlv('29', merchantInfo);
+  payload += tlv('58', 'TH');
+  payload += tlv('53', '764');
+  if (dynamic && amount > 0) payload += tlv('54', Number(amount).toFixed(2));
+  payload += tlv('63', '');
+  return payload + crc16ccitt(payload);
+}
+
+function buildPromptPayQrImage(promptPayId, amount, dynamic) {
+  const payload = buildPromptPayPayload(promptPayId, amount, dynamic);
+  if (!payload) return buildQrImageUrl('promptpay-not-configured');
+  return buildQrImageUrl(payload);
 }
 
 function renderCashier() {
@@ -353,10 +412,25 @@ function renderSystem() {
   qs('theme-primary').value = s.themeColor || '#7c3aed';
   qs('theme-bg').value = s.bgColor || '#f3f4f6';
   qs('theme-card').value = s.cardColor || '#ffffff';
+  renderPrinterDriverOptions(s.printerDriver || '');
   renderThemePresets(s.themePreset || '');
   updateReceiptPreview();
   renderStaffQR();
   renderTableQRList();
+}
+
+function renderPrinterDriverOptions(selectedDriver) {
+  const node = qs('printer-driver');
+  if (!node) return;
+  const drivers = ['Default System Printer', 'POS-USB-58mm', 'POS-LAN-80mm', 'Microsoft Print to PDF'];
+  node.innerHTML = '';
+  drivers.forEach((name) => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    opt.selected = name === selectedDriver;
+    node.appendChild(opt);
+  });
 }
 
 function updateReceiptPreview() {
@@ -472,10 +546,6 @@ async function loadData() {
 
 function bind() {
   document.querySelectorAll('[data-screen]').forEach((btn) => btn.addEventListener('click', () => showScreen(btn.dataset.screen)));
-  document.querySelectorAll('[data-system-tab]').forEach((btn) => btn.addEventListener('click', () => {
-    document.querySelectorAll('[data-system-tab]').forEach((s) => s.classList.toggle('is-active', s === btn));
-    ['general', 'payment', 'qr', 'security', 'theme'].forEach((name) => qs(`system-${name}`).classList.toggle('hidden', name !== btn.dataset.systemTab));
-  }));
   document.querySelectorAll('[data-backstore-tab]').forEach((btn) => btn.addEventListener('click', () => {
     document.querySelectorAll('[data-backstore-tab]').forEach((s) => s.classList.toggle('is-active', s === btn));
     ['menu', 'sales'].forEach((name) => qs(`backstore-${name}`).classList.toggle('hidden', name !== btn.dataset.backstoreTab));
@@ -485,6 +555,8 @@ function bind() {
   qs('close-forgot-admin-modal').addEventListener('click', () => qs('forgot-admin-modal').classList.add('hidden'));
   qs('close-table-order-modal').addEventListener('click', () => qs('table-order-modal').classList.add('hidden'));
   qs('close-payment-modal').addEventListener('click', () => qs('payment-modal').classList.add('hidden'));
+  qs('open-receipt-preview')?.addEventListener('click', () => qs('receipt-preview-modal').classList.remove('hidden'));
+  qs('close-receipt-preview')?.addEventListener('click', () => qs('receipt-preview-modal').classList.add('hidden'));
   qs('sales-from')?.addEventListener('change', renderSales);
   qs('sales-to')?.addEventListener('change', renderSales);
   qs('paper-size')?.addEventListener('change', updateReceiptPreview);
@@ -542,6 +614,11 @@ function bind() {
     qs('shop-logo-preview').src = dataUrl;
   });
 
+  qs('desk-accept-order')?.addEventListener('click', async () => {
+    if (!selectedTableId) return;
+    await api('/api/table/accept', { method: 'POST', body: JSON.stringify({ table_id: selectedTableId }) });
+    await loadData();
+  });
 
   qs('desk-open-order-modal')?.addEventListener('click', () => { if (selectedTableId) selectTable(selectedTableId); });
   qs('open-sales-insight')?.addEventListener('click', () => {
@@ -614,6 +691,7 @@ function bind() {
           autoPrint: qs('auto-print').checked,
           paperSize: qs('paper-size').value,
           dynamicPromptPay: qs('dynamic-qr').checked,
+          printerDriver: qs('printer-driver').value,
           qrImage,
           logoImage,
           adminRecoveryPhone: qs('admin-recovery-phone').value.trim(),
@@ -637,7 +715,14 @@ function bind() {
 async function poll() {
   const info = await api(`/api/staff/live?since=${version}`);
   if (info.changed) {
-    if ((info.tables || []).some((t) => t.status === 'pending_order')) qs('new-order-sound')?.play().catch(() => {});
+    const pendingSet = new Set((info.tables || []).filter((t) => t.status === 'pending_order').map((t) => t.id));
+    const checkoutSet = new Set((info.tables || []).filter((t) => t.status === 'checkout_requested').map((t) => t.id));
+    const hasNewPending = [...pendingSet].some((id) => !lastPendingTableIds.has(id));
+    const hasNewCheckoutRequest = [...checkoutSet].some((id) => !lastCheckoutRequestIds.has(id));
+    if (hasNewPending) playAlert('new-order-sound');
+    if (hasNewCheckoutRequest) playAlert('checkout-request-sound');
+    lastPendingTableIds = pendingSet;
+    lastCheckoutRequestIds = checkoutSet;
     await loadData();
   }
 }
