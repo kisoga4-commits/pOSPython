@@ -32,9 +32,9 @@ h1{margin:0}
 .online{background:rgba(255,255,255,.2);color:#fff}
 .legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 .status-available{background:#fff;color:#2f2b29;border:1px solid #e7dbd2}
-.status-pending_order{background:#ffeedf}
-.status-accepted_order{background:#e7f8eb}
-.status-checkout_requested{background:#f5e9ff}
+.status-pending_order{background:#ffe3cc;color:#8a430d;border:1px solid #ffc794}
+.status-accepted_order{background:#dcfce7;color:#166534;border:1px solid #9ce8b5}
+.status-checkout_requested{background:#dcfce7;color:#166534;border:1px solid #9ce8b5}
 .table-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px}
 .table-card{padding:14px;border-radius:16px;border:1px solid var(--line);background:#fff;text-align:left;cursor:pointer;transition:transform .12s ease, box-shadow .12s ease}
 .table-card.pending_order{border:2px solid #ef9d62;background:#fff9f4}
