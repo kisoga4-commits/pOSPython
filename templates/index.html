@@ -28,12 +28,20 @@
       </div>
     </header>
 
+    <section id="pwa-install-banner" class="section-card pwa-banner hidden">
+      <div>
+        <strong>ติดตั้งแอปบนมือถือ/แท็บเล็ต</strong>
+        <p class="muted">เพิ่ม FAKDU POS ไปหน้าโฮมเพื่อใช้งานแบบแอป (PWA)</p>
+      </div>
+      <button id="install-pwa" class="btn-primary">ติดตั้งแอป</button>
+    </section>
+
     <main>
       <nav class="section-card tab-bar">
-        <button class="main-tab is-active" data-screen="customer">🪑</button>
-        <button class="main-tab" data-screen="cashier">💵</button>
-        <button class="main-tab" data-screen="backstore">📊</button>
-        <button class="main-tab" data-screen="system">⚙️</button>
+        <button class="main-tab is-active" data-screen="customer">ลูกค้า</button>
+        <button class="main-tab" data-screen="cashier">เช็คบิล</button>
+        <button class="main-tab" data-screen="backstore">หลังร้าน</button>
+        <button class="main-tab" data-screen="system">ระบบ</button>
       </nav>
 
       <section id="customer" class="screen section-card">
@@ -66,13 +74,12 @@
 
       <section id="backstore" class="screen section-card hidden">
         <div class="section-head">
-          <h2>📊</h2>
+            <h2>📊</h2>
           <div class="admin-head-actions">
             <div class="subtabs">
               <button class="subtab is-active" data-subtab="sales">💰</button>
               <button class="subtab" data-subtab="manage">🧩</button>
             </div>
-            <button id="logout-backstore" class="btn-soft danger">Logout</button>
           </div>
         </div>
 
@@ -142,7 +149,6 @@
       <section id="system" class="screen section-card hidden">
         <div class="section-head">
           <h2>⚙️</h2>
-          <button id="logout-system" class="btn-soft danger">Logout</button>
         </div>
         <div class="panel-block">
           <h3>ข้อมูลร้านค้า</h3>
