@@ -1,17 +1,11 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from flask import Flask, jsonify, render_template, request
 
-from db import load_db, reset_tables, save_db, ensure_db_exists
-from license_service import (
-    LicenseError,
-    activate_license,
-    ensure_license_file,
-    get_machine_id,
-    license_status,
-)
-from security import require_license, require_server_request
+from db import ensure_db_exists, load_db, reset_tables, save_db
+from license_service import LicenseError, activate_license, ensure_license_file, get_machine_id, license_status
+from security import get_local_ip, read_json, require_license, require_server_request
 
 log = logging.getLogger("werkzeug")
 log.setLevel(logging.ERROR)
@@ -24,9 +18,23 @@ def bootstrap() -> None:
     ensure_license_file()
 
 
+def utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template("index.html", local_ip=get_local_ip())
+
+
+@app.route("/customer")
+def customer_page():
+    return render_template("customer.html")
+
+
+@app.route("/staff")
+def staff_page():
+    return render_template("staff.html")
 
 
 @app.route("/api/license", methods=["GET"])
@@ -40,7 +48,7 @@ def api_license_status():
 @app.route("/api/activate", methods=["POST"])
 @require_server_request
 def api_activate():
-    payload = request.get_json(silent=True) or {}
+    payload = read_json()
     ok, message = activate_license(payload.get("key", ""))
     if ok:
         return jsonify({"status": "success"})
@@ -50,56 +58,92 @@ def api_activate():
 @app.route("/api/data", methods=["GET"])
 @require_license
 def api_data():
-    db = load_db()
-    return jsonify(db)
+    return jsonify(load_db())
 
 
 @app.route("/api/order", methods=["POST"])
 @require_license
 def api_order():
-    payload = request.get_json(silent=True) or {}
-    table_id = payload.get("table_id")
+    payload = read_json()
+    target = str(payload.get("target", "table"))
+    target_id = payload.get("target_id")
     cart = payload.get("cart", [])
 
+    if not cart:
+        return jsonify({"error": "cart is empty"}), 400
+
     db = load_db()
-    for table in db["tables"]:
-        if table["id"] == table_id:
-            table["status"] = "occupied"
-            table["items"].extend(cart)
-            break
-    save_db(db)
-    return jsonify({"status": "success"})
+    order_id = f"ORD-{int(datetime.now().timestamp())}-{len(db['orders']) + 1}"
+    new_order = {
+        "id": order_id,
+        "target": target,
+        "target_id": target_id,
+        "items": cart,
+        "status": "new",
+        "created_at": utc_now(),
+        "updated_at": utc_now(),
+        "source": payload.get("source", "customer"),
+        "note": payload.get("note", ""),
+    }
+    db["orders"].append(new_order)
+
+    if target == "table" and isinstance(target_id, int):
+        for table in db["tables"]:
+            if table["id"] == target_id:
+                table["status"] = "occupied"
+                table["items"].extend(cart)
+                break
+
+    db = save_db(db)
+    return jsonify({"status": "success", "order": new_order, "version": db["meta"]["version"]})
 
 
 @app.route("/api/checkout", methods=["POST"])
 @require_license
 def api_checkout():
-    payload = request.get_json(silent=True) or {}
-    table_id = payload.get("table_id")
-    sale_record = payload.get("sale_record", {})
+    payload = read_json()
+    target = str(payload.get("target", "table"))
+    target_id = payload.get("target_id")
 
     db = load_db()
-    sale_record.setdefault("created_at", datetime.now().isoformat())
+    pending_items = []
+    for order in db["orders"]:
+        if order["target"] == target and order["target_id"] == target_id and order["status"] != "served":
+            order["status"] = "served"
+            order["updated_at"] = utc_now()
+        if order["target"] == target and order["target_id"] == target_id:
+            pending_items.extend(order["items"])
+
+    total = sum(float(item.get("price", 0)) for item in pending_items)
+    sale_record = {
+        "id": f"SALE-{int(datetime.now().timestamp())}",
+        "target": target,
+        "target_id": target_id,
+        "items": pending_items,
+        "total": total,
+        "paid_at": utc_now(),
+    }
     db["sales"].append(sale_record)
 
-    for table in db["tables"]:
-        if table["id"] == table_id:
-            table["status"] = "available"
-            table["items"] = []
-            break
+    if target == "table" and isinstance(target_id, int):
+        for table in db["tables"]:
+            if table["id"] == target_id:
+                table["status"] = "available"
+                table["items"] = []
+                break
 
-    save_db(db)
-    return jsonify({"status": "success"})
+    db = save_db(db)
+    return jsonify({"status": "success", "sale_record": sale_record, "version": db["meta"]["version"]})
 
 
 @app.route("/api/settings", methods=["POST"])
 @require_server_request
 @require_license
 def api_settings():
-    payload = request.get_json(silent=True) or {}
+    payload = read_json()
     db = load_db()
 
-    if "menu" in payload:
+    if "menu" in payload and isinstance(payload["menu"], list):
         db["menu"] = payload["menu"]
 
     if "tableCount" in payload:
@@ -108,18 +152,69 @@ def api_settings():
 
     if payload.get("reset") is True:
         db = reset_tables(db)
+        db["orders"] = []
         db["sales"] = []
 
     if "settings" in payload and isinstance(payload["settings"], dict):
         db["settings"] = {**db.get("settings", {}), **payload["settings"]}
 
-    save_db(db)
-    return jsonify({"status": "success"})
+    db = save_db(db)
+    return jsonify({"status": "success", "version": db["meta"]["version"]})
 
 
-@app.route("/api/machine-id", methods=["GET"])
-def api_machine_id():
-    return jsonify({"machine_id": get_machine_id()})
+@app.route("/api/kitchen/orders", methods=["GET"])
+@require_license
+def api_kitchen_orders():
+    db = load_db()
+    statuses = set(request.args.get("status", "new,preparing").split(","))
+    orders = [o for o in db["orders"] if o["status"] in statuses]
+    return jsonify({"orders": orders, "version": db["meta"]["version"], "updated_at": db["meta"]["updated_at"]})
+
+
+@app.route("/api/order/status", methods=["POST"])
+@require_license
+def api_order_status():
+    payload = read_json()
+    order_id = payload.get("order_id")
+    status = payload.get("status")
+    if status not in {"new", "preparing", "served", "cancelled"}:
+        return jsonify({"error": "invalid status"}), 400
+
+    db = load_db()
+    for order in db["orders"]:
+        if order["id"] == order_id:
+            order["status"] = status
+            order["updated_at"] = utc_now()
+            db = save_db(db)
+            return jsonify({"status": "success", "version": db["meta"]["version"]})
+    return jsonify({"error": "order not found"}), 404
+
+
+@app.route("/api/staff/live", methods=["GET"])
+@require_license
+def api_staff_live():
+    since = int(request.args.get("since", "0"))
+    db = load_db()
+    if db["meta"]["version"] <= since:
+        return jsonify({"changed": False, "version": db["meta"]["version"]})
+    orders = [o for o in db["orders"] if o["status"] in {"new", "preparing", "served"}]
+    return jsonify({"changed": True, "orders": orders, "version": db["meta"]["version"]})
+
+
+@app.route("/api/customer/live", methods=["GET"])
+@require_license
+def api_customer_live():
+    since = int(request.args.get("since", "0"))
+    db = load_db()
+    if db["meta"]["version"] <= since:
+        return jsonify({"changed": False, "version": db["meta"]["version"]})
+    return jsonify({
+        "changed": True,
+        "menu": db["menu"],
+        "tables": db["tables"],
+        "settings": db["settings"],
+        "version": db["meta"]["version"],
+    })
 
 
 if __name__ == "__main__":

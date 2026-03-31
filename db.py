@@ -1,4 +1,6 @@
 import json
+from copy import deepcopy
+from datetime import datetime, timezone
 from pathlib import Path
 from threading import Lock
 
@@ -6,47 +8,72 @@ DB_FILE = Path("shabu_database.json")
 _db_lock = Lock()
 
 
+def now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
 def default_db() -> dict:
     table_count = 8
     return {
+        "meta": {"version": 1, "updated_at": now_iso()},
         "menu": [
-            {"id": 1, "name": "เนื้อใบพายพรีเมียม", "price": 150},
-            {"id": 2, "name": "หมูสันคอสไลซ์", "price": 120},
-            {"id": 3, "name": "ชุดผักรวมสุขภาพ", "price": 50},
+            {"id": 1, "name": "เนื้อใบพายพรีเมียม", "price": 150, "category": "เนื้อ"},
+            {"id": 2, "name": "หมูสันคอสไลซ์", "price": 120, "category": "หมู"},
+            {"id": 3, "name": "ชุดผักรวมสุขภาพ", "price": 50, "category": "ผัก"},
         ],
         "tableCount": table_count,
-        "tables": [
-            {"id": i, "status": "available", "items": []}
-            for i in range(1, table_count + 1)
-        ],
+        "tables": [{"id": i, "status": "available", "items": []} for i in range(1, table_count + 1)],
+        "orders": [],
         "sales": [],
-        "settings": {"shopName": "SHABU PRO", "currency": "THB"},
+        "settings": {
+            "shopName": "SHABU POS",
+            "currency": "THB",
+            "pollingMs": 2500,
+            "serviceChargePct": 0,
+            "vatPct": 0,
+        },
     }
 
 
 def ensure_db_exists() -> None:
-    if DB_FILE.exists():
-        return
-    save_db(default_db())
+    if not DB_FILE.exists():
+        save_db(default_db())
+
+
+def _normalize_db(data: dict) -> dict:
+    base = default_db()
+    merged = deepcopy(base)
+    merged.update(data or {})
+    merged["settings"] = {**base["settings"], **(data or {}).get("settings", {})}
+    if "meta" not in merged:
+        merged["meta"] = {"version": 1, "updated_at": now_iso()}
+    merged["meta"].setdefault("version", 1)
+    merged["meta"].setdefault("updated_at", now_iso())
+    return merged
 
 
 def load_db() -> dict:
     ensure_db_exists()
     with _db_lock:
         with DB_FILE.open("r", encoding="utf-8") as f:
-            return json.load(f)
+            return _normalize_db(json.load(f))
 
 
-def save_db(data: dict) -> None:
+def _write_db(data: dict) -> None:
+    with DB_FILE.open("w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def save_db(data: dict) -> dict:
+    normalized = _normalize_db(data)
     with _db_lock:
-        with DB_FILE.open("w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+        normalized["meta"]["version"] = int(normalized["meta"].get("version", 0)) + 1
+        normalized["meta"]["updated_at"] = now_iso()
+        _write_db(normalized)
+    return normalized
 
 
 def reset_tables(data: dict) -> dict:
     table_count = int(data.get("tableCount", 8))
-    data["tables"] = [
-        {"id": i, "status": "available", "items": []}
-        for i in range(1, table_count + 1)
-    ]
+    data["tables"] = [{"id": i, "status": "available", "items": []} for i in range(1, table_count + 1)]
     return data

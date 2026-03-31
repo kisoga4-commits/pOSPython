@@ -41,3 +41,7 @@ def require_server_request(view):
         return view(*args, **kwargs)
 
     return wrapped
+
+
+def read_json() -> dict:
+    return request.get_json(silent=True) or {}

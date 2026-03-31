@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Staff/Kitchen</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+  <header><h1>👨‍🍳 หน้าพนักงาน/ครัว</h1></header>
+  <main>
+    <section class="screen">
+      <div id="orders"></div>
+    </section>
+  </main>
+  <audio id="new-order-sound" src="{{ url_for('static', filename='sounds/new_order.mp3') }}"></audio>
+  <script src="{{ url_for('static', filename='staff.js') }}"></script>
+</body>
+</html>
