@@ -46,8 +46,9 @@
           <button class="tab-card" data-screen="settings"><span>⚙️</span><b>ระบบ</b></button>
         </div>
         <div class="links section-card soft">
-          <p>Customer: <a id="customer-link" target="_blank"></a></p>
-          <p>Staff: <a id="staff-link" target="_blank"></a></p>
+          <p>Customer QR Base: <a id="customer-link" target="_blank"></a></p>
+          <p>Staff QR: <a id="staff-link" target="_blank"></a></p>
+          <div id="customer-qr-links" class="chip-grid"></div>
         </div>
       </section>
 
@@ -59,6 +60,12 @@
             <button class="btn-secondary" type="button">M</button>
             <button class="btn-secondary" type="button">+</button>
           </div>
+        </div>
+        <div class="status-legend">
+          <span class="badge status-available">ว่าง</span>
+          <span class="badge status-pending_order">รอรับออร์เดอร์</span>
+          <span class="badge status-accepted_order">รับแล้ว</span>
+          <span class="badge status-checkout_requested">รอเช็คบิล</span>
         </div>
         <div id="table-grid" class="table-grid"></div>
         <div id="menu-area" class="hidden section-card soft">
@@ -146,6 +153,7 @@
     </main>
   </div>
 
+  <audio id="new-order-sound" src="{{ url_for('static', filename='sounds/new_order.mp3') }}"></audio>
   <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
 </html>
