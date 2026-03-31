@@ -19,6 +19,16 @@ def bootstrap() -> None:
     ensure_license_file()
 
 
+def run_server() -> None:
+    bootstrap()
+    ip_addr = get_local_ip()
+    print("\n" + "=" * 75)
+    print("🚀 FAKDU POS Ready")
+    print(f"📡 Access Point: http://{ip_addr}:5000")
+    print("=" * 75 + "\n")
+    app.run(host="0.0.0.0", port=5000)
+
+
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -304,5 +314,4 @@ def api_customer_live():
 
 
 if __name__ == "__main__":
-    bootstrap()
-    app.run(host="0.0.0.0", port=5000)
+    run_server()
