@@ -5,8 +5,8 @@ let serviceMode = 'table';
 
 const TABLE_STATUS_META = {
   available: { label: 'ว่าง', className: 'status-available' },
-  pending_order: { label: 'มีออร์เดอร์ใหม่', className: 'status-pending_order' },
-  accepted_order: { label: 'รับแล้ว', className: 'status-accepted_order' },
+  pending_order: { label: 'ออร์เดอร์ค้าง/ลูกค้าสั่งเอง', className: 'status-pending_order' },
+  accepted_order: { label: 'มีลูกค้า', className: 'status-accepted_order' },
   checkout_requested: { label: 'รอเช็คบิล', className: 'status-checkout_requested' },
   closed: { label: 'ปิดบิล', className: 'status-closed' },
 };

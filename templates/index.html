@@ -56,9 +56,9 @@
           </div>
         </div>
         <div class="legend">
-          <span class="pill status-available">🟢</span>
-          <span class="pill status-pending_order">🟠</span>
-          <span class="pill status-accepted_order">🔵</span>
+          <span class="pill status-available">⚪ ว่าง</span>
+          <span class="pill status-pending_order">🟠 ออร์เดอร์ค้าง/ลูกค้าสั่งเอง</span>
+          <span class="pill status-accepted_order">🟢 มีลูกค้า</span>
           <span class="pill status-checkout_requested">🟣</span>
         </div>
         <div id="table-grid" class="table-grid"></div>
@@ -164,6 +164,13 @@
             <input id="qr-image" type="file" accept="image/*" />
           </div>
           <button id="save-system" class="btn-primary big-save">บันทึกการตั้งค่า</button>
+        </div>
+        <div class="panel-block">
+          <div class="section-head">
+            <h3>QR สำหรับลูกค้าแยกตามโต๊ะ</h3>
+          </div>
+          <p class="muted">แต่ละโต๊ะสแกนได้เฉพาะโต๊ะของตัวเอง เช่น โต๊ะ 1 จะเข้าหน้า /scan/customer/1 เท่านั้น</p>
+          <div id="table-qr-list" class="qr-table-grid"></div>
         </div>
         <div class="panel-block">
           <h3>Master / Client Session</h3>

@@ -7,8 +7,8 @@ const lockedTableId = Number(params.get('table') || document.body.dataset.tableI
 
 const TABLE_STATUS_META = {
   available: { label: 'ว่าง', className: 'status-available' },
-  pending_order: { label: 'รอรับออเดอร์', className: 'status-pending_order' },
-  accepted_order: { label: 'กำลังให้บริการ', className: 'status-accepted_order' },
+  pending_order: { label: 'ออร์เดอร์ค้าง/ลูกค้าสั่งเอง', className: 'status-pending_order' },
+  accepted_order: { label: 'มีลูกค้า', className: 'status-accepted_order' },
   checkout_requested: { label: 'รอเช็คบิล', className: 'status-checkout_requested' },
   closed: { label: 'ปิดบิล', className: 'status-closed' },
 };
