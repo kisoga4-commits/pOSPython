@@ -12,74 +12,43 @@
       <h2>🔒 Activate License</h2>
       <p>Machine ID: <span id="machine-id"></span></p>
       <input id="license-key" placeholder="License Key" maxlength="16" />
-      <button id="activate-btn" class="btn-primary">Activate</button>
+      <button id="activate-btn" class="btn-primary primary-button">Activate</button>
       <p id="license-message"></p>
     </div>
   </div>
 
   <div class="app-shell">
     <header class="app-header">
-      <div class="brand-zone">
-        <div class="brand-badge">🍜</div>
-        <div>
-          <small class="muted">POS แม่ข่าย</small>
-          <h1>FAKDU</h1>
+      <div class="header-top">
+        <div class="brand-zone">
+          <div class="logo-slot">LOGO</div>
+          <div>
+            <small class="muted on-dark">FAKDU Restaurant App</small>
+            <h1>FAKDU</h1>
+          </div>
         </div>
-      </div>
-      <div class="header-side">
-        <span class="badge badge-soft">🟢 Online</span>
-        <button class="btn-accent">ทดลองใช้งาน</button>
+        <div class="header-side">
+          <span class="badge badge-soft">🟢 Online</span>
+          <button class="btn-accent">ทดลองใช้งาน</button>
+        </div>
       </div>
       <p class="network-pill">LAN IP: {{ local_ip }}:5000</p>
     </header>
 
     <main>
-      <section class="section-card">
-        <div class="section-head">
-          <h2>ศูนย์ควบคุม</h2>
-          <span class="badge">FAKDU APP</span>
-        </div>
-        <div class="top-tab action-grid">
-          <button class="tab-card is-active" data-screen="pos"><span>👥</span><b>ลูกค้า</b></button>
-          <button class="tab-card" data-screen="cashier"><span>🧾</span><b>เช็คบิล</b></button>
-          <button class="tab-card" data-screen="kitchen"><span>👨‍🍳</span><b>หลังร้าน</b></button>
-          <button class="tab-card" data-screen="settings"><span>⚙️</span><b>ระบบ</b></button>
-        </div>
-
-        <div class="desktop-links-grid">
-          <div class="links section-card soft">
-            <h3>ลิงก์ใช้งาน</h3>
-            <p>Customer QR Base: <a id="customer-link" target="_blank"></a></p>
-            <p>Staff QR: <a id="staff-link" target="_blank"></a></p>
-            <div id="customer-qr-links" class="chip-grid"></div>
-          </div>
-
-          <div class="section-card soft">
-            <div class="section-head">
-              <h3>โหมดสแกน QR</h3>
-              <span class="badge">2 โหมด</span>
-            </div>
-            <div class="scan-mode-grid">
-              <article class="scan-mode-card">
-                <h4>👨‍🍳 โหมดพนักงาน</h4>
-                <p>สแกนแล้วเข้าหน้า /staff เพื่อรับออเดอร์และเช็คบิลทันที</p>
-                <div class="qr-box" id="staff-qr-box"></div>
-                <a id="staff-scan-link" class="badge" target="_blank"></a>
-              </article>
-
-              <article class="scan-mode-card">
-                <h4>👨‍👩‍👧 โหมดลูกค้า (ตามโต๊ะ)</h4>
-                <p>สแกนแล้วเด้งไปหน้าโต๊ะของลูกค้าทันที เช่น ?table=1</p>
-                <div id="customer-qr-grid" class="customer-qr-grid"></div>
-              </article>
-            </div>
-          </div>
-        </div>
-      </section>
+      <nav class="main-tab-wrap section-card">
+        <button class="main-tab is-active" data-screen="pos"><span>ลูกค้า</span></button>
+        <button class="main-tab" data-screen="cashier"><span>เช็คบิล</span></button>
+        <button class="main-tab" data-screen="kitchen"><span>หลังร้าน</span></button>
+        <button class="main-tab" data-screen="settings"><span>ระบบ</span></button>
+      </nav>
 
       <section id="pos" class="screen section-card">
         <div class="section-head with-controls">
-          <h2>ลูกค้า</h2>
+          <div>
+            <h2>ลูกค้า</h2>
+            <p class="section-subtitle">จัดการโต๊ะและคิวออเดอร์แบบเรียลไทม์</p>
+          </div>
           <div class="queue-controls">
             <button class="btn-secondary" type="button">-</button>
             <button class="btn-secondary" type="button">M</button>
@@ -87,34 +56,35 @@
           </div>
         </div>
         <div class="status-legend">
-          <span class="badge status-available">ว่าง</span>
-          <span class="badge status-pending_order">รอรับออร์เดอร์</span>
-          <span class="badge status-accepted_order">รับแล้ว</span>
-          <span class="badge status-checkout_requested">รอเช็คบิล</span>
+          <span class="status-badge status-available">ว่าง</span>
+          <span class="status-badge status-pending_order">มีออร์เดอร์ใหม่</span>
+          <span class="status-badge status-accepted_order">รับแล้ว</span>
+          <span class="status-badge status-checkout_requested">รอเช็คบิล</span>
         </div>
         <div id="table-grid" class="table-grid"></div>
-        <div id="menu-area" class="hidden section-card soft">
-          <h3>โต๊ะ <span id="active-table"></span></h3>
+
+        <div id="menu-area" class="hidden section-card soft order-panel">
+          <h3>จัดออเดอร์โต๊ะ <span id="active-table"></span></h3>
           <div id="menu-list" class="chip-grid"></div>
           <div id="cart-list" class="order-list"></div>
-          <button id="submit-order" class="btn-primary">ส่งออเดอร์</button>
+          <button id="submit-order" class="btn-primary primary-button">ส่งออเดอร์</button>
         </div>
       </section>
 
       <section id="cashier" class="screen hidden section-card">
         <div class="section-head">
           <h2>คิวเช็คบิล</h2>
-          <span id="checkout-count" class="badge">0 รายการ</span>
+          <span id="checkout-count" class="status-badge">0 รายการ</span>
         </div>
-        <div id="checkout-list"></div>
+        <div id="checkout-list" class="checkout-list"></div>
       </section>
 
       <section id="kitchen" class="screen hidden section-card">
         <div class="section-head">
           <h2>หลังร้าน</h2>
-          <div class="segmented" id="kitchen-subtabs">
-            <button class="seg-btn is-active" data-subtab="sales" type="button">ยอดขาย</button>
-            <button class="seg-btn" data-subtab="manage" type="button">จัดการร้าน</button>
+          <div class="sub-tab" id="kitchen-subtabs">
+            <button class="sub-tab-btn is-active" data-subtab="sales" type="button">ยอดขาย</button>
+            <button class="sub-tab-btn" data-subtab="manage" type="button">จัดการร้าน</button>
           </div>
         </div>
 
@@ -134,7 +104,7 @@
             <div id="sales-list"></div>
           </div>
           <div class="section-card soft">
-            <h3>ออเดอร์ทั้งหมด</h3>
+            <h3>ยอดฮิต / ออเดอร์ทั้งหมด</h3>
             <div id="all-orders"></div>
           </div>
         </div>
@@ -147,13 +117,13 @@
               <input id="table-count" type="number" min="1" />
             </div>
             <div class="btn-row">
-              <button id="save-settings" class="btn-primary">บันทึก</button>
+              <button id="save-settings" class="btn-primary primary-button">บันทึก</button>
               <button id="reset-day" class="btn-secondary">รีเซ็ตวัน</button>
             </div>
           </div>
           <div class="section-card soft">
             <div class="section-head">
-              <h3>รายการเมนู</h3>
+              <h3>จัดการเมนูร้าน</h3>
               <button id="add-menu-item" class="btn-accent" type="button">+ เพิ่มเมนู</button>
             </div>
             <div class="menu-editor">
@@ -165,7 +135,7 @@
                 <label>ราคา</label>
                 <input id="menu-price" type="number" min="0" step="1" placeholder="เช่น 69" />
               </div>
-              <button id="save-menu-item" class="btn-primary" type="button">เพิ่มรายการ</button>
+              <button id="save-menu-item" class="btn-primary primary-button" type="button">เพิ่มรายการ</button>
             </div>
             <div id="menu-preview" class="chip-grid"></div>
           </div>
@@ -174,26 +144,27 @@
 
       <section id="settings" class="screen hidden section-card">
         <div class="section-head"><h2>ระบบ</h2></div>
-        <p class="muted">ปรับค่าร้าน, เมนู และข้อมูลสำรองได้จากหน้านี้</p>
         <div class="section-card soft">
           <div class="section-head">
             <h3>ข้อมูลร้านค้า</h3>
-            <span id="system-save-state" class="badge">ยังไม่บันทึก</span>
+            <span id="system-save-state" class="status-badge">ยังไม่บันทึก</span>
           </div>
           <div class="form-grid">
             <div class="input-shell"><label>ชื่อร้าน</label><input id="store-name" type="text" placeholder="FAKDU" /></div>
             <div class="input-shell"><label>เบอร์โทร</label><input id="store-phone" type="text" placeholder="08x-xxx-xxxx" /></div>
             <div class="input-shell"><label>ที่อยู่ร้าน</label><input id="store-address" type="text" placeholder="ที่อยู่ร้านค้า" /></div>
-            <div class="input-shell"><label>สกุลเงิน</label><input id="store-currency" type="text" placeholder="บาท (฿)" /></div>
-            <div class="input-shell"><label>ภาษี (%)</label><input id="store-tax-rate" type="number" min="0" step="0.01" placeholder="0" /></div>
-            <div class="input-shell"><label>ค่าบริการ (%)</label><input id="store-service-rate" type="number" min="0" step="0.01" placeholder="0" /></div>
+            <div class="input-shell"><label>สีร้าน</label><input id="store-currency" type="text" placeholder="แดงไวน์ / ครีม" /></div>
+            <div class="input-shell"><label>PromptPay / ภาษี (%)</label><input id="store-tax-rate" type="number" min="0" step="0.01" placeholder="0" /></div>
+            <div class="input-shell"><label>Service Charge (%)</label><input id="store-service-rate" type="number" min="0" step="0.01" placeholder="0" /></div>
           </div>
           <div class="input-shell"><label>หมายเหตุใบเสร็จ</label><input id="store-receipt-note" type="text" placeholder="ขอบคุณที่ใช้บริการ" /></div>
+          <div class="input-shell"><label>Admin PIN</label><input id="admin-pin" type="password" placeholder="••••" /></div>
           <div class="btn-row">
-            <button id="save-system-settings" class="btn-primary">บันทึกการตั้งค่า</button>
+            <button id="save-system-settings" class="btn-primary primary-button">บันทึกการตั้งค่า</button>
             <button id="reset-system-settings" class="btn-secondary" type="button">คืนค่าเริ่มต้น</button>
           </div>
         </div>
+
         <div class="system-grid">
           <div class="section-card soft">
             <h3>Backup</h3>
@@ -203,14 +174,26 @@
           <div class="section-card soft">
             <h3>Restore</h3>
             <p class="muted">นำเข้าข้อมูลจากไฟล์ที่เคยสำรองไว้</p>
-            <input id="import-file" type="file" accept="application/json" />
+            <div class="input-shell"><input id="import-file" type="file" accept="application/json" /></div>
             <button id="import-data" class="btn-secondary" type="button">นำเข้าข้อมูล</button>
           </div>
           <div class="section-card soft">
-            <h3>PIN Admin</h3>
-            <div class="input-shell"><input id="admin-pin" type="password" placeholder="••••" /></div>
+            <h3>Admin Pin</h3>
+            <p class="muted">บันทึกรหัสสำหรับเมนูผู้ดูแลระบบ</p>
             <button id="save-admin-pin" class="btn-secondary" type="button">บันทึก PIN</button>
           </div>
+        </div>
+
+        <div class="section-card soft links">
+          <h3>ลิงก์และ QR สำหรับใช้งานจริง</h3>
+          <p>Customer QR Base: <a id="customer-link" target="_blank"></a></p>
+          <p>Staff QR: <a id="staff-link" target="_blank"></a></p>
+          <a id="staff-scan-link" class="badge" target="_blank"></a>
+          <div class="qr-row">
+            <div class="qr-box" id="staff-qr-box"></div>
+            <div id="customer-qr-links" class="chip-grid"></div>
+          </div>
+          <div id="customer-qr-grid" class="customer-qr-grid"></div>
         </div>
       </section>
     </main>
