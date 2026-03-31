@@ -45,6 +45,24 @@ function bindNav() {
   showScreen('customer');
 }
 
+function bindLandingSystems() {
+  const openCustomer = document.getElementById('open-customer-system');
+  if (openCustomer) {
+    openCustomer.addEventListener('click', () => {
+      const tableInput = document.getElementById('landing-customer-table');
+      const tableId = Math.max(1, Number(tableInput?.value || 1));
+      window.open(`/scan/customer/${tableId}`, '_blank');
+    });
+  }
+
+  const openStaff = document.getElementById('open-staff-system');
+  if (openStaff) {
+    openStaff.addEventListener('click', () => {
+      window.open('/scan/staff', '_blank');
+    });
+  }
+}
+
 function bindKitchenSubtabs() {
   document.querySelectorAll('[data-subtab]').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -549,6 +567,7 @@ function registerServiceWorker() {
 
 (function init() {
   bindNav();
+  bindLandingSystems();
   bindKitchenSubtabs();
   bindActions();
   registerServiceWorker();
