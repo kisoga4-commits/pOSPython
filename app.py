@@ -12,7 +12,7 @@ log = logging.getLogger("werkzeug")
 log.setLevel(logging.ERROR)
 
 app = Flask(__name__)
-ASSET_VERSION = "20260331-ui-refresh-license-off"
+ASSET_VERSION = "20260331-modern-pos-mto"
 
 
 def bootstrap() -> None:
@@ -51,6 +51,11 @@ def customer_page():
 
 @app.route("/scan/customer/<int:table_id>")
 def customer_scan_page(table_id: int):
+    return render_template("customer.html", table_id=table_id, asset_version=ASSET_VERSION)
+
+
+@app.route("/table/<int:table_id>")
+def customer_table_page(table_id: int):
     return render_template("customer.html", table_id=table_id, asset_version=ASSET_VERSION)
 
 
