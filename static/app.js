@@ -2,14 +2,13 @@ let db;
 let version = 0;
 let adminUnlocked = false;
 let selectedTableId = null;
-let selectedMenuItem = null;
 let orderCart = [];
 let menuEditIndex = -1;
 let activeCashierTableId = null;
 
 const statusMap = {
   available: { label: 'ว่าง', tone: 'available', icon: '○' },
-  pending_order: { label: 'รอรับออร์เดอร์', tone: 'pending', icon: '🔔' },
+  pending_order: { label: 'ลูกค้ารอพนักงานยืนยัน', tone: 'pending', icon: '🔔' },
   accepted_order: { label: 'รับออร์เดอร์แล้ว', tone: 'accepted', icon: '✅' },
   checkout_requested: { label: 'รอเช็คบิล', tone: 'checkout', icon: '🧾' },
 };
@@ -61,7 +60,7 @@ function renderTables() {
     const { items, total } = getTableSummary(table.id);
     const card = document.createElement('button');
     card.type = 'button';
-    card.className = `table-card ${meta.tone} ${selectedTableId === table.id ? 'is-selected' : ''}`;
+    card.className = `table-card ${meta.tone} ${selectedTableId === table.id ? 'is-selected' : ''} ${selectedTableId === table.id && orderCart.length ? 'is-ordering' : ''}`;
     card.innerHTML = `
       <div class="table-head-row"><strong>${unitLabel()} ${table.id}</strong><span class="status-chip ${meta.tone}">${meta.icon} ${meta.label}</span></div>
       <div>${items.length} รายการ • ${money(total)} บาท</div>
@@ -76,21 +75,12 @@ function renderOrderMenuChoices() {
   const grid = qs('order-menu-grid');
   grid.innerHTML = '';
   db.menu.forEach((item) => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'menu-choice';
-    btn.innerHTML = `<strong>${item.name}</strong><small>฿${money(item.price)}</small>`;
+    const btn = document.createElement('article');
+    btn.className = 'menu-choice visual';
+    btn.innerHTML = `<div class="menu-choice-thumb">${item.image ? `<img src="${item.image}" alt="${item.name}" />` : '🍽️'}</div><strong>${item.name}</strong><small>฿${money(item.price)}</small>`;
     btn.addEventListener('click', () => {
-      selectedMenuItem = item;
-      qs('order-selected-menu').value = `${item.name} · ${money(item.price)}฿`;
-      qs('order-addon').innerHTML = '<option value="">+ add-on</option>';
-      (item.addons || []).forEach((a) => {
-        const opt = document.createElement('option');
-        opt.value = a;
-        opt.textContent = a;
-        qs('order-addon').appendChild(opt);
-      });
-      document.querySelectorAll('.menu-choice').forEach((m) => m.classList.toggle('is-active', m === btn));
+      orderCart.push({ name: item.name, price: Number(item.price), addon: '', note: '', qty: 1 });
+      renderOrderCart();
     });
     grid.appendChild(btn);
   });
@@ -102,6 +92,7 @@ function renderOrderCart() {
   if (!orderCart.length) {
     list.innerHTML = '<div class="empty">ยังไม่มีรายการในตะกร้า</div>';
     qs('order-cart-total').textContent = 'รวม 0.00 บาท';
+    renderTables();
     return;
   }
   orderCart.forEach((item, idx) => {
@@ -112,6 +103,7 @@ function renderOrderCart() {
     list.appendChild(row);
   });
   qs('order-cart-total').textContent = `รวม ${money(orderCart.reduce((s, i) => s + Number(i.price || 0), 0))} บาท`;
+  renderTables();
 }
 
 function renderExistingOrders(tableId) {
@@ -130,7 +122,6 @@ function renderExistingOrders(tableId) {
 
 function selectTable(tableId) {
   selectedTableId = tableId;
-  selectedMenuItem = null;
   orderCart = [];
   const table = db.tables.find((t) => t.id === tableId);
   const meta = statusMap[table?.status] || statusMap.available;
@@ -174,16 +165,27 @@ async function openBill(targetId) {
 function renderCashier() {
   const wrap = qs('checkout-list');
   wrap.innerHTML = '';
-  const queues = db.tables.filter((t) => ['pending_order', 'accepted_order', 'checkout_requested'].includes(t.status));
+  const queues = db.tables
+    .filter((t) => ['pending_order', 'accepted_order', 'checkout_requested'].includes(t.status))
+    .map((table) => {
+      const orders = getTableOrders(table.id);
+      const lastOrderAt = orders.reduce((latest, order) => {
+        const t = Date.parse(order.updated_at || order.created_at || 0);
+        return t > latest ? t : latest;
+      }, 0);
+      return { table, lastOrderAt };
+    })
+    .sort((a, b) => a.lastOrderAt - b.lastOrderAt);
   qs('checkout-count').textContent = `${queues.length} รายการ`;
   if (!queues.length) {
     wrap.innerHTML = '<div class="empty">ยังไม่มีคิวใช้งาน</div>';
     return;
   }
-  queues.forEach((table) => {
+  queues.forEach((entry, idx) => {
+    const table = entry.table;
     const row = document.createElement('button');
     row.className = 'list-card';
-    row.textContent = `${unitLabel()} ${table.id} • ${(statusMap[table.status] || statusMap.available).label}`;
+    row.textContent = `#${idx + 1} ${unitLabel()} ${table.id} • ${(statusMap[table.status] || statusMap.available).label}`;
     row.addEventListener('click', () => openBill(table.id));
     wrap.appendChild(row);
   });
@@ -294,12 +296,6 @@ function bind() {
     selectTable(selectedTableId);
   });
 
-  qs('order-add-item').addEventListener('click', () => {
-    if (!selectedMenuItem) return;
-    orderCart.push({ name: selectedMenuItem.name, price: Number(selectedMenuItem.price), addon: qs('order-addon').value, note: qs('order-note').value.trim(), qty: 1 });
-    qs('order-note').value = '';
-    renderOrderCart();
-  });
   qs('order-submit').addEventListener('click', submitOrderFromPanel);
 
   qs('bill-pay-cash').addEventListener('click', async () => { if (!activeCashierTableId) return; await api('/api/checkout', { method: 'POST', body: JSON.stringify({ target: 'table', target_id: activeCashierTableId, payment_method: 'cash' }) }); await loadData(); });
