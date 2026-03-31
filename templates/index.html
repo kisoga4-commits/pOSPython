@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>POS แม่ข่าย</title>
+  <title>FAKDU POS เครื่องแม่</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
 </head>
 <body>
@@ -12,66 +12,139 @@
       <h2>🔒 Activate License</h2>
       <p>Machine ID: <span id="machine-id"></span></p>
       <input id="license-key" placeholder="License Key" maxlength="16" />
-      <button id="activate-btn">Activate</button>
+      <button id="activate-btn" class="btn-primary">Activate</button>
       <p id="license-message"></p>
     </div>
   </div>
 
-  <header>
-    <h1>🍲 POS เครื่องแม่</h1>
-    <small>LAN IP: {{ local_ip }}:5000</small>
-  </header>
-
-  <main>
-    <section class="screen">
-      <h2>ศูนย์ควบคุม</h2>
-      <div class="action-grid">
-        <button data-screen="pos">POS</button>
-        <button data-screen="cashier">แคชเชียร์</button>
-        <button data-screen="kitchen">หลังร้าน/ครัว</button>
-        <button data-screen="settings">ตั้งค่า</button>
-        <button data-screen="report">รายงาน</button>
+  <div class="app-shell">
+    <header class="app-header">
+      <div class="brand-zone">
+        <div class="brand-badge">🍜</div>
+        <div>
+          <small class="muted">POS แม่ข่าย</small>
+          <h1>FAKDU</h1>
+        </div>
       </div>
-      <div class="links">
-        <p>Customer: <a id="customer-link" target="_blank"></a></p>
-        <p>Staff: <a id="staff-link" target="_blank"></a></p>
+      <div class="header-side">
+        <span class="badge badge-soft">🟢 Online</span>
+        <button class="btn-accent">ทดลองใช้งาน</button>
       </div>
-    </section>
+      <p class="network-pill">LAN IP: {{ local_ip }}:5000</p>
+    </header>
 
-    <section id="pos" class="screen hidden">
-      <h2>POS</h2>
-      <div id="table-grid"></div>
-      <div id="menu-area" class="hidden">
-        <h3>โต๊ะ <span id="active-table"></span></h3>
-        <div id="menu-list"></div>
-        <div id="cart-list"></div>
-        <button id="submit-order">ส่งออเดอร์</button>
-      </div>
-    </section>
+    <main>
+      <section class="section-card">
+        <div class="section-head">
+          <h2>ศูนย์ควบคุม</h2>
+          <span class="badge">FAKDU APP</span>
+        </div>
+        <div class="top-tab action-grid">
+          <button class="tab-card is-active" data-screen="pos"><span>👥</span><b>ลูกค้า</b></button>
+          <button class="tab-card" data-screen="cashier"><span>🧾</span><b>เช็คบิล</b></button>
+          <button class="tab-card" data-screen="kitchen"><span>👨‍🍳</span><b>หลังร้าน</b></button>
+          <button class="tab-card" data-screen="settings"><span>⚙️</span><b>ระบบ</b></button>
+        </div>
+        <div class="links section-card soft">
+          <p>Customer: <a id="customer-link" target="_blank"></a></p>
+          <p>Staff: <a id="staff-link" target="_blank"></a></p>
+        </div>
+      </section>
 
-    <section id="cashier" class="screen hidden">
-      <h2>แคชเชียร์</h2>
-      <div id="checkout-list"></div>
-    </section>
+      <section id="pos" class="screen section-card">
+        <div class="section-head with-controls">
+          <h2>ลูกค้า</h2>
+          <div class="queue-controls">
+            <button class="btn-secondary" type="button">-</button>
+            <button class="btn-secondary" type="button">M</button>
+            <button class="btn-secondary" type="button">+</button>
+          </div>
+        </div>
+        <div id="table-grid" class="table-grid"></div>
+        <div id="menu-area" class="hidden section-card soft">
+          <h3>โต๊ะ <span id="active-table"></span></h3>
+          <div id="menu-list" class="chip-grid"></div>
+          <div id="cart-list" class="order-list"></div>
+          <button id="submit-order" class="btn-primary">ส่งออเดอร์</button>
+        </div>
+      </section>
 
-    <section id="kitchen" class="screen hidden">
-      <h2>ออเดอร์ทั้งหมด</h2>
-      <div id="all-orders"></div>
-    </section>
+      <section id="cashier" class="screen hidden section-card">
+        <div class="section-head">
+          <h2>คิวเช็คบิล</h2>
+          <span id="checkout-count" class="badge">0 รายการ</span>
+        </div>
+        <div id="checkout-list"></div>
+      </section>
 
-    <section id="settings" class="screen hidden">
-      <h2>ตั้งค่า</h2>
-      <label>จำนวนโต๊ะ <input id="table-count" type="number" min="1" /></label>
-      <button id="save-settings">บันทึก</button>
-      <button id="reset-day">รีเซ็ตวัน</button>
-    </section>
+      <section id="kitchen" class="screen hidden section-card">
+        <div class="section-head">
+          <h2>หลังร้าน</h2>
+          <div class="segmented" id="kitchen-subtabs">
+            <button class="seg-btn is-active" data-subtab="sales" type="button">ยอดขาย</button>
+            <button class="seg-btn" data-subtab="manage" type="button">จัดการร้าน</button>
+          </div>
+        </div>
 
-    <section id="report" class="screen hidden">
-      <h2>รายงาน</h2>
-      <p>ยอดขายรวม: <strong id="sales-total">0</strong> บาท</p>
-      <div id="sales-list"></div>
-    </section>
-  </main>
+        <div id="subtab-sales" class="subtab-panel">
+          <div class="stat-grid">
+            <div class="stat-card"><small>วันนี้</small><strong id="sale-today">0</strong></div>
+            <div class="stat-card"><small>7 วัน</small><strong id="sale-week">0</strong></div>
+            <div class="stat-card"><small>30 วัน</small><strong id="sale-month">0</strong></div>
+          </div>
+          <div class="stat-grid">
+            <div class="stat-card"><small>เงินสดสะสม</small><strong id="cash-total">0</strong></div>
+            <div class="stat-card"><small>โอน QR สะสม</small><strong id="qr-total">0</strong></div>
+            <div class="stat-card highlight"><small>เงินรวมสะสม</small><strong id="sales-total">0</strong></div>
+          </div>
+          <div class="section-card soft">
+            <h3>ประวัติการขาย</h3>
+            <div id="sales-list"></div>
+          </div>
+          <div class="section-card soft">
+            <h3>ออเดอร์ทั้งหมด</h3>
+            <div id="all-orders"></div>
+          </div>
+        </div>
+
+        <div id="subtab-manage" class="subtab-panel hidden">
+          <div class="section-card soft">
+            <h3>ตั้งค่าจำนวนโต๊ะ/คิว</h3>
+            <div class="input-shell">
+              <label>จำนวนโต๊ะ</label>
+              <input id="table-count" type="number" min="1" />
+            </div>
+            <div class="btn-row">
+              <button id="save-settings" class="btn-primary">บันทึก</button>
+              <button id="reset-day" class="btn-secondary">รีเซ็ตวัน</button>
+            </div>
+          </div>
+          <div class="section-card soft">
+            <div class="section-head">
+              <h3>รายการเมนู</h3>
+              <button class="btn-accent" type="button">+ เพิ่มเมนู</button>
+            </div>
+            <div id="menu-preview" class="chip-grid"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="settings" class="screen hidden section-card">
+        <div class="section-head"><h2>ระบบ</h2></div>
+        <div class="section-card soft">
+          <h3>ข้อมูลร้านค้า</h3>
+          <div class="input-shell"><label>ชื่อร้าน</label><input type="text" placeholder="FAKDU" /></div>
+          <div class="input-shell"><label>เบอร์โทร</label><input type="text" placeholder="08x-xxx-xxxx" /></div>
+          <button class="btn-primary">บันทึกการตั้งค่า</button>
+        </div>
+        <div class="system-grid">
+          <div class="section-card soft"><h3>Backup</h3><button class="btn-secondary">สำรองข้อมูล</button></div>
+          <div class="section-card soft"><h3>Restore</h3><button class="btn-secondary">กู้คืนข้อมูล</button></div>
+          <div class="section-card soft"><h3>PIN Admin</h3><div class="input-shell"><input type="password" placeholder="••••" /></div></div>
+        </div>
+      </section>
+    </main>
+  </div>
 
   <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
