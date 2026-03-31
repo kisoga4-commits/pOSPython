@@ -4,12 +4,16 @@ let menuEditIndex = -1;
 let filteredSales = [];
 let activeBill = null;
 let adminUnlocked = false;
+let selectedTableId = null;
+let selectedMenuItem = null;
+let orderCart = [];
+let tableGridColumns = 4;
 
 const statusMap = {
-  available: { label: '⚪', note: '' },
-  pending_order: { label: '🟠', note: '' },
-  accepted_order: { label: '🟢', note: '' },
-  checkout_requested: { label: '🟣', note: '' },
+  available: { label: 'ว่าง', tone: 'available', note: 'พร้อมรับลูกค้า' },
+  pending_order: { label: 'มีออร์เดอร์ใหม่', tone: 'pending', note: 'รอพนักงานรับออร์เดอร์' },
+  accepted_order: { label: 'กำลังทำ', tone: 'accepted', note: 'กำลังเตรียมอาหาร' },
+  checkout_requested: { label: 'รอเช็คบิล', tone: 'checkout', note: 'ลูกค้าขอชำระเงิน' },
 };
 
 const qs = (id) => document.getElementById(id);
@@ -55,31 +59,48 @@ function showScreen(id) {
   document.querySelectorAll('[data-screen]').forEach((b) => b.classList.toggle('is-active', b.dataset.screen === id));
 }
 
-function openCustomerFlow(tableId) {
-  window.open(`/customer?table=${tableId}`, '_blank');
+function getTableOrders(tableId) {
+  return db.orders.filter((o) => o.target === 'table' && o.target_id === tableId && o.status !== 'cancelled');
+}
+
+function getTableSummary(tableId) {
+  const orders = getTableOrders(tableId);
+  const items = orders.flatMap((o) => o.items || []);
+  const total = items.reduce((s, i) => s + Number(i.price || 0), 0);
+  const latestOrder = orders.slice().sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at))[0];
+  return { orders, items, total, latestOrder };
+}
+
+function formatDateTime(value) {
+  if (!value) return '-';
+  return new Date(value).toLocaleString('th-TH', { hour12: false });
 }
 
 function renderTables() {
   const grid = qs('table-grid');
+  grid.style.gridTemplateColumns = `repeat(${tableGridColumns}, minmax(0, 1fr))`;
   grid.innerHTML = '';
   const unit = unitLabel();
   db.tables.forEach((table) => {
     const meta = statusMap[table.status] || statusMap.available;
-    const card = document.createElement('div');
-    card.className = `table-card ${table.status}`;
+    const { items, total, latestOrder } = getTableSummary(table.id);
+    const topItems = items.slice(-3).map((item) => `${item.name} x${item.qty || 1}`).join(' · ');
+
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = `table-card ${meta.tone} ${table.status}`;
     card.innerHTML = `
-      <p class="table-no">${table.id}</p>
-      <span class="pill">${meta.label}</span>
-      <small class="muted">👆</small>
-      ${table.status === 'pending_order' ? '<div class="alert-dot">● New Order</div>' : ''}
+      <div class="table-head-row">
+        <p class="table-no">${unit} ${table.id}</p>
+        <span class="status-chip ${meta.tone}">${meta.label}</span>
+      </div>
+      <p class="table-note">${meta.note}</p>
+      <div class="table-meta">${items.length} รายการ · ${money(total)} บาท</div>
+      <div class="table-items-preview">${topItems || 'ยังไม่มีรายการสั่ง'}</div>
+      <div class="table-time">อัปเดตล่าสุด ${formatDateTime(latestOrder?.updated_at || latestOrder?.created_at)}</div>
+      ${table.status === 'pending_order' ? '<div class="alert-dot">ออร์เดอร์ใหม่เข้าระบบ</div>' : ''}
     `;
-    card.addEventListener('click', () => openCustomerFlow(table.id));
-    card.addEventListener('dblclick', async () => {
-      if (table.status === 'pending_order') {
-        await api('/api/table/accept', { method: 'POST', body: JSON.stringify({ table_id: table.id }) });
-        await loadData();
-      }
-    });
+    card.addEventListener('click', () => openOrderModal(table.id));
     grid.appendChild(card);
   });
 }
@@ -359,6 +380,129 @@ function renderTableQRCodes() {
   });
 }
 
+function selectMenuItem(item) {
+  selectedMenuItem = item;
+  qs('order-selected-menu').value = `${item.name} · ${money(item.price)} บาท`;
+  const addon = qs('order-addon');
+  addon.innerHTML = '<option value="">ไม่เลือก add-on</option>';
+  (item.addons || []).forEach((add) => {
+    const option = document.createElement('option');
+    option.value = add;
+    option.textContent = add;
+    addon.appendChild(option);
+  });
+}
+
+function renderOrderMenuChoices() {
+  const grid = qs('order-menu-grid');
+  grid.innerHTML = '';
+  db.menu.forEach((item) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'menu-choice';
+    btn.innerHTML = `<strong>${item.name}</strong><small>${money(item.price)} บาท</small>`;
+    btn.addEventListener('click', () => selectMenuItem(item));
+    grid.appendChild(btn);
+  });
+}
+
+function renderOrderCart() {
+  const list = qs('order-cart-list');
+  list.innerHTML = '';
+  if (!orderCart.length) {
+    list.innerHTML = '<div class="empty">ยังไม่มีรายการในตะกร้า</div>';
+    qs('order-cart-total').textContent = 'รวมชั่วคราว 0.00 บาท';
+    return;
+  }
+
+  orderCart.forEach((item, idx) => {
+    const row = document.createElement('div');
+    row.className = 'list-card';
+    row.innerHTML = `
+      <strong>${item.name}</strong>
+      <div>${item.qty} x ${money(item.price)} บาท ${item.addon ? `· ${item.addon}` : ''}</div>
+      <div>${item.note ? `หมายเหตุ: ${item.note}` : ''}</div>
+      <button class="btn-soft danger" data-rm="${idx}">ลบ</button>
+    `;
+    row.querySelector('[data-rm]').addEventListener('click', () => {
+      orderCart.splice(idx, 1);
+      renderOrderCart();
+    });
+    list.appendChild(row);
+  });
+
+  const total = orderCart.reduce((sum, item) => sum + (Number(item.price) * Number(item.qty)), 0);
+  qs('order-cart-total').textContent = `รวมชั่วคราว ${money(total)} บาท`;
+}
+
+function renderExistingOrders(tableId) {
+  const list = qs('order-existing-list');
+  const { items, total, latestOrder } = getTableSummary(tableId);
+  list.innerHTML = '';
+  if (!items.length) {
+    list.innerHTML = '<div class="empty">ยังไม่มีออร์เดอร์จากลูกค้า</div>';
+  } else {
+    items.forEach((item) => {
+      const row = document.createElement('div');
+      row.className = 'list-card';
+      row.innerHTML = `
+        <strong>${item.name}</strong>
+        <div>จำนวน ${item.qty || 1} · ${money(item.price)} บาท</div>
+        <div>${item.addon ? `add-on: ${item.addon}` : ''} ${item.note ? ` · หมายเหตุ: ${item.note}` : ''}</div>
+      `;
+      list.appendChild(row);
+    });
+  }
+  qs('order-existing-total').textContent = `ยอดรวมตอนนี้ ${money(total)} บาท`;
+  qs('order-latest-time').textContent = `เวลาออร์เดอร์ล่าสุด: ${formatDateTime(latestOrder?.updated_at || latestOrder?.created_at)}`;
+}
+
+function openOrderModal(tableId) {
+  selectedTableId = tableId;
+  selectedMenuItem = null;
+  orderCart = [];
+  const table = db.tables.find((t) => t.id === tableId);
+  const meta = statusMap[table?.status] || statusMap.available;
+  qs('order-modal-title').textContent = `สั่งออร์เดอร์ ${unitLabel()} ${tableId}`;
+  qs('order-modal-status').textContent = `สถานะปัจจุบัน: ${meta.label}`;
+  qs('order-selected-menu').value = '';
+  qs('order-addon').innerHTML = '<option value="">ไม่เลือก add-on</option>';
+  qs('order-qty').value = 1;
+  qs('order-note').value = '';
+  renderOrderMenuChoices();
+  renderOrderCart();
+  renderExistingOrders(tableId);
+  openModal('order-modal');
+}
+
+async function submitOrderFromModal() {
+  if (!selectedTableId || !orderCart.length) return;
+  const payloadItems = [];
+  orderCart.forEach((item) => {
+    const qty = Number(item.qty || 1);
+    for (let i = 0; i < qty; i += 1) {
+      payloadItems.push({ name: item.name, price: Number(item.price), addon: item.addon, note: item.note, qty: 1 });
+    }
+  });
+
+  const res = await api('/api/order', {
+    method: 'POST',
+    body: JSON.stringify({
+      target: 'table',
+      target_id: selectedTableId,
+      cart: payloadItems,
+      source: 'staff',
+      note: `staff-inline-${new Date().toISOString()}`,
+    }),
+  });
+  if (res.error) return;
+
+  orderCart = [];
+  await loadData();
+  renderOrderCart();
+  renderExistingOrders(selectedTableId);
+}
+
 async function loadData() {
   db = await api('/api/data');
   if (db.error) {
@@ -372,6 +516,10 @@ async function loadData() {
   renderSales();
   renderMenu();
   renderSystem();
+
+  if (selectedTableId && !qs('order-modal').classList.contains('hidden')) {
+    renderExistingOrders(selectedTableId);
+  }
 }
 
 function bind() {
@@ -415,9 +563,33 @@ function bind() {
     }
   });
 
-  qs('quick-down').addEventListener('click', () => { qs('table-count').value = Math.max(1, Number(qs('table-count').value) - 1); qs('update-table-count').click(); });
-  qs('quick-mid').addEventListener('click', () => { qs('table-count').value = db.tableCount || 8; qs('update-table-count').click(); });
-  qs('quick-up').addEventListener('click', () => { qs('table-count').value = Number(qs('table-count').value || 0) + 1; qs('update-table-count').click(); });
+  qs('quick-down').addEventListener('click', () => {
+    tableGridColumns = Math.max(2, tableGridColumns - 1);
+    renderTables();
+  });
+  qs('quick-mid').addEventListener('click', () => {
+    tableGridColumns = 4;
+    renderTables();
+  });
+  qs('quick-up').addEventListener('click', () => {
+    tableGridColumns = Math.min(6, tableGridColumns + 1);
+    renderTables();
+  });
+
+  qs('order-add-item').addEventListener('click', () => {
+    if (!selectedMenuItem) return;
+    const qty = Math.max(1, Number(qs('order-qty').value || 1));
+    const addon = qs('order-addon').value;
+    const note = qs('order-note').value.trim();
+    orderCart.push({ name: selectedMenuItem.name, price: Number(selectedMenuItem.price), qty, addon, note });
+    qs('order-note').value = '';
+    qs('order-qty').value = 1;
+    renderOrderCart();
+  });
+
+  qs('order-submit').addEventListener('click', submitOrderFromModal);
+  qs('order-close').addEventListener('click', () => closeModal('order-modal'));
+  qs('order-back').addEventListener('click', () => closeModal('order-modal'));
 
   qs('update-table-count').addEventListener('click', async () => {
     await api('/api/settings', { method: 'POST', body: JSON.stringify({ tableCount: Number(qs('table-count').value), settings: { serviceMode: qs('service-mode').value } }) });
@@ -506,7 +678,6 @@ function bind() {
     await api('/api/restore', { method: 'POST', body: JSON.stringify(json) });
     await loadData();
   });
-
 }
 
 async function poll() {
