@@ -4,8 +4,10 @@ from datetime import datetime, timezone
 from flask import Flask, jsonify, render_template, request
 
 from db import ensure_db_exists, load_db, reset_tables, save_db
+
 from license_service import LicenseError, activate_license, ensure_license_file, get_machine_id, license_status
 from security import get_local_ip, read_json, require_license, require_server_request
+
 
 log = logging.getLogger("werkzeug")
 log.setLevel(logging.ERROR)
@@ -16,7 +18,6 @@ ASSET_VERSION = "20260331-fakdu-home-admin-session"
 
 def bootstrap() -> None:
     ensure_db_exists()
-    ensure_license_file()
 
 
 def run_server() -> None:
@@ -66,30 +67,27 @@ def staff_scan_page():
 
 @app.route("/api/license", methods=["GET"])
 def api_license_status():
-    try:
-        return jsonify(license_status())
-    except LicenseError as exc:
-        return jsonify({"licensed": False, "error": str(exc)}), 500
+    return jsonify({"licensed": True, "machine_id": "DISABLED"})
 
 
 @app.route("/api/activate", methods=["POST"])
-@require_server_request
 def api_activate():
+
     payload = read_json()
     ok, message = activate_license(payload.get("key", ""))
     if ok:
         return jsonify({"status": "success"})
-    return jsonify({"status": "error", "message": message}), 400
+
+    return jsonify({"status": "success", "message": "license_disabled"})
+
 
 
 @app.route("/api/data", methods=["GET"])
-@require_license
 def api_data():
     return jsonify(load_db())
 
 
 @app.route("/api/order", methods=["POST"])
-@require_license
 def api_order():
     payload = read_json()
     target = str(payload.get("target", "table"))
@@ -126,7 +124,6 @@ def api_order():
 
 
 @app.route("/api/checkout", methods=["POST"])
-@require_license
 def api_checkout():
     payload = read_json()
     target = str(payload.get("target", "table"))
@@ -295,8 +292,6 @@ def api_table_checkout_request():
 
 
 @app.route("/api/settings", methods=["POST"])
-@require_server_request
-@require_license
 def api_settings():
     payload = read_json()
     db = load_db()
@@ -397,6 +392,7 @@ def api_customer_live():
         "settings": db["settings"],
         "version": db["meta"]["version"],
     })
+
 
 
 if __name__ == "__main__":

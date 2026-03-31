@@ -35,10 +35,19 @@ function applyTheme() {
 }
 
 function showScreen(id) {
+
   if (['backstore', 'system'].includes(id) && !ensureAdminSession()) return;
   document.querySelectorAll('.screen').forEach((s) => s.classList.add('hidden'));
   qs(id).classList.remove('hidden');
   document.querySelectorAll('[data-screen]').forEach((b) => b.classList.toggle('is-active', b.dataset.screen === id));
+
+  document.querySelectorAll('.screen').forEach((el) => el.classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+
+  document.querySelectorAll('.tabs .tab').forEach((el) => el.classList.remove('is-active'));
+  const activeTab = document.querySelector(`.tabs .tab[data-screen="${id}"]`);
+  if (activeTab) activeTab.classList.add('is-active');
+
 }
 
 function getAdminPin() {
@@ -343,6 +352,7 @@ async function loadData() {
   renderSystem();
 }
 
+
 function bindPwa() {
   window.addEventListener('beforeinstallprompt', (event) => {
     event.preventDefault();
@@ -396,6 +406,13 @@ function bind() {
     else db.menu.push({ id: Date.now(), ...payload });
     await api('/api/settings', { method: 'POST', body: JSON.stringify({ menu: db.menu }) });
     menuEditIndex = -1;
+
+function bindActions() {
+  document.getElementById('submit-order').addEventListener('click', async () => {
+    if (!currentTable || !cart.length) return;
+    await api('/api/order', { method: 'POST', body: JSON.stringify({ table_id: currentTable, cart }) });
+    document.getElementById('menu-area').classList.add('hidden');
+
     await loadData();
   });
 
@@ -462,6 +479,7 @@ function bind() {
   qs('logout-system').addEventListener('click', logoutAdmin);
 }
 
+
 async function poll() {
   const info = await api(`/api/staff/live?since=${version}`);
   if (info.changed) {
@@ -480,4 +498,16 @@ async function poll() {
   }
   await loadData();
   setInterval(poll, 2500);
+
+(async function init() {
+  bindNav();
+  bindActions();
+
+  const mode = new URLSearchParams(window.location.search).get('mode');
+  if (mode && ['order', 'cashier', 'report'].includes(mode)) {
+    showScreen(mode);
+  }
+
+  await loadData();
+
 })();
