@@ -5,6 +5,14 @@ let orderCart = [];
 let menuEditIndex = -1;
 let activeCashierTableId = null;
 let menuImagePreviewData = '';
+const RECOVERY_COLORS = ['แดง', 'ส้ม', 'เหลือง', 'เขียว', 'ฟ้า', 'น้ำเงิน', 'ม่วง'];
+const CELEBRITIES = ['ณเดชน์ คูกิมิยะ', 'ญาญ่า อุรัสยา', 'ใหม่ ดาวิกา', 'มาริโอ้ เมาเร่อ', 'เบลล่า ราณี', 'ชมพู่ อารยา', 'อั้ม พัชราภา', 'แพนเค้ก เขมนิจ', 'เวียร์ ศุกลวัฒน์', 'โป๊ป ธนวรรธน์', 'เจมส์ จิรายุ', 'คิมเบอร์ลี่', 'บอย ปกรณ์', 'เต้ย จรินทร์พร', 'ใบเฟิร์น พิมพ์ชนก', 'โตโน่ ภาคิน', 'แพทริเซีย กู๊ด', 'แอฟ ทักษอร', 'นนกุล ชานน', 'กลัฟ คณาวุฒิ'];
+const THEME_PRESETS = [
+  { id: 'sunset', label: 'Sunset', primary: '#7c3aed', bg: '#f3f4f6', card: '#ffffff' },
+  { id: 'forest', label: 'Forest', primary: '#047857', bg: '#ecfdf5', card: '#ffffff' },
+  { id: 'ocean', label: 'Ocean', primary: '#0ea5e9', bg: '#ecfeff', card: '#ffffff' },
+  { id: 'mono', label: 'Mono', primary: '#334155', bg: '#f8fafc', card: '#ffffff' },
+];
 
 const statusMap = {
   available: { label: 'ว่าง', tone: 'available', icon: '○' },
@@ -46,6 +54,9 @@ function applyTheme() {
   qs('header-store-name').textContent = s.storeName || 'FAKDU';
   qs('store-logo').innerHTML = s.logoImage ? `<img src="${s.logoImage}" alt="logo" />` : (s.logoName || 'LOGO');
   qs('shop-logo-preview').src = s.logoImage || '';
+  document.documentElement.style.setProperty('--primary', s.themeColor || '#7c3aed');
+  document.documentElement.style.setProperty('--bg', s.bgColor || '#f3f4f6');
+  document.documentElement.style.setProperty('--card', s.cardColor || '#ffffff');
 }
 
 function getTableOrders(tableId) {
@@ -73,7 +84,7 @@ function renderTables() {
          <small>${items.slice(-4).map((i) => `${i.name} • ${money(i.price)}`).join('<br>')}</small>
          <div class="table-total">รวม ${money(total)} บาท</div>`
       : `<div class="table-head-row"><strong>${unitLabel()} ${table.id}</strong><span class="status-chip available">○</span></div>
-         <small>พร้อมรับออเดอร์</small>`;
+         <small></small>`;
     card.addEventListener('click', () => selectTable(table.id));
     grid.appendChild(card);
   });
@@ -219,8 +230,8 @@ function renderCashier() {
     const row = document.createElement('button');
     row.className = `list-card checkout-card ${meta.tone}`;
     row.innerHTML = `<strong class="checkout-title">${meta.icon} ${unitLabel()} ${table.id}</strong>
-      <small>${meta.label}</small>
-      <div class="checkout-items">${items.length ? items.slice(-5).map((i) => `• ${i.name} (${money(i.price)})`).join('<br>') : 'ยังไม่มีรายการอาหาร'}</div>
+      <small>${table.status === 'available' ? '' : meta.label}</small>
+      <div class="checkout-items">${items.length ? items.slice(-5).map((i) => `• ${i.name} (${money(i.price)})`).join('<br>') : ''}</div>
       <strong>รวม ${money(total)} บาท</strong>`;
     row.addEventListener('click', () => openBill(table.id));
     wrap.appendChild(row);
@@ -318,7 +329,48 @@ function renderSystem() {
   qs('bank-name').value = s.bankName || '';
   qs('promptpay').value = s.promptPay || '';
   qs('dynamic-qr').checked = Boolean(s.dynamicPromptPay);
+  qs('admin-recovery-phone').value = s.adminRecoveryPhone || '';
+  setSelectOptions('admin-recovery-color', RECOVERY_COLORS, s.adminRecoveryColor || '');
+  setSelectOptions('admin-recovery-celebrity', CELEBRITIES, s.adminRecoveryCelebrity || '');
+  setSelectOptions('forgot-color', RECOVERY_COLORS, '');
+  setSelectOptions('forgot-celebrity', CELEBRITIES, '');
+  qs('theme-primary').value = s.themeColor || '#7c3aed';
+  qs('theme-bg').value = s.bgColor || '#f3f4f6';
+  qs('theme-card').value = s.cardColor || '#ffffff';
+  renderThemePresets(s.themePreset || '');
   renderTableQRList();
+}
+
+function setSelectOptions(id, options, selectedValue) {
+  const node = qs(id);
+  node.innerHTML = '<option value="">-- เลือก --</option>';
+  options.forEach((name) => {
+    const option = document.createElement('option');
+    option.value = name;
+    option.textContent = name;
+    option.selected = name === selectedValue;
+    node.appendChild(option);
+  });
+}
+
+function renderThemePresets(activePresetId) {
+  const wrap = qs('theme-preset-list');
+  wrap.innerHTML = '';
+  THEME_PRESETS.forEach((preset) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `theme-preset ${activePresetId === preset.id ? 'is-active' : ''}`;
+    btn.dataset.presetId = preset.id;
+    btn.innerHTML = `<span class="theme-dot" style="background:${preset.primary}"></span>${preset.label}`;
+    btn.addEventListener('click', () => {
+      qs('theme-primary').value = preset.primary;
+      qs('theme-bg').value = preset.bg;
+      qs('theme-card').value = preset.card;
+      document.querySelectorAll('.theme-preset').forEach((node) => node.classList.remove('is-active'));
+      btn.classList.add('is-active');
+    });
+    wrap.appendChild(btn);
+  });
 }
 
 function openQRModal(title, url, imageUrl) {
@@ -362,7 +414,7 @@ function bind() {
   document.querySelectorAll('[data-screen]').forEach((btn) => btn.addEventListener('click', () => showScreen(btn.dataset.screen)));
   document.querySelectorAll('[data-system-tab]').forEach((btn) => btn.addEventListener('click', () => {
     document.querySelectorAll('[data-system-tab]').forEach((s) => s.classList.toggle('is-active', s === btn));
-    ['general', 'payment', 'qr'].forEach((name) => qs(`system-${name}`).classList.toggle('hidden', name !== btn.dataset.systemTab));
+    ['general', 'payment', 'qr', 'security', 'theme'].forEach((name) => qs(`system-${name}`).classList.toggle('hidden', name !== btn.dataset.systemTab));
   }));
   document.querySelectorAll('[data-backstore-tab]').forEach((btn) => btn.addEventListener('click', () => {
     document.querySelectorAll('[data-backstore-tab]').forEach((s) => s.classList.toggle('is-active', s === btn));
@@ -370,6 +422,7 @@ function bind() {
   }));
 
   qs('close-qr-modal').addEventListener('click', () => qs('qr-modal').classList.add('hidden'));
+  qs('close-forgot-admin-modal').addEventListener('click', () => qs('forgot-admin-modal').classList.add('hidden'));
   qs('close-table-order-modal').addEventListener('click', () => qs('table-order-modal').classList.add('hidden'));
   qs('close-payment-modal').addEventListener('click', () => qs('payment-modal').classList.add('hidden'));
   qs('sales-from')?.addEventListener('change', renderSales);
@@ -460,15 +513,54 @@ function bind() {
     qs('insight-modal').classList.remove('hidden');
   });
   qs('close-insight-modal')?.addEventListener('click', () => qs('insight-modal').classList.add('hidden'));
+  qs('open-forgot-admin-modal')?.addEventListener('click', () => {
+    qs('forgot-phone').value = '';
+    qs('forgot-color').value = '';
+    qs('forgot-celebrity').value = '';
+    qs('new-admin-pin').value = '';
+    qs('forgot-admin-modal').classList.remove('hidden');
+  });
+  qs('reset-admin-pin')?.addEventListener('click', async () => {
+    const s = db.settings || {};
+    const phoneOk = qs('forgot-phone').value.trim() && qs('forgot-phone').value.trim() === (s.adminRecoveryPhone || '');
+    const colorOk = qs('forgot-color').value === (s.adminRecoveryColor || '');
+    const celebOk = qs('forgot-celebrity').value === (s.adminRecoveryCelebrity || '');
+    const newPin = qs('new-admin-pin').value.trim();
+    if (!phoneOk || !colorOk || !celebOk || !newPin) {
+      alert('ข้อมูลยืนยันไม่ถูกต้อง หรือยังไม่ได้กรอกรหัสใหม่');
+      return;
+    }
+    await api('/api/settings', { method: 'POST', body: JSON.stringify({ settings: { adminPin: newPin } }) });
+    qs('forgot-admin-modal').classList.add('hidden');
+    alert('รีเซ็ตรหัส Admin สำเร็จ');
+    await loadData();
+  });
 
   qs('save-system').addEventListener('click', async () => {
     let qrImage = db.settings?.qrImage || '';
     const logoImage = qs('shop-logo-preview').src || db.settings?.logoImage || '';
     const qrFile = qs('qr-image').files?.[0];
     if (qrFile) qrImage = await new Promise((resolve) => { const r = new FileReader(); r.onload = () => resolve(r.result); r.readAsDataURL(qrFile); });
+    const activeThemePreset = document.querySelector('.theme-preset.is-active')?.dataset.presetId || 'custom';
     await api('/api/settings', {
       method: 'POST',
-      body: JSON.stringify({ settings: { storeName: qs('store-name').value.trim(), bankName: qs('bank-name').value.trim(), promptPay: qs('promptpay').value.trim(), dynamicPromptPay: qs('dynamic-qr').checked, qrImage, logoImage } }),
+      body: JSON.stringify({
+        settings: {
+          storeName: qs('store-name').value.trim(),
+          bankName: qs('bank-name').value.trim(),
+          promptPay: qs('promptpay').value.trim(),
+          dynamicPromptPay: qs('dynamic-qr').checked,
+          qrImage,
+          logoImage,
+          adminRecoveryPhone: qs('admin-recovery-phone').value.trim(),
+          adminRecoveryColor: qs('admin-recovery-color').value,
+          adminRecoveryCelebrity: qs('admin-recovery-celebrity').value,
+          themeColor: qs('theme-primary').value,
+          bgColor: qs('theme-bg').value,
+          cardColor: qs('theme-card').value,
+          themePreset: activeThemePreset,
+        },
+      }),
     });
     await loadData();
   });

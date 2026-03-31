@@ -46,7 +46,12 @@ def default_db() -> dict:
             "bankName": "",
             "themeColor": "#8f1d2a",
             "bgColor": "#f6efe9",
+            "cardColor": "#ffffff",
+            "themePreset": "sunset",
             "dynamicPromptPay": False,
+            "adminRecoveryPhone": "",
+            "adminRecoveryColor": "",
+            "adminRecoveryCelebrity": "",
             "masterNode": "main",
             "sync": {
                 "session": "main-session",
