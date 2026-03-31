@@ -17,11 +17,26 @@ function showScreen(id) {
   });
   const node = document.getElementById(id);
   if (node) node.classList.remove('hidden');
+  document.querySelectorAll('[data-screen]').forEach((btn) => {
+    btn.classList.toggle('is-active', btn.dataset.screen === id);
+  });
 }
 
 function bindNav() {
   document.querySelectorAll('[data-screen]').forEach((btn) => {
     btn.addEventListener('click', () => showScreen(btn.dataset.screen));
+  });
+  showScreen('pos');
+}
+
+function bindKitchenSubtabs() {
+  document.querySelectorAll('[data-subtab]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const target = btn.dataset.subtab;
+      document.querySelectorAll('[data-subtab]').forEach((b) => b.classList.toggle('is-active', b === btn));
+      document.getElementById('subtab-sales').classList.toggle('hidden', target !== 'sales');
+      document.getElementById('subtab-manage').classList.toggle('hidden', target !== 'manage');
+    });
   });
 }
 
@@ -42,7 +57,9 @@ function renderTables() {
   grid.innerHTML = '';
   db.tables.forEach((table) => {
     const btn = document.createElement('button');
-    btn.textContent = `โต๊ะ ${table.id} (${table.status})`;
+    const occupied = table.status !== 'free' && table.status !== 'ว่าง';
+    btn.className = `table-card ${occupied ? 'occupied' : ''}`;
+    btn.innerHTML = `<p class="table-id">โต๊ะ ${table.id}</p><span class="badge table-status">${table.status}</span>`;
     btn.addEventListener('click', () => {
       currentTable = table.id;
       cart = [];
@@ -57,7 +74,10 @@ function renderTables() {
 
 function renderMenu() {
   const list = document.getElementById('menu-list');
+  const preview = document.getElementById('menu-preview');
   list.innerHTML = '';
+  if (preview) preview.innerHTML = '';
+
   db.menu.forEach((m) => {
     const btn = document.createElement('button');
     btn.textContent = `${m.name} - ${m.price}`;
@@ -66,6 +86,13 @@ function renderMenu() {
       renderCart();
     });
     list.appendChild(btn);
+
+    if (preview) {
+      const chip = document.createElement('span');
+      chip.className = 'badge';
+      chip.textContent = m.name;
+      preview.appendChild(chip);
+    }
   });
 }
 
@@ -73,8 +100,18 @@ function renderCart() {
   const list = document.getElementById('cart-list');
   list.innerHTML = '';
   const total = cart.reduce((sum, item) => sum + Number(item.price || 0), 0);
+
+  if (!cart.length) {
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.textContent = 'ยังไม่มีรายการในบิลนี้';
+    list.appendChild(empty);
+    return;
+  }
+
   cart.forEach((item) => {
     const row = document.createElement('div');
+    row.className = 'list-item';
     row.textContent = `${item.name} - ${item.price}`;
     list.appendChild(row);
   });
@@ -85,6 +122,7 @@ function renderCart() {
 
 function renderCashier() {
   const list = document.getElementById('checkout-list');
+  const count = document.getElementById('checkout-count');
   list.innerHTML = '';
   const grouped = {};
   db.orders.forEach((o) => {
@@ -93,10 +131,22 @@ function renderCashier() {
     grouped[key].push(...o.items);
   });
 
-  Object.entries(grouped).forEach(([key, items]) => {
+  const entries = Object.entries(grouped);
+  count.textContent = `${entries.length} รายการ`;
+
+  if (!entries.length) {
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.innerHTML = '🧾 ยังไม่มีคิวเช็คบิล';
+    list.appendChild(empty);
+    return;
+  }
+
+  entries.forEach(([key, items]) => {
     const [target, targetId] = key.split(':');
     const total = items.reduce((sum, i) => sum + Number(i.price || 0), 0);
     const btn = document.createElement('button');
+    btn.className = 'list-item';
     btn.textContent = `Checkout ${target} ${targetId} (${total})`;
     btn.addEventListener('click', async () => {
       await api('/api/checkout', {
@@ -123,10 +173,26 @@ function renderOrders() {
 function renderReport() {
   const total = db.sales.reduce((sum, s) => sum + Number(s.total || 0), 0);
   document.getElementById('sales-total').textContent = String(total);
+  document.getElementById('sale-today').textContent = String(total);
+  document.getElementById('sale-week').textContent = String(total);
+  document.getElementById('sale-month').textContent = String(total);
+  document.getElementById('cash-total').textContent = String(total);
+  document.getElementById('qr-total').textContent = '0';
+
   const list = document.getElementById('sales-list');
   list.innerHTML = '';
+
+  if (!db.sales.length) {
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.textContent = 'ยังไม่มีประวัติการขาย';
+    list.appendChild(empty);
+    return;
+  }
+
   db.sales.slice().reverse().forEach((sale) => {
     const row = document.createElement('div');
+    row.className = 'list-item';
     row.textContent = `${sale.id} | ${sale.target} ${sale.target_id} | ${sale.total}`;
     list.appendChild(row);
   });
@@ -142,6 +208,7 @@ async function loadData() {
   db = data;
   version = db.meta.version;
   renderTables();
+  renderMenu();
   renderCashier();
   renderOrders();
   renderReport();
@@ -195,10 +262,18 @@ function bindActions() {
   });
 }
 
+function registerServiceWorker() {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/static/sw.js').catch(() => {});
+  }
+}
+
 (function init() {
   bindNav();
+  bindKitchenSubtabs();
   bindActions();
   renderLinks();
+  registerServiceWorker();
   checkLicense();
   setInterval(pollLive, 2500);
 })();
