@@ -3,6 +3,8 @@ let cart = [];
 let version = 0;
 let currentSettings = {};
 let currentTables = [];
+let activeItemDraft = null;
+let toastTimer = null;
 const params = new URLSearchParams(window.location.search);
 const lockedTableId = Number(params.get('table') || document.body.dataset.tableId || 0);
 
@@ -30,10 +32,53 @@ function money(n) {
   return Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function normalizeAddonOptions(item) {
+  if (Array.isArray(item?.addons)) return item.addons.filter(Boolean).map((value) => String(value).trim()).filter(Boolean);
+  if (Array.isArray(item?.modifiers)) return item.modifiers.filter(Boolean).map((value) => String(value).trim()).filter(Boolean);
+  if (typeof item?.addonOptions === 'string') return item.addonOptions.split(',').map((value) => value.trim()).filter(Boolean);
+  if (Array.isArray(item?.addonOptions)) return item.addonOptions.filter(Boolean).map((value) => String(value).trim()).filter(Boolean);
+  return [];
+}
+
+function cartIdentity(item) {
+  return `${item.id || item.name}__${(item.addon || '').trim()}__${(item.note || '').trim()}`;
+}
+
+function addToCart(item, options = {}) {
+  const addon = String(options.addon || '').trim();
+  const note = String(options.note || '').trim();
+  const qty = Math.max(1, Number(options.qty || 1));
+  const candidate = { ...item, addon, note, qty };
+  const key = cartIdentity(candidate);
+  const existing = cart.find((entry) => cartIdentity(entry) === key);
+  if (existing) {
+    existing.qty += qty;
+  } else {
+    cart.push(candidate);
+  }
+  renderCart();
+  showAddedFeedback();
+}
+
+function showAddedFeedback() {
+  const cartButton = document.getElementById('floating-cart-btn');
+  const toast = document.getElementById('cart-toast');
+  cartButton.classList.remove('cart-bump');
+  void cartButton.offsetWidth;
+  cartButton.classList.add('cart-bump');
+  clearTimeout(toastTimer);
+  toast.classList.remove('hidden');
+  toast.classList.add('show');
+  toastTimer = setTimeout(() => {
+    toast.classList.remove('show');
+    toast.classList.add('hidden');
+  }, 900);
+}
+
 function updateFloatingCart() {
-  const count = cart.length;
+  const count = cart.reduce((sum, item) => sum + Number(item.qty || 1), 0);
   const total = cart.reduce((sum, item) => sum + (Number(item.price || 0) * Number(item.qty || 1)), 0);
-  document.getElementById('floating-cart-count').textContent = `${count} รายการ`;
+  document.getElementById('floating-cart-count').textContent = `${count} ชิ้น`;
   document.getElementById('floating-cart-total').textContent = `฿${money(total)}`;
   const badge = document.getElementById('table-badge');
   if (lockedTableId) {
@@ -42,28 +87,68 @@ function updateFloatingCart() {
   }
 }
 
+function buildAddonText(item) {
+  const bits = [];
+  if (item.addon) bits.push(item.addon);
+  if (item.note) bits.push(`โน้ต: ${item.note}`);
+  return bits.length ? `<small>${bits.join(' · ')}</small>` : '';
+}
+
 function renderMenu() {
   const list = document.getElementById('menu-list');
   list.innerHTML = '';
   menu.forEach((item) => {
-    const card = document.createElement('article');
-    card.className = 'menu-mobile-card';
+    const card = document.createElement('button');
+    card.className = 'menu-mobile-card menu-tap-card';
+    card.type = 'button';
     card.innerHTML = `
       <div class="menu-thumb">${item.image ? `<img src="${item.image}" alt="${item.name}" />` : '🍜'}</div>
       <div class="menu-mobile-meta">
         <strong>${item.name}</strong>
         <small>${money(item.price)} บาท</small>
       </div>
-      <button class="menu-add-btn" type="button">+</button>
     `;
-    card.querySelector('.menu-add-btn').addEventListener('click', (event) => {
-      event.stopPropagation();
+    card.addEventListener('click', () => {
       if (!lockedTableId) return;
-      cart.push({ ...item, addon: '', qty: 1, note: '' });
-      renderCart();
+      const addonOptions = normalizeAddonOptions(item);
+      if (!addonOptions.length) {
+        addToCart(item, { addon: '', note: '', qty: 1 });
+        return;
+      }
+      openItemDetailModal(item, addonOptions);
     });
     list.appendChild(card);
   });
+}
+
+function openItemDetailModal(item, addonOptions) {
+  activeItemDraft = item;
+  document.getElementById('item-detail-title').textContent = item.name;
+  const addonSelect = document.getElementById('item-addon-select');
+  addonSelect.innerHTML = '<option value="">ไม่เพิ่ม</option>';
+  addonOptions.forEach((option) => {
+    const node = document.createElement('option');
+    node.value = option;
+    node.textContent = option;
+    addonSelect.appendChild(node);
+  });
+  document.getElementById('item-note-input').value = '';
+  document.getElementById('item-detail-modal').classList.remove('hidden');
+}
+
+function closeItemDetailModal() {
+  document.getElementById('item-detail-modal').classList.add('hidden');
+  activeItemDraft = null;
+}
+
+function updateCartItemQty(index, diff) {
+  const item = cart[index];
+  if (!item) return;
+  item.qty = Number(item.qty || 1) + diff;
+  if (item.qty <= 0) {
+    cart.splice(index, 1);
+  }
+  renderCart();
 }
 
 function renderCart() {
@@ -80,12 +165,22 @@ function renderCart() {
 
   cart.forEach((item, idx) => {
     const row = document.createElement('div');
-    row.className = 'list-item';
-    row.innerHTML = `${idx + 1}. ${item.name} · ${item.qty} x ${money(item.price)} บาท <button class="btn-soft">ลบ</button>`;
-    row.querySelector('button').addEventListener('click', () => {
-      cart.splice(idx, 1);
-      renderCart();
-    });
+    row.className = 'list-item cart-item-row';
+    const lineTotal = Number(item.price || 0) * Number(item.qty || 1);
+    row.innerHTML = `
+      <div class="cart-item-main">
+        <strong>${item.name}</strong>
+        ${buildAddonText(item)}
+      </div>
+      <div class="cart-qty-wrap">
+        <button type="button" class="btn-soft cart-qty-btn" data-action="minus">-</button>
+        <span class="cart-qty-value">x${item.qty}</span>
+        <button type="button" class="btn-soft cart-qty-btn" data-action="plus">+</button>
+      </div>
+      <strong class="cart-line-total">${money(lineTotal)}</strong>
+    `;
+    row.querySelector('[data-action="minus"]').addEventListener('click', () => updateCartItemQty(idx, -1));
+    row.querySelector('[data-action="plus"]').addEventListener('click', () => updateCartItemQty(idx, 1));
     list.appendChild(row);
   });
   const total = cart.reduce((sum, item) => sum + (Number(item.price || 0) * Number(item.qty || 1)), 0);
@@ -175,6 +270,18 @@ function bind() {
   });
   document.getElementById('cart-modal').addEventListener('click', (event) => {
     if (event.target.id === 'cart-modal') document.getElementById('cart-modal').classList.add('hidden');
+  });
+
+  document.getElementById('close-item-detail-modal').addEventListener('click', closeItemDetailModal);
+  document.getElementById('item-detail-modal').addEventListener('click', (event) => {
+    if (event.target.id === 'item-detail-modal') closeItemDetailModal();
+  });
+  document.getElementById('item-detail-add-btn').addEventListener('click', () => {
+    if (!activeItemDraft) return;
+    const addon = document.getElementById('item-addon-select').value;
+    const note = document.getElementById('item-note-input').value;
+    addToCart(activeItemDraft, { addon, note, qty: 1 });
+    closeItemDetailModal();
   });
 
   document.getElementById('submit-order').addEventListener('click', async () => {
