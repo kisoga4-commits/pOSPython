@@ -123,6 +123,8 @@
           <button class="subtab is-active" data-system-tab="general">General</button>
           <button class="subtab" data-system-tab="payment">Payment</button>
           <button class="subtab" data-system-tab="qr">QR</button>
+          <button class="subtab" data-system-tab="security">Admin</button>
+          <button class="subtab" data-system-tab="theme">Theme</button>
         </div>
 
         <div id="system-general" class="panel-block system-panel">
@@ -149,6 +151,28 @@
         <div id="system-qr" class="panel-block system-panel hidden">
           <h3>Table QR</h3>
           <div id="table-qr-list" class="table-picker horizontal-picker"></div>
+        </div>
+
+        <div id="system-security" class="panel-block system-panel hidden">
+          <h3>ตั้งค่าการกู้คืนรหัส Admin</h3>
+          <div class="form-grid three-col">
+            <input id="admin-recovery-phone" placeholder="เบอร์โทรสำหรับกู้คืน" />
+            <select id="admin-recovery-color"></select>
+            <select id="admin-recovery-celebrity"></select>
+          </div>
+          <div class="manage-row single-row">
+            <button id="open-forgot-admin-modal" class="btn-secondary" type="button">ลืมรหัส Admin</button>
+          </div>
+        </div>
+
+        <div id="system-theme" class="panel-block system-panel hidden">
+          <h3>ปรับธีมระบบ</h3>
+          <div id="theme-preset-list" class="theme-preset-grid"></div>
+          <div class="form-grid three-col">
+            <label>Primary <input id="theme-primary" type="color" /></label>
+            <label>Background <input id="theme-bg" type="color" /></label>
+            <label>Card <input id="theme-card" type="color" /></label>
+          </div>
         </div>
 
         <button id="save-system" class="btn-primary big-save">บันทึกการตั้งค่า</button>
@@ -208,6 +232,19 @@
       <div class="btn-row">
         <a id="qr-download" class="btn-soft" download>Download</a>
         <button id="qr-print" class="btn-primary">Print</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="forgot-admin-modal" class="modal hidden">
+    <div class="modal-card compact">
+      <div class="section-head"><h3>กู้คืนรหัส Admin</h3><button id="close-forgot-admin-modal" class="btn-soft">ปิด</button></div>
+      <div class="order-list">
+        <input id="forgot-phone" placeholder="เบอร์โทรที่ตั้งไว้" />
+        <select id="forgot-color"></select>
+        <select id="forgot-celebrity"></select>
+        <input id="new-admin-pin" placeholder="รหัส Admin ใหม่" />
+        <button id="reset-admin-pin" class="btn-primary" type="button">ยืนยันรีเซ็ตรหัส</button>
       </div>
     </div>
   </div>
