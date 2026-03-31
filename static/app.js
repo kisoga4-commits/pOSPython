@@ -331,12 +331,14 @@ function renderTableQRCodes() {
   wrap.innerHTML = '';
   (db.tables || []).forEach((table) => {
     const tableUrl = customerScanUrl(table.id);
+    const qrImageUrl = buildQrImageUrl(tableUrl);
     const card = document.createElement('div');
     card.className = 'qr-table-card';
     card.innerHTML = `
       <strong>${unitLabel()} ${table.id}</strong>
-      <img src="${buildQrImageUrl(tableUrl)}" alt="QR ${unitLabel()} ${table.id}" loading="lazy" />
+      <img src="${qrImageUrl}" alt="QR ${unitLabel()} ${table.id}" loading="lazy" />
       <a class="btn-soft" href="${tableUrl}" target="_blank" rel="noopener">เปิดลิงก์ลูกค้า</a>
+      <a class="btn-soft" href="${qrImageUrl}" download="qr-${unitLabel()}-${table.id}.png">ดาวน์โหลด QR</a>
     `;
     wrap.appendChild(card);
   });

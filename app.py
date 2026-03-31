@@ -208,6 +208,8 @@ def api_order_item():
             return jsonify({"error": "item not found"}), 404
 
         if request.method == "DELETE":
+            if str(order.get("source", "customer")) == "customer":
+                return jsonify({"error": "customer_order_locked"}), 403
             items.pop(item_index)
         else:
             if "price" in payload:
