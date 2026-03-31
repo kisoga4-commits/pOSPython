@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>FAKDU Customer</title>
+  <title>FAKDU โต๊ะลูกค้า</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version }}" />
 </head>
 <body data-table-id="{{ table_id or '' }}">
@@ -12,11 +12,11 @@
       <div class="brand-zone">
         <div class="logo-slot">LOGO</div>
         <div>
-          <small class="on-dark">FAKDU Customer</small>
-          <h1 class="mobile-title">สั่งอาหาร</h1>
+          <small class="on-dark">FAKDU POS</small>
+          <h1 class="mobile-title">สั่งอาหารที่โต๊ะ</h1>
         </div>
       </div>
-      <p class="mobile-subtitle">สแกนแล้วเข้าสู่โต๊ะของคุณทันที</p>
+      <p class="mobile-subtitle">เลือกเมนู เพิ่มหมายเหตุ แล้วกดส่งออร์เดอร์ได้ทันที</p>
     </header>
 
     <section class="mobile-content customer-mobile">
@@ -29,13 +29,18 @@
       </section>
 
       <section class="mobile-panel">
-        <h3>เมนูแนะนำ</h3>
+        <h3>เลือกเมนู</h3>
         <div id="menu-list" class="chip-grid mobile-menu"></div>
       </section>
 
       <section class="mobile-panel">
-        <h3>รายการที่เลือก</h3>
+        <h3>ตะกร้าปัจจุบัน</h3>
         <div id="cart-list" class="order-list"></div>
+        <div id="cart-total" class="order-total"></div>
+        <h3>รายการที่สั่งไปแล้ว</h3>
+        <div id="existing-order-list" class="order-list"></div>
+        <div id="existing-order-total" class="order-total"></div>
+        <div id="existing-order-time" class="muted"></div>
         <div class="btn-row">
           <button id="submit-order" class="btn-primary">สั่งเพิ่ม</button>
           <button id="request-checkout" class="btn-secondary">เรียกเช็คบิล</button>

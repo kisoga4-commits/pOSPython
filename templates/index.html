@@ -41,9 +41,9 @@
         <div class="section-head">
           <h2>จัดการโต๊ะ/คิว</h2>
           <div class="control-pack">
-            <button id="quick-down" class="btn-soft">-</button>
-            <button id="quick-mid" class="btn-soft">M</button>
-            <button id="quick-up" class="btn-soft">+</button>
+            <button id="quick-down" class="btn-soft">ย่อ</button>
+            <button id="quick-mid" class="btn-soft">พอดี</button>
+            <button id="quick-up" class="btn-soft">ขยาย</button>
           </div>
         </div>
         <div id="table-grid" class="table-grid"></div>
@@ -62,8 +62,8 @@
             <h2>หลังร้าน</h2>
           <div class="admin-head-actions">
             <div class="subtabs">
-              <button class="subtab is-active" data-subtab="sales">💰</button>
-              <button class="subtab" data-subtab="manage">🧩</button>
+              <button class="subtab is-active" data-subtab="sales">ยอดขาย</button>
+              <button class="subtab" data-subtab="manage">จัดการร้าน</button>
             </div>
           </div>
         </div>
@@ -213,6 +213,49 @@
       <div class="form-grid single">
         <input id="admin-login-pin" type="password" placeholder="กรอกรหัส PIN" />
         <button id="admin-login-submit" class="btn-primary">เข้าสู่ระบบ</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="order-modal" class="modal hidden">
+    <div class="modal-card order-modal-card">
+      <div class="section-head">
+        <h3 id="order-modal-title">สั่งออร์เดอร์</h3>
+        <div class="btn-row">
+          <button id="order-back" class="btn-soft">ย้อนกลับ</button>
+          <button id="order-close" class="btn-soft">ปิด</button>
+        </div>
+      </div>
+      <div id="order-modal-status" class="order-status-line"></div>
+      <div class="order-modal-layout">
+        <section class="panel-block">
+          <h4>เมนู</h4>
+          <div id="order-menu-grid" class="menu-choice-grid"></div>
+        </section>
+        <section class="panel-block">
+          <h4>เพิ่มรายการ</h4>
+          <div class="form-grid single">
+            <input id="order-selected-menu" disabled placeholder="เลือกเมนูก่อน" />
+            <select id="order-addon"><option value="">ไม่เลือก add-on</option></select>
+            <input id="order-qty" type="number" min="1" value="1" />
+            <input id="order-note" placeholder="หมายเหตุ เช่น ไม่เผ็ด / แยกผัก" />
+            <button id="order-add-item" class="btn-primary">เพิ่มลงตะกร้า</button>
+          </div>
+          <div>
+            <h4>ตะกร้าปัจจุบัน</h4>
+            <div id="order-cart-list" class="order-list"></div>
+            <div id="order-cart-total" class="order-total"></div>
+          </div>
+        </section>
+        <section class="panel-block">
+          <h4>ลูกค้าสั่งไปแล้ว</h4>
+          <div id="order-existing-list" class="order-list"></div>
+          <div id="order-existing-total" class="order-total"></div>
+          <div id="order-latest-time" class="muted"></div>
+          <div class="btn-row">
+            <button id="order-submit" class="btn-primary">ส่งออร์เดอร์</button>
+          </div>
+        </section>
       </div>
     </div>
   </div>
