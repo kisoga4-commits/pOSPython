@@ -1,6 +1,7 @@
 let version = 0;
 let lastPendingIds = new Set();
 let state = { tables: [], orders: [] };
+let serviceMode = 'table';
 
 const TABLE_STATUS_META = {
   available: { label: 'ว่าง', className: 'status-available' },
@@ -31,11 +32,12 @@ function playNewOrderSound() {
 
 function tableCard(table, actions = []) {
   const meta = getStatusMeta(table.status);
+  const unit = serviceMode === 'queue' ? 'คิว' : 'โต๊ะ';
   const card = document.createElement('div');
   card.className = `mobile-table-card table-card ${meta.className}`;
   card.innerHTML = `
     <div class="mobile-table-head">
-      <strong>โต๊ะ ${table.id}</strong>
+      <strong>${unit} ${table.id}</strong>
       <span class="status-badge ${meta.className}">${meta.label}</span>
     </div>
   `;
@@ -145,6 +147,7 @@ async function loadLive() {
     tables: data.tables || [],
     orders: data.orders || [],
   };
+  serviceMode = data.settings?.serviceMode || serviceMode;
 
   const pendingNow = new Set(state.tables.filter((table) => table.status === 'pending_order').map((table) => table.id));
   const hasNewPending = [...pendingNow].some((id) => !lastPendingIds.has(id));

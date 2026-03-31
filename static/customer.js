@@ -1,6 +1,7 @@
 let menu = [];
 let cart = [];
 let version = 0;
+let currentSettings = {};
 const params = new URLSearchParams(window.location.search);
 const lockedTableId = Number(params.get('table') || document.body.dataset.tableId || 0);
 
@@ -67,12 +68,13 @@ function updateTableStatus(tables = []) {
   if (!lockedTableId) return;
   const table = tables.find((item) => Number(item.id) === Number(lockedTableId));
   if (!table) return;
+  const unit = currentSettings.serviceMode === 'queue' ? 'คิว' : 'โต๊ะ';
 
   const meta = getStatusMeta(table.status);
   const note = document.getElementById('table-mode-note');
   const badge = document.getElementById('table-badge');
   badge.className = `badge ${meta.className}`;
-  badge.textContent = `โต๊ะ ${lockedTableId} · ${meta.label}`;
+  badge.textContent = `${unit} ${lockedTableId} · ${meta.label}`;
   note.textContent = table.status === 'pending_order'
     ? 'ระบบแจ้งพนักงานแล้ว กรุณารอสักครู่'
     : (table.status === 'accepted_order' ? 'พนักงานกำลังดูแลออเดอร์ของคุณ' : `สถานะล่าสุด: ${meta.label}`);
@@ -82,17 +84,20 @@ async function loadLive() {
   const data = await api(`/api/customer/live?since=${version}`);
   if (!data.changed) return;
   menu = data.menu || [];
+  currentSettings = data.settings || {};
   version = data.version || version;
+  setLockedTableUI();
   updateTableStatus(data.tables || []);
   renderMenu();
 }
 
 function setLockedTableUI() {
+  const unit = currentSettings.serviceMode === 'queue' ? 'คิว' : 'โต๊ะ';
   const tableBadge = document.getElementById('table-badge');
   const note = document.getElementById('table-mode-note');
   if (lockedTableId > 0) {
-    tableBadge.textContent = `โต๊ะ ${lockedTableId}`;
-    note.textContent = 'สแกน QR ถูกต้อง ระบบผูกกับโต๊ะนี้เรียบร้อย';
+    tableBadge.textContent = `${unit} ${lockedTableId}`;
+    note.textContent = `สแกน QR ถูกต้อง ระบบผูกกับ${unit}นี้เรียบร้อย`;
   } else {
     tableBadge.className = 'badge status-checkout_requested';
     tableBadge.textContent = 'ไม่พบเลขโต๊ะ';
@@ -133,8 +138,7 @@ function bind() {
 }
 
 (function init() {
-  setLockedTableUI();
   bind();
-  loadLive();
+  loadLive().then(setLockedTableUI);
   setInterval(loadLive, 2000);
 })();
