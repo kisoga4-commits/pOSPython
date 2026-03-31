@@ -3,25 +3,39 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#8f1d2a" />
+  <link rel="manifest" href="/manifest.webmanifest" />
   <title>FAKDU POS เครื่องแม่</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version }}" />
 </head>
 <body>
   <div class="app-shell">
-    <header class="app-header">
+    <header class="app-header" id="app-header">
       <div class="brand-row">
         <div class="brand-left">
-          <div class="logo-slot">LOGO</div>
+          <div id="store-logo" class="logo-slot">LOGO</div>
           <div>
-          <p class="muted-light">FAKDU POS · เครื่องแม่หลัก</p>
-          <h1>FAKDU</h1>
+            <p class="muted-light" id="master-hint">FAKDU POS · หน้าเครื่องแม่</p>
+            <h1 id="header-store-name">FAKDU</h1>
           </div>
         </div>
         <button id="header-action" class="btn-gold">เปิดรับออเดอร์</button>
       </div>
-      <p class="muted-light">มือถือ = เครื่องลูก/ลูกค้า · คอม = หลังบ้านหลัก</p>
-      <span class="badge online">LAN {{ local_ip }}:5000</span>
+      <p class="muted-light">รองรับ Staff / Manage / Master-Client sync</p>
+      <div class="header-meta-row">
+        <span class="badge online" id="online-badge">LAN {{ local_ip }}:5000</span>
+        <span class="badge" id="sync-badge">Sync: Session -</span>
+      </div>
     </header>
+
+    <section id="pwa-banner" class="section-card pwa-banner hidden">
+      <strong>ติดตั้งแอป FAKDU</strong>
+      <p class="muted">เพิ่มไปยังหน้าจอหลักเพื่อใช้งานเหมือนแอป และเปิดหน้าเครื่องแม่ได้ไวขึ้น</p>
+      <div class="btn-row">
+        <button id="install-pwa" class="btn-primary">ติดตั้ง PWA</button>
+        <button id="dismiss-pwa" class="btn-soft">ภายหลัง</button>
+      </div>
+    </section>
 
     <main>
       <nav class="section-card tab-bar">
@@ -35,7 +49,7 @@
         <div class="section-head">
           <div>
             <h2>จัดการโต๊ะ / คิวลูกค้า</h2>
-            <p class="muted">มุมมองสดสำหรับรับออร์เดอร์ใหม่</p>
+            <p class="muted">แตะการ์ดเพื่อเปิดหน้าออเดอร์ และดับเบิลคลิกเพื่อรับออเดอร์</p>
           </div>
           <div class="control-pack">
             <button id="quick-down" class="btn-soft">-</button>
@@ -45,8 +59,8 @@
         </div>
         <div class="legend">
           <span class="pill status-available">ว่าง</span>
-          <span class="pill status-pending_order">มีออร์เดอร์ใหม่</span>
-          <span class="pill status-accepted_order">รับออร์เดอร์แล้ว</span>
+          <span class="pill status-pending_order">รอรับออเดอร์</span>
+          <span class="pill status-accepted_order">ใช้งาน</span>
           <span class="pill status-checkout_requested">รอเช็คบิล</span>
         </div>
         <div id="table-grid" class="table-grid"></div>
@@ -86,8 +100,15 @@
           </div>
           <div class="stats-grid">
             <div class="stat"><small>เงินสดสะสม</small><strong id="cash-total">0</strong></div>
-            <div class="stat"><small>โอน / QR สะสม</small><strong id="qr-total">0</strong></div>
-            <div class="stat highlight"><small>เงินรวมสะสม</small><strong id="grand-total">0</strong></div>
+            <div class="stat"><small>โอนสะสม</small><strong id="qr-total">0</strong></div>
+            <div class="stat highlight"><small>รวมสะสม</small><strong id="grand-total">0</strong></div>
+          </div>
+          <div class="panel-block">
+            <div class="section-head">
+              <h3>Insight</h3>
+              <button id="open-insight" class="btn-soft">เทียบช่วงก่อนหน้า</button>
+            </div>
+            <p id="insight-summary" class="muted"></p>
           </div>
           <div class="panel-block">
             <h3>ประวัติการขาย</h3>
@@ -119,6 +140,7 @@
             <div class="menu-form">
               <input id="menu-name" placeholder="ชื่อเมนู" />
               <input id="menu-price" type="number" min="1" placeholder="ราคา" />
+              <input id="menu-image" placeholder="URL รูปเมนู" />
               <input id="menu-addons" placeholder="add-on (คั่นด้วย ,)" />
               <button id="save-menu" class="btn-primary">บันทึกเมนู</button>
             </div>
@@ -136,31 +158,60 @@
           <h3>ข้อมูลร้านค้า</h3>
           <div class="form-grid">
             <input id="store-name" placeholder="ชื่อร้าน" />
-            <input id="store-logo-name" placeholder="ชื่อไฟล์โลโก้" />
+            <input id="store-logo-name" placeholder="โลโก้ (emoji/url)" />
             <input id="theme-color" type="color" value="#8f1d2a" />
             <input id="bg-color" type="color" value="#f6efe9" />
             <input id="bank-name" placeholder="ธนาคาร" />
             <input id="promptpay" placeholder="พร้อมเพย์" />
+            <label class="check-row"><input id="dynamic-qr" type="checkbox" /> ใช้ Dynamic PromptPay ตามยอด</label>
             <input id="admin-pin" type="password" placeholder="ADMIN PIN" />
             <input id="qr-image" type="file" accept="image/*" />
           </div>
           <button id="save-system" class="btn-primary big-save">บันทึกการตั้งค่า</button>
         </div>
         <div class="panel-block">
-          <h3>ลืมรหัส Admin</h3>
-          <p class="muted">กดปุ่มเพื่อรีเซ็ต PIN เป็น 2468 เฉพาะเครื่องแม่</p>
-          <button id="reset-pin" class="btn-soft">รีเซ็ตรหัส Admin</button>
+          <h3>Master / Client Session</h3>
+          <div class="form-grid">
+            <input id="sync-session" placeholder="Session ID" />
+            <input id="sync-queue" placeholder="Queue Channel" />
+            <input id="sync-snapshot" type="number" min="1" placeholder="Snapshot Version" />
+            <input id="master-node" placeholder="Master Node Name" />
+          </div>
         </div>
         <div class="panel-block">
           <h3>สำรองและกู้คืนข้อมูล</h3>
           <div class="manage-row">
-            <button id="backup-db" class="btn-soft">Backup DB</button>
+            <button id="backup-db" class="btn-soft">Backup JSON</button>
             <input id="restore-file" type="file" accept="application/json" />
-            <button id="restore-db" class="btn-primary">Restore DB</button>
+            <button id="restore-db" class="btn-primary">Restore JSON</button>
           </div>
         </div>
       </section>
     </main>
+  </div>
+
+  <div id="bill-modal" class="modal hidden">
+    <div class="modal-card">
+      <div class="section-head">
+        <h3 id="bill-title">รายละเอียดบิล</h3>
+        <button id="close-bill" class="btn-soft">ปิด</button>
+      </div>
+      <div id="bill-items"></div>
+      <div class="bill-foot">
+        <strong>รวม: <span id="bill-total">0</span> บาท</strong>
+        <div id="bill-qr-preview" class="hidden"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="insight-modal" class="modal hidden">
+    <div class="modal-card">
+      <div class="section-head">
+        <h3>Insight เทียบช่วงก่อนหน้า</h3>
+        <button id="close-insight" class="btn-soft">ปิด</button>
+      </div>
+      <div id="insight-body"></div>
+    </div>
   </div>
 
   <audio id="new-order-sound" src="{{ url_for('static', filename='sounds/new_order.mp3') }}"></audio>

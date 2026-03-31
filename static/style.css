@@ -57,6 +57,15 @@ h1{margin:0}
 .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 input,select{width:100%;padding:10px;border-radius:10px;border:1px solid #e8d9cd;background:#fff}
 .big-save{margin-top:10px;width:100%;padding:14px;font-size:1rem}
+.muted{color:#6f6a67}
+.header-meta-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.pwa-banner{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.two-col{grid-template-columns:repeat(2,minmax(0,1fr))}
+.modal{position:fixed;inset:0;background:rgba(18,14,14,.45);display:grid;place-items:center;padding:14px;z-index:50}
+.modal-card{background:#fff;width:min(720px,95vw);max-height:85vh;overflow:auto;border-radius:16px;padding:14px;border:1px solid var(--line)}
+.bill-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:8px}
+.qr-preview{max-width:180px;border-radius:12px;border:1px solid var(--line);margin-top:6px}
+.check-row{display:flex;align-items:center;gap:8px;padding:10px;border:1px solid #e8d9cd;border-radius:10px;background:#fff}
 
 @media (max-width: 860px){
   .tab-bar{grid-template-columns:repeat(2,minmax(0,1fr))}

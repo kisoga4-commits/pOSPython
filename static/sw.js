@@ -1,5 +1,12 @@
-const CACHE_NAME = 'fakdu-pos-shell-v2';
-const OFFLINE_ASSETS = ['/static/style.css', '/static/app.js'];
+const CACHE_NAME = 'fakdu-pos-shell-v3';
+const OFFLINE_ASSETS = [
+  '/',
+  '/manifest.webmanifest',
+  '/static/style.css',
+  '/static/app.js',
+  '/static/customer.js',
+  '/static/staff.js',
+];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(OFFLINE_ASSETS)));

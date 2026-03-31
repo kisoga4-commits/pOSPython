@@ -34,12 +34,26 @@ def default_db() -> dict:
         "orders": [],
         "sales": [],
         "settings": {
-            "shopName": "SHABU POS",
+            "shopName": "FAKDU",
             "currency": "THB",
             "pollingMs": 2500,
             "serviceChargePct": 0,
             "vatPct": 0,
             "adminPin": "2468",
+            "storeName": "FAKDU",
+            "serviceMode": "table",
+            "promptPay": "",
+            "bankName": "",
+            "themeColor": "#8f1d2a",
+            "bgColor": "#f6efe9",
+            "dynamicPromptPay": False,
+            "masterNode": "main",
+            "sync": {
+                "session": "main-session",
+                "queue": "default",
+                "snapshotVersion": 1,
+                "lastSyncAt": "",
+            },
         },
     }
 

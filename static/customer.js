@@ -1,14 +1,13 @@
 let menu = [];
 let cart = [];
 let version = 0;
-let currentTableStatus = 'accepted_order';
 const params = new URLSearchParams(window.location.search);
 const lockedTableId = Number(params.get('table') || document.body.dataset.tableId || 0);
 
 const TABLE_STATUS_META = {
   available: { label: 'ว่าง', className: 'status-available' },
-  pending_order: { label: 'มีออร์เดอร์ใหม่', className: 'status-pending_order' },
-  accepted_order: { label: 'พนักงานรับแล้ว', className: 'status-accepted_order' },
+  pending_order: { label: 'รอรับออเดอร์', className: 'status-pending_order' },
+  accepted_order: { label: 'กำลังให้บริการ', className: 'status-accepted_order' },
   checkout_requested: { label: 'รอเช็คบิล', className: 'status-checkout_requested' },
   closed: { label: 'ปิดบิล', className: 'status-closed' },
 };
@@ -34,7 +33,9 @@ function renderMenu() {
     btn.innerHTML = `${item.image ? `<img src="${item.image}" class="menu-thumb" alt="${item.name}" />` : ''}<span>${item.name} - ${item.price}</span>`;
     btn.disabled = !lockedTableId;
     btn.addEventListener('click', () => {
-      cart.push(item);
+      const addonChoices = Array.isArray(item.addons) ? item.addons : [];
+      const addon = addonChoices.length ? (window.prompt(`เลือก add-on (${addonChoices.join(', ')})`, addonChoices[0]) || '') : '';
+      cart.push({ ...item, addon: addon.trim() });
       renderCart();
     });
     list.appendChild(btn);
@@ -51,10 +52,10 @@ function renderCart() {
     return;
   }
 
-  cart.forEach((item) => {
+  cart.forEach((item, idx) => {
     const row = document.createElement('div');
     row.className = 'list-item';
-    row.textContent = `${item.name} - ${item.price}`;
+    row.innerHTML = `${idx + 1}. ${item.name} - ${item.price} ${item.addon ? `· ${item.addon}` : ''}`;
     list.appendChild(row);
   });
   const totalRow = document.createElement('strong');
@@ -67,7 +68,6 @@ function updateTableStatus(tables = []) {
   const table = tables.find((item) => Number(item.id) === Number(lockedTableId));
   if (!table) return;
 
-  currentTableStatus = table.status;
   const meta = getStatusMeta(table.status);
   const note = document.getElementById('table-mode-note');
   const badge = document.getElementById('table-badge');
@@ -112,9 +112,8 @@ function bind() {
     });
 
     if (res.status === 'success') {
-      document.getElementById('message').textContent = 'ส่งออเดอร์แล้ว ระบบแจ้งพนักงานทันที';
+      document.getElementById('message').textContent = 'ส่งออเดอร์แล้ว ระบบแจ้งคิวเช็คบิลได้ทันที';
       cart = [];
-      currentTableStatus = 'pending_order';
       renderCart();
       await loadLive();
     } else {
