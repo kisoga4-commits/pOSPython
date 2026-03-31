@@ -8,14 +8,31 @@ LICENSE_DISABLED = os.environ.get("POS_DISABLE_LICENSE", "1") != "0"
 
 
 def get_local_ip() -> str:
+    candidates = []
+
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
-        sock.connect(("8.8.8.8", 80))
-        return sock.getsockname()[0]
+        # This does not require internet connectivity; it only asks the OS
+        # which interface would be used to reach a non-loopback address.
+        sock.connect(("10.255.255.255", 1))
+        candidates.append(sock.getsockname()[0])
     except Exception:
-        return "127.0.0.1"
+        pass
     finally:
         sock.close()
+
+    try:
+        hostname = socket.gethostname()
+        for item in socket.getaddrinfo(hostname, None, socket.AF_INET, socket.SOCK_DGRAM):
+            ip = item[4][0]
+            candidates.append(ip)
+    except Exception:
+        pass
+
+    for ip in candidates:
+        if ip and not ip.startswith("127."):
+            return ip
+    return "127.0.0.1"
 
 
 def is_server_request() -> bool:

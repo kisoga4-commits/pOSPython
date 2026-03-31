@@ -8,7 +8,7 @@
   <title>FAKDU POS Dashboard</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version }}" />
 </head>
-<body data-local-ip="{{ local_ip }}">
+<body data-local-ip="{{ local_ip }}" data-local-base-url="{{ local_base_url }}">
   <div class="app-shell desktop-shell">
     <header class="app-header modern-header">
       <div class="brand-left">
@@ -149,8 +149,20 @@
         </div>
 
         <div id="system-qr" class="panel-block system-panel hidden">
-          <h3>Table QR</h3>
-          <div id="table-qr-list" class="table-picker horizontal-picker"></div>
+          <section class="qr-section">
+            <h3>QR สำหรับพนักงาน (Staff Access QR)</h3>
+            <p class="muted">สแกนเพื่อเข้าสู่ระบบหลังบ้าน (Staff PC/Tablet)</p>
+            <div class="staff-qr-card">
+              <img id="staff-qr-image" class="qr-preview staff-large" alt="Staff Access QR" />
+              <a id="staff-qr-link" class="muted" target="_blank" rel="noopener noreferrer"></a>
+            </div>
+          </section>
+
+          <section class="qr-section">
+            <h3>QR สำหรับโต๊ะลูกค้า (Customer Table QRs)</h3>
+            <p class="muted">เลือกโต๊ะเพื่อเปิด QR ในหน้าต่าง Modal</p>
+            <div id="table-qr-list" class="table-picker horizontal-picker"></div>
+          </section>
         </div>
 
         <div id="system-security" class="panel-block system-panel hidden">
@@ -229,6 +241,7 @@
     <div class="modal-card compact centered-modal">
       <div class="section-head"><h3 id="qr-modal-title">QR</h3><button id="close-qr-modal" class="btn-soft">ปิด</button></div>
       <img id="client-qr-image" class="qr-preview large" alt="QR" />
+      <a id="qr-modal-link" class="muted" target="_blank" rel="noopener noreferrer"></a>
       <div class="btn-row">
         <a id="qr-download" class="btn-soft" download>Download</a>
         <button id="qr-print" class="btn-primary">Print</button>

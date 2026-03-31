@@ -25,8 +25,22 @@ const qs = (id) => document.getElementById(id);
 const money = (n) => Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const unitLabel = () => (db?.settings?.serviceMode === 'queue' ? 'คิว' : 'Table');
 const qrApiBase = 'https://api.qrserver.com/v1/create-qr-code/';
+let networkBaseUrl = document.body.dataset.localBaseUrl || '';
+
+async function loadNetworkBaseUrl() {
+  const network = await api('/api/system/network');
+  if (!network.error && network.base_url) {
+    networkBaseUrl = network.base_url;
+    return;
+  }
+  if (!networkBaseUrl) {
+    const ip = document.body.dataset.localIp || window.location.hostname;
+    networkBaseUrl = `${window.location.protocol}//${ip}:${window.location.port || '5000'}`;
+  }
+}
 
 function resolveRuntimeHost() {
+  if (networkBaseUrl) return networkBaseUrl;
   const runtimeHost = window.location.hostname;
   const fallbackHost = document.body.dataset.localIp || runtimeHost;
   const host = (!runtimeHost || runtimeHost === 'localhost' || runtimeHost === '127.0.0.1') ? fallbackHost : runtimeHost;
@@ -338,6 +352,7 @@ function renderSystem() {
   qs('theme-bg').value = s.bgColor || '#f3f4f6';
   qs('theme-card').value = s.cardColor || '#ffffff';
   renderThemePresets(s.themePreset || '');
+  renderStaffQR();
   renderTableQRList();
 }
 
@@ -376,10 +391,33 @@ function renderThemePresets(activePresetId) {
 function openQRModal(title, url, imageUrl) {
   qs('qr-modal-title').textContent = title;
   qs('client-qr-image').src = imageUrl;
+  qs('qr-modal-link').textContent = url;
+  qs('qr-modal-link').href = url;
   qs('qr-download').href = imageUrl;
   qs('qr-download').download = `${title}.png`;
-  qs('qr-print').onclick = () => window.open(imageUrl, '_blank');
+  qs('qr-print').onclick = () => {
+    const printWindow = window.open('', '_blank', 'width=500,height=700');
+    if (!printWindow) return;
+    printWindow.document.write(`
+      <html><head><title>${title}</title></head>
+      <body style="font-family:sans-serif;text-align:center;padding:24px">
+        <h3>${title}</h3>
+        <img src="${imageUrl}" style="width:300px;height:300px" />
+        <p>${url}</p>
+      </body></html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+  };
   qs('qr-modal').classList.remove('hidden');
+}
+
+function renderStaffQR() {
+  const url = `${resolveRuntimeHost()}/`;
+  qs('staff-qr-image').src = buildQrImageUrl(url);
+  qs('staff-qr-link').textContent = url;
+  qs('staff-qr-link').href = url;
 }
 
 function renderTableQRList() {
@@ -580,6 +618,7 @@ async function poll() {
 
 (async function init() {
   bind();
+  await loadNetworkBaseUrl();
   await loadData();
   setInterval(poll, 1200);
 })();
