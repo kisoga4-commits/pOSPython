@@ -11,6 +11,7 @@ log = logging.getLogger("werkzeug")
 log.setLevel(logging.ERROR)
 
 app = Flask(__name__)
+ASSET_VERSION = "20260331-new-ui"
 
 TABLE_STATUSES = {"available", "pending_order", "accepted_order", "checkout_requested", "closed"}
 
@@ -26,7 +27,7 @@ def utc_now() -> str:
 
 @app.route("/")
 def index():
-    return render_template("index.html", local_ip=get_local_ip())
+    return render_template("index.html", local_ip=get_local_ip(), asset_version=ASSET_VERSION)
 
 
 @app.route("/customer")

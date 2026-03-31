@@ -81,6 +81,16 @@ main { padding: 14px 0 30px; display: grid; gap: 14px; }
   border: 1px solid #efdccf;
 }
 .landing-highlight h2 { margin: 0; color: #6f1b25; }
+.new-ui-proof {
+  margin: 8px 0 0;
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #ffe6cc;
+  border: 1px solid #f7c38c;
+  color: #7a2d00;
+  font-weight: 800;
+}
 .landing-grid {
   margin-top: 12px;
   display: grid;

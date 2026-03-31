@@ -1,5 +1,5 @@
-const CACHE_NAME = 'fakdu-pos-shell-v1';
-const OFFLINE_ASSETS = ['/', '/static/style.css', '/static/app.js'];
+const CACHE_NAME = 'fakdu-pos-shell-v2';
+const OFFLINE_ASSETS = ['/static/style.css', '/static/app.js'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(OFFLINE_ASSETS)));
@@ -13,6 +13,14 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match('/'))
+    );
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request).then((cached) => cached || fetch(event.request).then((res) => {
       const copy = res.clone();
