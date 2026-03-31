@@ -203,9 +203,13 @@ function renderCashier() {
   }
   queues.forEach((table) => {
     const meta = statusMap[table.status] || statusMap.available;
+    const { items, total } = getTableSummary(table.id);
     const row = document.createElement('button');
     row.className = `list-card checkout-card ${meta.tone}`;
-    row.innerHTML = `<strong>${meta.icon} ${unitLabel()} ${table.id}</strong><small>${meta.label}</small>`;
+    row.innerHTML = `<strong class="checkout-title">${meta.icon} ${unitLabel()} ${table.id}</strong>
+      <small>${meta.label}</small>
+      <div class="checkout-items">${items.length ? items.slice(-5).map((i) => `• ${i.name} (${money(i.price)})`).join('<br>') : 'ยังไม่มีรายการอาหาร'}</div>
+      <strong>รวม ${money(total)} บาท</strong>`;
     row.addEventListener('click', () => openBill(table.id));
     wrap.appendChild(row);
   });
@@ -232,14 +236,38 @@ function renderMenu() {
 }
 
 function renderSales() {
-  const sales = db.sales || [];
-  const total = sales.reduce((sum, s) => sum + Number(s.total || 0), 0);
+  let sales = db.sales || [];
+  const from = qs('sales-from')?.value;
+  const to = qs('sales-to')?.value;
+  if (from || to) {
+    sales = sales.filter((s) => {
+      const d = new Date(s.timestamp || s.created_at || Date.now());
+      const passFrom = from ? d >= new Date(`${from}T00:00:00`) : true;
+      const passTo = to ? d <= new Date(`${to}T23:59:59`) : true;
+      return passFrom && passTo;
+    });
+  }
+  const inRange = (days) => {
+    const now = new Date();
+    const start = new Date(now);
+    start.setDate(now.getDate() - (days - 1));
+    start.setHours(0, 0, 0, 0);
+    return sales.filter((s) => new Date(s.timestamp || s.created_at || Date.now()) >= start);
+  };
+  const sumTotal = (list) => list.reduce((sum, s) => sum + Number(s.total || 0), 0);
+  const todaySales = inRange(1);
+  const sevenSales = inRange(7);
+  const monthSales = inRange(30);
+  const total = sumTotal(sales);
   const cash = sales.filter((s) => s.payment_method === 'cash').reduce((sum, s) => sum + Number(s.total || 0), 0);
   const qr = sales.filter((s) => s.payment_method === 'qr').reduce((sum, s) => sum + Number(s.total || 0), 0);
-  qs('sales-summary').innerHTML = `
-    <div class="list-card"><strong>ยอดขายรวม</strong><div>${money(total)} บาท</div></div>
-    <div class="list-card"><strong>เงินสด</strong><div>${money(cash)} บาท</div></div>
-    <div class="list-card"><strong>โอน/QR</strong><div>${money(qr)} บาท</div></div>`;
+  qs('sales-overview').innerHTML = `
+    <div class="list-card"><strong>Today</strong><div>${money(sumTotal(todaySales))}</div></div>
+    <div class="list-card"><strong>7 Days</strong><div>${money(sumTotal(sevenSales))}</div></div>
+    <div class="list-card"><strong>30 Days</strong><div>${money(sumTotal(monthSales))}</div></div>
+    <div class="list-card"><strong>Cash</strong><div>${money(cash)}</div></div>
+    <div class="list-card"><strong>Transfer</strong><div>${money(qr)}</div></div>
+    <div class="list-card"><strong>Grand Total</strong><div>${money(total)}</div></div>`;
   qs('sales-list').innerHTML = '';
   sales.slice().reverse().forEach((sale) => {
     const row = document.createElement('div');
@@ -247,6 +275,18 @@ function renderSales() {
     row.textContent = `${unitLabel()} ${sale.target_id} • ${money(sale.total)} บาท • ${sale.payment_method}`;
     qs('sales-list').appendChild(row);
   });
+
+  const bestWrap = qs('sales-best-list');
+  const itemTotals = {};
+  sales.forEach((sale) => (sale.items || []).forEach((item) => { itemTotals[item.name] = (itemTotals[item.name] || 0) + 1; }));
+  bestWrap.innerHTML = '';
+  Object.entries(itemTotals).sort((a, b) => b[1] - a[1]).slice(0, 8).forEach(([name, qty]) => {
+    const row = document.createElement('div');
+    row.className = 'list-card';
+    row.textContent = `${name} • ${qty} จาน`;
+    bestWrap.appendChild(row);
+  });
+  if (!bestWrap.innerHTML) bestWrap.innerHTML = '<div class="empty">ยังไม่มีข้อมูลยอดฮิต</div>';
 }
 
 function renderSystem() {
@@ -308,10 +348,11 @@ function bind() {
     ['menu', 'sales'].forEach((name) => qs(`backstore-${name}`).classList.toggle('hidden', name !== btn.dataset.backstoreTab));
   }));
 
-  qs('open-client-qr').addEventListener('click', () => openQRModal('staff-mode', `${window.location.origin}/staff`, buildQrImageUrl(`${window.location.origin}/staff`)));
   qs('close-qr-modal').addEventListener('click', () => qs('qr-modal').classList.add('hidden'));
   qs('close-table-order-modal').addEventListener('click', () => qs('table-order-modal').classList.add('hidden'));
   qs('close-payment-modal').addEventListener('click', () => qs('payment-modal').classList.add('hidden'));
+  qs('sales-from')?.addEventListener('change', renderSales);
+  qs('sales-to')?.addEventListener('change', renderSales);
 
   qs('order-submit').addEventListener('click', submitOrderFromPanel);
 
@@ -367,12 +408,37 @@ function bind() {
 
 
   qs('desk-open-order-modal')?.addEventListener('click', () => { if (selectedTableId) selectTable(selectedTableId); });
-  qs('desk-open-bill-modal')?.addEventListener('click', () => { if (selectedTableId) openBill(selectedTableId); });
-  qs('desk-open-table-qr')?.addEventListener('click', () => {
-    if (!selectedTableId) return;
-    const url = customerScanUrl(selectedTableId);
-    openQRModal(`Table-${selectedTableId}`, url, buildQrImageUrl(url));
+  qs('open-sales-insight')?.addEventListener('click', () => {
+    const sales = db.sales || [];
+    const sum = (days) => {
+      const now = new Date();
+      const start = new Date(now);
+      start.setDate(now.getDate() - (days - 1));
+      start.setHours(0, 0, 0, 0);
+      return sales.filter((s) => new Date(s.timestamp || s.created_at || Date.now()) >= start).reduce((a, b) => a + Number(b.total || 0), 0);
+    };
+    const now7 = sum(7);
+    const prevStart = new Date();
+    prevStart.setDate(prevStart.getDate() - 14);
+    prevStart.setHours(0, 0, 0, 0);
+    const prevEnd = new Date();
+    prevEnd.setDate(prevEnd.getDate() - 8);
+    prevEnd.setHours(23, 59, 59, 999);
+    const prev7 = sales.filter((s) => {
+      const d = new Date(s.timestamp || s.created_at || Date.now());
+      return d >= prevStart && d <= prevEnd;
+    }).reduce((a, b) => a + Number(b.total || 0), 0);
+    const diff = now7 - prev7;
+    const best = {};
+    sales.forEach((sale) => (sale.items || []).forEach((it) => { best[it.name] = (best[it.name] || 0) + 1; }));
+    const top = Object.entries(best).sort((a, b) => b[1] - a[1]).slice(0, 3);
+    qs('insight-content').innerHTML = `
+      <div class="list-card"><strong>7 วันล่าสุด</strong><div>${money(now7)} บาท</div></div>
+      <div class="list-card"><strong>เทียบ 7 วันก่อนหน้า</strong><div>${diff >= 0 ? '+' : ''}${money(diff)} บาท</div></div>
+      <div class="list-card"><strong>Top items</strong><div>${top.map((x) => `${x[0]} (${x[1]})`).join('<br>') || 'ไม่มีข้อมูล'}</div></div>`;
+    qs('insight-modal').classList.remove('hidden');
   });
+  qs('close-insight-modal')?.addEventListener('click', () => qs('insight-modal').classList.add('hidden'));
 
   qs('save-system').addEventListener('click', async () => {
     let qrImage = db.settings?.qrImage || '';

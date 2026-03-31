@@ -19,16 +19,28 @@
         </div>
       </div>
       <div class="header-icons">
-        <button id="open-client-qr" class="icon-btn" title="QR Staff">QR</button>
+        <span class="status-badge status-online">ออนไลน์</span>
       </div>
     </header>
 
     <main>
       <nav class="section-card tab-bar">
-        <button class="main-tab is-active" data-screen="customer">ลูกค้า</button>
-        <button class="main-tab" data-screen="cashier">เช็คบิล</button>
-        <button class="main-tab" data-screen="backstore">หลังร้าน</button>
-        <button class="main-tab" data-screen="system">ระบบ</button>
+        <button class="main-tab is-active" data-screen="customer" aria-label="ลูกค้า">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 10.5 12 4l9 6.5"/><path d="M5 9.5V20h14V9.5"/><path d="M9 14h6"/></svg>
+          <small>ลูกค้า</small>
+        </button>
+        <button class="main-tab" data-screen="cashier" aria-label="เช็คบิล">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="3.5" width="14" height="17" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+          <small>เช็คบิล</small>
+        </button>
+        <button class="main-tab" data-screen="backstore" aria-label="หลังร้าน">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19h16"/><rect x="5" y="10" width="3" height="6" rx="1"/><rect x="10.5" y="7" width="3" height="9" rx="1"/><rect x="16" y="5" width="3" height="11" rx="1"/></svg>
+          <small>หลังร้าน</small>
+        </button>
+        <button class="main-tab" data-screen="system" aria-label="ระบบ">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.9V20a2 2 0 1 1-4 0v-.2a1 1 0 0 0-.6-.9 1 1 0 0 0-1.1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.9-.6H4a2 2 0 1 1 0-4h.2a1 1 0 0 0 .9-.6 1 1 0 0 0-.2-1.1l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1 1 0 0 0 1.1.2h.1a1 1 0 0 0 .6-.9V4a2 2 0 1 1 4 0v.2a1 1 0 0 0 .6.9 1 1 0 0 0 1.1-.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1 1 0 0 0-.2 1.1v.1a1 1 0 0 0 .9.6H20a2 2 0 1 1 0 4h-.2a1 1 0 0 0-.9.6Z"/></svg>
+          <small>ระบบ</small>
+        </button>
       </nav>
 
       <section id="customer" class="screen section-card">
@@ -42,15 +54,12 @@
           </section>
 
           <aside class="staff-cart-pane">
-            <h3>Order Summary</h3>
             <div id="desk-selected-table" class="meta-chip">ยังไม่ได้เลือกโต๊ะ</div>
             <div id="desk-selected-status" class="muted">เลือกโต๊ะเพื่อดูสรุปคำสั่งซื้อ</div>
             <div id="desk-selected-items" class="order-list"></div>
             <div id="desk-selected-total" class="order-total">รวม 0.00 บาท</div>
             <div class="desk-action-stack">
               <button id="desk-open-order-modal" class="btn-primary" type="button">เปิดหน้าออเดอร์</button>
-              <button id="desk-open-bill-modal" class="btn-secondary" type="button">Billing</button>
-              <button id="desk-open-table-qr" class="btn-soft" type="button">ดู QR โต๊ะนี้</button>
             </div>
           </aside>
         </div>
@@ -87,9 +96,24 @@
         </div>
 
         <div id="backstore-sales" class="panel-block hidden">
-          <h3>สรุปยอดขาย</h3>
-          <div id="sales-summary" class="sales-summary-grid"></div>
-          <div id="sales-list" class="order-list"></div>
+          <div class="sales-dashboard-head">
+            <div class="sales-range-row">
+              <input id="sales-from" type="date" />
+              <input id="sales-to" type="date" />
+              <button id="open-sales-insight" class="btn-secondary" type="button">Insight</button>
+            </div>
+            <div id="sales-overview" class="sales-overview-grid"></div>
+          </div>
+          <div class="sales-body-grid">
+            <section class="sales-panel">
+              <h3>ประวัติการขาย</h3>
+              <div id="sales-list" class="order-list"></div>
+            </section>
+            <section class="sales-panel">
+              <h3>รายการขายดี</h3>
+              <div id="sales-best-list" class="order-list"></div>
+            </section>
+          </div>
         </div>
       </section>
 
@@ -114,18 +138,29 @@
         </div>
 
         <div id="system-payment" class="panel-block system-panel hidden">
-          <label class="check-row"><input id="dynamic-qr" type="checkbox" /> ใช้ Dynamic PromptPay</label>
+          <label class="toggle-row">
+            <input id="dynamic-qr" type="checkbox" />
+            <span class="toggle-slider"></span>
+            <span>ใช้ Dynamic PromptPay</span>
+          </label>
           <input id="qr-image" type="file" accept="image/*" />
         </div>
 
         <div id="system-qr" class="panel-block system-panel hidden">
-          <h3>QR Generator</h3>
-          <div id="table-qr-list" class="table-picker"></div>
+          <h3>Table QR</h3>
+          <div id="table-qr-list" class="table-picker horizontal-picker"></div>
         </div>
 
         <button id="save-system" class="btn-primary big-save">บันทึกการตั้งค่า</button>
       </section>
     </main>
+  </div>
+
+  <div id="insight-modal" class="modal hidden">
+    <div class="modal-card compact">
+      <div class="section-head"><h3>Sales Insight</h3><button id="close-insight-modal" class="btn-soft">ปิด</button></div>
+      <div id="insight-content" class="order-list"></div>
+    </div>
   </div>
 
   <div id="table-order-modal" class="modal hidden">
