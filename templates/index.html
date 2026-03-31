@@ -59,6 +59,7 @@
             <div id="desk-selected-items" class="order-list"></div>
             <div id="desk-selected-total" class="order-total">รวม 0.00 บาท</div>
             <div class="desk-action-stack">
+              <button id="desk-accept-order" class="btn-secondary" type="button">✅ ออเดอร์ใหม่ / รับงาน</button>
               <button id="desk-open-order-modal" class="btn-primary" type="button">เปิดหน้าออเดอร์</button>
             </div>
           </aside>
@@ -119,23 +120,24 @@
 
       <section id="system" class="screen section-card hidden">
         <div class="section-head"><h2>ตั้งค่าระบบ</h2></div>
-        <div class="subtabs">
-          <button class="subtab is-active" data-system-tab="general">General</button>
-          <button class="subtab" data-system-tab="payment">Payment</button>
-          <button class="subtab" data-system-tab="qr">QR</button>
-          <button class="subtab" data-system-tab="security">Admin</button>
-          <button class="subtab" data-system-tab="theme">Theme</button>
-        </div>
-
         <div id="system-general" class="panel-block system-panel">
+          <h3>1) ข้อมูลร้าน (Admin First)</h3>
           <div class="form-grid">
             <input id="store-name" placeholder="ชื่อร้าน" />
             <input id="bank-name" placeholder="ธนาคาร" />
             <input id="promptpay" placeholder="พร้อมเพย์" />
           </div>
-          <div class="printer-settings-block">
-            <h3>Printer Settings</h3>
+          <div class="form-grid">
+            <label>อัปโหลดโลโก้ร้าน <input id="shop-logo-file" type="file" accept="image/*" /></label>
+            <div><small>ตัวอย่างโลโก้</small><img id="shop-logo-preview" class="logo-preview" alt="Logo preview" /></div>
+          </div>
+          <div class="panel-block">
+            <h3>2) ตั้งค่าเครื่องพิมพ์</h3>
             <div class="form-grid printer-grid">
+              <label>
+                <span class="field-label">Printer Driver</span>
+                <select id="printer-driver"></select>
+              </label>
               <label class="toggle-row compact-toggle">
                 <input id="auto-print" type="checkbox" />
                 <span class="toggle-slider"></span>
@@ -148,31 +150,13 @@
                   <option value="80">80mm</option>
                 </select>
               </label>
+              <button id="open-receipt-preview" class="btn-soft" type="button">🧾 ดูตัวอย่างใบเสร็จ</button>
             </div>
-            <div class="receipt-preview-wrap">
-              <h3>ตัวอย่างใบเสร็จ (Receipt Preview)</h3>
-              <div id="receipt-preview" class="receipt-preview" data-paper-size="58">
-                <div class="receipt-brand">FAKDU POS</div>
-                <div class="receipt-title">ใบเสร็จรับเงิน / Receipt</div>
-                <div class="receipt-meta" id="receipt-preview-datetime">31/03/2026 12:00</div>
-                <div class="receipt-meta">โต๊ะ (Table): 5</div>
-                <div class="receipt-divider">------------------------</div>
-                <div class="receipt-item-row"><span>กะเพราหมูสับ</span><span>50.-</span></div>
-                <div class="receipt-item-row"><span>ไข่ดาว</span><span>15.-</span></div>
-                <div class="receipt-item-row"><span>โค้ก</span><span>35.-</span></div>
-                <div class="receipt-divider">------------------------</div>
-                <div class="receipt-total-row"><span>ยอดรวม (Total):</span><strong>150.-</strong></div>
-                <div class="receipt-footer">ขอบคุณที่ใช้บริการ</div>
-              </div>
-            </div>
-          </div>
-          <div class="form-grid">
-            <label>อัปโหลดโลโก้ร้าน <input id="shop-logo-file" type="file" accept="image/*" /></label>
-            <div><small>ตัวอย่างโลโก้</small><img id="shop-logo-preview" class="logo-preview" alt="Logo preview" /></div>
           </div>
         </div>
 
-        <div id="system-payment" class="panel-block system-panel hidden">
+        <div id="system-payment" class="panel-block system-panel">
+          <h3>การชำระเงิน</h3>
           <label class="toggle-row">
             <input id="dynamic-qr" type="checkbox" />
             <span class="toggle-slider"></span>
@@ -181,7 +165,8 @@
           <input id="qr-image" type="file" accept="image/*" />
         </div>
 
-        <div id="system-qr" class="panel-block system-panel hidden">
+        <div id="system-qr" class="panel-block system-panel">
+          <h3>QR ระบบ</h3>
           <section class="qr-section">
             <h3>QR สำหรับพนักงาน (Staff Access QR)</h3>
             <p class="muted">สแกนเพื่อเข้าสู่ระบบหลังบ้าน (Staff PC/Tablet)</p>
@@ -198,19 +183,21 @@
           </section>
         </div>
 
-        <div id="system-security" class="panel-block system-panel hidden">
-          <h3>ตั้งค่าการกู้คืนรหัส Admin</h3>
-          <div class="form-grid three-col">
-            <input id="admin-recovery-phone" placeholder="เบอร์โทรสำหรับกู้คืน" />
-            <select id="admin-recovery-color"></select>
-            <select id="admin-recovery-celebrity"></select>
-          </div>
-          <div class="manage-row single-row">
-            <button id="open-forgot-admin-modal" class="btn-secondary" type="button">ลืมรหัส Admin</button>
+        <div id="system-security" class="panel-block system-panel">
+          <h3>ความปลอดภัยแอดมิน</h3>
+          <div class="printer-settings-block">
+            <h3>ตั้งค่าการกู้คืนรหัส Admin</h3>
+            <div class="form-grid three-col">
+              <input id="admin-recovery-phone" placeholder="เบอร์โทรสำหรับกู้คืน" />
+              <select id="admin-recovery-color"></select>
+              <select id="admin-recovery-celebrity"></select>
+            </div>
+            <div class="manage-row single-row">
+              <button id="open-forgot-admin-modal" class="btn-secondary" type="button">ลืมรหัส Admin</button>
+            </div>
           </div>
         </div>
-
-        <div id="system-theme" class="panel-block system-panel hidden">
+        <div id="system-theme" class="panel-block system-panel">
           <h3>ปรับธีมระบบ</h3>
           <div id="theme-preset-list" class="theme-preset-grid"></div>
           <div class="form-grid three-col">
@@ -223,6 +210,24 @@
         <button id="save-system" class="btn-primary big-save">บันทึกการตั้งค่า</button>
       </section>
     </main>
+  </div>
+  <div id="receipt-preview-modal" class="modal hidden">
+    <div class="modal-card compact">
+      <div class="section-head"><h3>ตัวอย่างใบเสร็จ</h3><button id="close-receipt-preview" class="btn-soft">ปิด</button></div>
+      <div id="receipt-preview" class="receipt-preview" data-paper-size="58">
+        <div class="receipt-brand">FAKDU POS</div>
+        <div class="receipt-title">ใบเสร็จรับเงิน / Receipt</div>
+        <div class="receipt-meta" id="receipt-preview-datetime">31/03/2026 12:00</div>
+        <div class="receipt-meta">โต๊ะ (Table): 5</div>
+        <div class="receipt-divider">------------------------</div>
+        <div class="receipt-item-row"><span>กะเพราหมูสับ</span><span>50.-</span></div>
+        <div class="receipt-item-row"><span>ไข่ดาว</span><span>15.-</span></div>
+        <div class="receipt-item-row"><span>โค้ก</span><span>35.-</span></div>
+        <div class="receipt-divider">------------------------</div>
+        <div class="receipt-total-row"><span>ยอดรวม (Total):</span><strong>150.-</strong></div>
+        <div class="receipt-footer">ขอบคุณที่ใช้บริการ</div>
+      </div>
+    </div>
   </div>
 
   <div id="insight-modal" class="modal hidden">
@@ -296,6 +301,7 @@
   </div>
 
   <audio id="new-order-sound" src="{{ url_for('static', filename='sounds/new_order.mp3') }}"></audio>
+  <audio id="checkout-request-sound" src="{{ url_for('static', filename='sounds/checkout.mp3') }}"></audio>
   <script src="{{ url_for('static', filename='app.js') }}?v={{ asset_version }}"></script>
 </body>
 </html>

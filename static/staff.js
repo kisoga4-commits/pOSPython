@@ -1,5 +1,6 @@
 let version = 0;
 let lastPendingIds = new Set();
+let lastCheckoutIds = new Set();
 let state = { tables: [], orders: [] };
 let serviceMode = 'table';
 
@@ -25,6 +26,13 @@ function getStatusMeta(status) {
 
 function playNewOrderSound() {
   const audio = document.getElementById('new-order-sound');
+  if (!audio) return;
+  audio.currentTime = 0;
+  audio.play().catch(() => {});
+}
+
+function playCheckoutSound() {
+  const audio = document.getElementById('checkout-request-sound');
   if (!audio) return;
   audio.currentTime = 0;
   audio.play().catch(() => {});
@@ -152,9 +160,13 @@ async function loadLive() {
   serviceMode = data.settings?.serviceMode || serviceMode;
 
   const pendingNow = new Set(state.tables.filter((table) => table.status === 'pending_order').map((table) => table.id));
+  const checkoutNow = new Set(state.tables.filter((table) => table.status === 'checkout_requested').map((table) => table.id));
   const hasNewPending = [...pendingNow].some((id) => !lastPendingIds.has(id));
+  const hasNewCheckout = [...checkoutNow].some((id) => !lastCheckoutIds.has(id));
   if (hasNewPending) playNewOrderSound();
+  if (hasNewCheckout) playCheckoutSound();
   lastPendingIds = pendingNow;
+  lastCheckoutIds = checkoutNow;
 
   version = data.version || version;
   renderCustomerTab();
