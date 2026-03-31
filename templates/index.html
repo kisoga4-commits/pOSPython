@@ -50,9 +50,9 @@
             <p class="section-subtitle">จัดการโต๊ะและคิวออเดอร์แบบเรียลไทม์</p>
           </div>
           <div class="queue-controls">
-            <button class="btn-secondary" type="button">-</button>
-            <button class="btn-secondary" type="button">M</button>
-            <button class="btn-secondary" type="button">+</button>
+            <button id="quick-table-down" class="btn-secondary" type="button">-</button>
+            <button id="quick-table-mid" class="btn-secondary" type="button">M</button>
+            <button id="quick-table-up" class="btn-secondary" type="button">+</button>
           </div>
         </div>
         <div class="status-legend">
@@ -154,10 +154,12 @@
             <div class="input-shell"><label>เบอร์โทร</label><input id="store-phone" type="text" placeholder="08x-xxx-xxxx" /></div>
             <div class="input-shell"><label>ที่อยู่ร้าน</label><input id="store-address" type="text" placeholder="ที่อยู่ร้านค้า" /></div>
             <div class="input-shell"><label>สีร้าน</label><input id="store-currency" type="text" placeholder="แดงไวน์ / ครีม" /></div>
-            <div class="input-shell"><label>PromptPay / ภาษี (%)</label><input id="store-tax-rate" type="number" min="0" step="0.01" placeholder="0" /></div>
+            <div class="input-shell"><label>PromptPay</label><input id="store-promptpay" type="text" placeholder="เลข PromptPay" /></div>
+            <div class="input-shell"><label>ภาษี (%)</label><input id="store-tax-rate" type="number" min="0" step="0.01" placeholder="0" /></div>
             <div class="input-shell"><label>Service Charge (%)</label><input id="store-service-rate" type="number" min="0" step="0.01" placeholder="0" /></div>
           </div>
           <div class="input-shell"><label>หมายเหตุใบเสร็จ</label><input id="store-receipt-note" type="text" placeholder="ขอบคุณที่ใช้บริการ" /></div>
+          <div class="input-shell"><label>โลโก้ร้าน</label><input id="store-logo" type="file" accept="image/*" /></div>
           <div class="input-shell"><label>Admin PIN</label><input id="admin-pin" type="password" placeholder="••••" /></div>
           <div class="btn-row">
             <button id="save-system-settings" class="btn-primary primary-button">บันทึกการตั้งค่า</button>

@@ -2,12 +2,24 @@ let version = 0;
 let lastPendingIds = new Set();
 let state = { tables: [], orders: [] };
 
+const TABLE_STATUS_META = {
+  available: { label: 'ว่าง', className: 'status-available' },
+  pending_order: { label: 'มีออร์เดอร์ใหม่', className: 'status-pending_order' },
+  accepted_order: { label: 'รับแล้ว', className: 'status-accepted_order' },
+  checkout_requested: { label: 'รอเช็คบิล', className: 'status-checkout_requested' },
+  closed: { label: 'ปิดบิล', className: 'status-closed' },
+};
+
 async function api(path, options = {}) {
   const res = await fetch(path, {
     headers: { 'Content-Type': 'application/json' },
     ...options,
   });
   return res.json();
+}
+
+function getStatusMeta(status) {
+  return TABLE_STATUS_META[status] || TABLE_STATUS_META.available;
 }
 
 function playNewOrderSound() {
@@ -18,19 +30,35 @@ function playNewOrderSound() {
 }
 
 function tableCard(table, actions = []) {
+  const meta = getStatusMeta(table.status);
   const card = document.createElement('div');
-  card.className = `list-item table-card status-${table.status}`;
-  card.innerHTML = `<strong>โต๊ะ ${table.id}</strong><span class="badge status-${table.status}">${table.status}</span>`;
-  const actionWrap = document.createElement('div');
-  actionWrap.className = 'btn-row';
-  actions.forEach((cfg) => {
-    const btn = document.createElement('button');
-    btn.className = cfg.className || 'btn-primary';
-    btn.textContent = cfg.label;
-    btn.addEventListener('click', cfg.onClick);
-    actionWrap.appendChild(btn);
-  });
-  if (actions.length) card.appendChild(actionWrap);
+  card.className = `mobile-table-card table-card ${meta.className}`;
+  card.innerHTML = `
+    <div class="mobile-table-head">
+      <strong>โต๊ะ ${table.id}</strong>
+      <span class="status-badge ${meta.className}">${meta.label}</span>
+    </div>
+  `;
+
+  if (table.status === 'pending_order') {
+    const notify = document.createElement('div');
+    notify.className = 'dot-notify';
+    notify.textContent = '● แจ้งเตือนออเดอร์ใหม่';
+    card.appendChild(notify);
+  }
+
+  if (actions.length) {
+    const actionWrap = document.createElement('div');
+    actionWrap.className = 'btn-row';
+    actions.forEach((cfg) => {
+      const btn = document.createElement('button');
+      btn.className = cfg.className || 'btn-primary';
+      btn.textContent = cfg.label;
+      btn.addEventListener('click', cfg.onClick);
+      actionWrap.appendChild(btn);
+    });
+    card.appendChild(actionWrap);
+  }
   return card;
 }
 

@@ -296,6 +296,7 @@ function renderSettings() {
   document.getElementById('store-phone').value = settings.storePhone || '';
   document.getElementById('store-address').value = settings.storeAddress || '';
   document.getElementById('store-currency').value = settings.currency || 'บาท (฿)';
+  document.getElementById('store-promptpay').value = settings.promptPay || '';
   document.getElementById('store-tax-rate').value = Number(settings.taxRate || 0);
   document.getElementById('store-service-rate').value = Number(settings.serviceRate || 0);
   document.getElementById('store-receipt-note').value = settings.receiptNote || '';
@@ -309,6 +310,7 @@ function getSystemPayload() {
     storePhone: document.getElementById('store-phone').value.trim(),
     storeAddress: document.getElementById('store-address').value.trim(),
     currency: document.getElementById('store-currency').value.trim(),
+    promptPay: document.getElementById('store-promptpay').value.trim(),
     taxRate: Number(document.getElementById('store-tax-rate').value || 0),
     serviceRate: Number(document.getElementById('store-service-rate').value || 0),
     receiptNote: document.getElementById('store-receipt-note').value.trim(),
@@ -388,6 +390,27 @@ function bindActions() {
     await loadData();
   });
 
+
+  document.getElementById('quick-table-down').addEventListener('click', async () => {
+    const next = Math.max(1, Number(document.getElementById('table-count').value || db.tableCount || 1) - 1);
+    document.getElementById('table-count').value = next;
+    await api('/api/settings', { method: 'POST', body: JSON.stringify({ tableCount: next }) });
+    await loadData();
+  });
+
+  document.getElementById('quick-table-mid').addEventListener('click', async () => {
+    const next = Math.max(1, Number(document.getElementById('table-count').value || db.tableCount || 8));
+    await api('/api/settings', { method: 'POST', body: JSON.stringify({ tableCount: next }) });
+    await loadData();
+  });
+
+  document.getElementById('quick-table-up').addEventListener('click', async () => {
+    const next = Number(document.getElementById('table-count').value || db.tableCount || 8) + 1;
+    document.getElementById('table-count').value = next;
+    await api('/api/settings', { method: 'POST', body: JSON.stringify({ tableCount: next }) });
+    await loadData();
+  });
+
   document.getElementById('save-settings').addEventListener('click', async () => {
     const tableCount = Number(document.getElementById('table-count').value || 8);
     await api('/api/settings', { method: 'POST', body: JSON.stringify({ tableCount }) });
@@ -401,7 +424,10 @@ function bindActions() {
 
   document.getElementById('save-system-settings').addEventListener('click', async () => {
     document.getElementById('system-save-state').textContent = 'กำลังบันทึก...';
-    await api('/api/settings', { method: 'POST', body: JSON.stringify({ settings: getSystemPayload() }) });
+    const payload = getSystemPayload();
+    const logoInput = document.getElementById('store-logo');
+    if (logoInput && logoInput.files && logoInput.files[0]) payload.logoName = logoInput.files[0].name;
+    await api('/api/settings', { method: 'POST', body: JSON.stringify({ settings: payload }) });
     document.getElementById('system-save-state').textContent = 'บันทึกแล้ว';
     await loadData();
   });
@@ -412,6 +438,7 @@ function bindActions() {
       storePhone: '',
       storeAddress: '',
       currency: 'บาท (฿)',
+      promptPay: '',
       taxRate: 0,
       serviceRate: 0,
       receiptNote: '',
