@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime, timezone
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, abort, jsonify, render_template, request
 
 from db import ensure_db_exists, load_db, reset_tables, save_db
 
@@ -46,6 +46,8 @@ def manifest():
 @app.route("/customer")
 def customer_page():
     table_id = request.args.get("table", type=int)
+    if table_id is None or table_id < 1:
+        abort(400, description="missing_or_invalid_table")
     return render_template("customer.html", table_id=table_id, asset_version=ASSET_VERSION)
 
 

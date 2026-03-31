@@ -1,10 +1,10 @@
 let db;
 let version = 0;
-let adminUnlocked = false;
 let selectedTableId = null;
 let orderCart = [];
 let menuEditIndex = -1;
 let activeCashierTableId = null;
+let menuImagePreviewData = '';
 
 const statusMap = {
   available: { label: 'ว่าง', tone: 'available', icon: '○' },
@@ -15,10 +15,10 @@ const statusMap = {
 
 const qs = (id) => document.getElementById(id);
 const money = (n) => Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const unitLabel = () => (db?.settings?.serviceMode === 'queue' ? 'คิว' : 'โต๊ะ');
+const unitLabel = () => (db?.settings?.serviceMode === 'queue' ? 'คิว' : 'Table');
 const qrApiBase = 'https://api.qrserver.com/v1/create-qr-code/';
 
-function customerScanUrl(tableId) { return `${window.location.origin}/table/${tableId}`; }
+function customerScanUrl(tableId) { return `${window.location.origin}/customer?table=${tableId}`; }
 function buildQrImageUrl(text) { return `${qrApiBase}?size=320x320&margin=8&data=${encodeURIComponent(text)}`; }
 
 async function api(path, options = {}) {
@@ -60,12 +60,13 @@ function renderTables() {
     const { items, total } = getTableSummary(table.id);
     const card = document.createElement('button');
     card.type = 'button';
-    card.className = `table-card ${meta.tone} ${selectedTableId === table.id ? 'is-selected' : ''} ${selectedTableId === table.id && orderCart.length ? 'is-ordering' : ''}`;
-    card.innerHTML = `
-      <div class="table-head-row"><strong>${unitLabel()} ${table.id}</strong><span class="status-chip ${meta.tone}">${meta.icon} ${meta.label}</span></div>
-      <div>${items.length} รายการ • ${money(total)} บาท</div>
-      <small>${items.slice(-2).map((i) => i.name).join(' • ') || 'ยังไม่มีรายการ'}</small>
-    `;
+    card.className = `table-card ${meta.tone}`;
+    card.innerHTML = items.length
+      ? `<div class="table-head-row"><strong>${unitLabel()} ${table.id}</strong><span class="status-chip ${meta.tone}">${meta.icon}</span></div>
+         <small>${items.slice(-4).map((i) => `${i.name} • ${money(i.price)}`).join('<br>')}</small>
+         <div class="table-total">รวม ${money(total)} บาท</div>`
+      : `<div class="table-head-row"><strong>${unitLabel()} ${table.id}</strong><span class="status-chip available">○</span></div>
+         <small>พร้อมรับออเดอร์</small>`;
     card.addEventListener('click', () => selectTable(table.id));
     grid.appendChild(card);
   });
@@ -76,8 +77,8 @@ function renderOrderMenuChoices() {
   grid.innerHTML = '';
   db.menu.forEach((item) => {
     const btn = document.createElement('article');
-    btn.className = 'menu-choice visual';
-    btn.innerHTML = `<div class="menu-choice-thumb">${item.image ? `<img src="${item.image}" alt="${item.name}" />` : '🍽️'}</div><strong>${item.name}</strong><small>฿${money(item.price)}</small>`;
+    btn.className = 'menu-choice visual large-thumb';
+    btn.innerHTML = `<div class="menu-choice-thumb">${item.image ? `<img src="${item.image}" alt="${item.name}" />` : 'Image'}</div><strong>${item.name}</strong><small>฿${money(item.price)}</small>`;
     btn.addEventListener('click', () => {
       orderCart.push({ name: item.name, price: Number(item.price), addon: '', note: '', qty: 1 });
       renderOrderCart();
@@ -92,18 +93,16 @@ function renderOrderCart() {
   if (!orderCart.length) {
     list.innerHTML = '<div class="empty">ยังไม่มีรายการในตะกร้า</div>';
     qs('order-cart-total').textContent = 'รวม 0.00 บาท';
-    renderTables();
     return;
   }
   orderCart.forEach((item, idx) => {
     const row = document.createElement('div');
     row.className = 'list-card';
-    row.innerHTML = `<strong>${item.name}</strong> · ${money(item.price)} บาท ${item.addon ? `• ${item.addon}` : ''} ${item.note ? `• ${item.note}` : ''} <button class="btn-soft">ลบ</button>`;
+    row.innerHTML = `<strong>${item.name}</strong> · ${money(item.price)} บาท <button class="btn-soft">ลบ</button>`;
     row.querySelector('button').addEventListener('click', () => { orderCart.splice(idx, 1); renderOrderCart(); });
     list.appendChild(row);
   });
   qs('order-cart-total').textContent = `รวม ${money(orderCart.reduce((s, i) => s + Number(i.price || 0), 0))} บาท`;
-  renderTables();
 }
 
 function renderExistingOrders(tableId) {
@@ -114,7 +113,7 @@ function renderExistingOrders(tableId) {
   items.forEach((item) => {
     const row = document.createElement('div');
     row.className = 'list-card';
-    row.textContent = `${item.name} • ${money(item.price)} บาท ${item.note || ''}`;
+    row.textContent = `${item.name} • ${money(item.price)} บาท`;
     list.appendChild(row);
   });
   qs('order-existing-total').textContent = `ยอดรวมตอนนี้ ${money(total)} บาท`;
@@ -127,22 +126,19 @@ function selectTable(tableId) {
   const meta = statusMap[table?.status] || statusMap.available;
   qs('order-meta-table').textContent = `${unitLabel()} ${tableId}`;
   qs('order-meta-status').textContent = `สถานะ: ${meta.label}`;
-  qs('accept-table-order').classList.toggle('hidden', table?.status !== 'pending_order');
-  qs('order-panel-empty').classList.add('hidden');
-  qs('order-panel-active').classList.remove('hidden');
   renderOrderMenuChoices();
   renderOrderCart();
   renderExistingOrders(tableId);
-  renderTables();
+  qs('table-order-modal').classList.remove('hidden');
 }
 
 async function submitOrderFromPanel() {
   if (!selectedTableId || !orderCart.length) return;
   const res = await api('/api/order', { method: 'POST', body: JSON.stringify({ target: 'table', target_id: selectedTableId, cart: orderCart, source: 'staff' }) });
   if (res.error) return;
+  qs('table-order-modal').classList.add('hidden');
   orderCart = [];
   await loadData();
-  selectTable(selectedTableId);
 }
 
 async function openBill(targetId) {
@@ -158,34 +154,23 @@ async function openBill(targetId) {
     qs('bill-items').appendChild(row);
   });
   qs('bill-total').textContent = money(bill.total);
-  qs('cashier-empty').classList.add('hidden');
-  qs('cashier-bill').classList.remove('hidden');
+  qs('payment-modal').classList.remove('hidden');
 }
 
 function renderCashier() {
   const wrap = qs('checkout-list');
   wrap.innerHTML = '';
-  const queues = db.tables
-    .filter((t) => ['pending_order', 'accepted_order', 'checkout_requested'].includes(t.status))
-    .map((table) => {
-      const orders = getTableOrders(table.id);
-      const lastOrderAt = orders.reduce((latest, order) => {
-        const t = Date.parse(order.updated_at || order.created_at || 0);
-        return t > latest ? t : latest;
-      }, 0);
-      return { table, lastOrderAt };
-    })
-    .sort((a, b) => a.lastOrderAt - b.lastOrderAt);
+  const queues = db.tables.filter((t) => ['pending_order', 'accepted_order', 'checkout_requested'].includes(t.status));
   qs('checkout-count').textContent = `${queues.length} รายการ`;
   if (!queues.length) {
     wrap.innerHTML = '<div class="empty">ยังไม่มีคิวใช้งาน</div>';
     return;
   }
-  queues.forEach((entry, idx) => {
-    const table = entry.table;
+  queues.forEach((table) => {
+    const meta = statusMap[table.status] || statusMap.available;
     const row = document.createElement('button');
-    row.className = 'list-card';
-    row.textContent = `#${idx + 1} ${unitLabel()} ${table.id} • ${(statusMap[table.status] || statusMap.available).label}`;
+    row.className = `list-card checkout-card ${meta.tone}`;
+    row.innerHTML = `<strong>${meta.icon} ${unitLabel()} ${table.id}</strong><small>${meta.label}</small>`;
     row.addEventListener('click', () => openBill(table.id));
     wrap.appendChild(row);
   });
@@ -196,11 +181,36 @@ function renderMenu() {
   list.innerHTML = '';
   db.menu.forEach((item, idx) => {
     const row = document.createElement('div');
-    row.className = 'list-card';
-    row.innerHTML = `<strong>${item.name}</strong> • ${money(item.price)} บาท <button data-a="e" class="btn-soft">แก้ไข</button> <button data-a="d" class="btn-soft">ลบ</button>`;
-    row.querySelector('[data-a="e"]').addEventListener('click', () => { menuEditIndex = idx; qs('menu-name').value = item.name; qs('menu-price').value = item.price; qs('menu-addons').value = (item.addons || []).join(','); });
+    row.className = 'list-card menu-admin-row';
+    row.innerHTML = `<div class="menu-admin-meta"><div class="menu-thumb">${item.image ? `<img src="${item.image}" alt="${item.name}" />` : 'IMG'}</div><div><strong>${item.name}</strong><small>${money(item.price)} บาท</small></div></div><div><button data-a="e" class="btn-soft">แก้ไข</button> <button data-a="d" class="btn-soft">ลบ</button></div>`;
+    row.querySelector('[data-a="e"]').addEventListener('click', () => {
+      menuEditIndex = idx;
+      qs('menu-name').value = item.name;
+      qs('menu-price').value = item.price;
+      qs('menu-addons').value = (item.addons || []).join(',');
+      menuImagePreviewData = item.image || '';
+      qs('menu-image-preview').src = menuImagePreviewData;
+    });
     row.querySelector('[data-a="d"]').addEventListener('click', async () => { db.menu.splice(idx, 1); await api('/api/settings', { method: 'POST', body: JSON.stringify({ menu: db.menu }) }); await loadData(); });
     list.appendChild(row);
+  });
+}
+
+function renderSales() {
+  const sales = db.sales || [];
+  const total = sales.reduce((sum, s) => sum + Number(s.total || 0), 0);
+  const cash = sales.filter((s) => s.payment_method === 'cash').reduce((sum, s) => sum + Number(s.total || 0), 0);
+  const qr = sales.filter((s) => s.payment_method === 'qr').reduce((sum, s) => sum + Number(s.total || 0), 0);
+  qs('sales-summary').innerHTML = `
+    <div class="list-card"><strong>ยอดขายรวม</strong><div>${money(total)} บาท</div></div>
+    <div class="list-card"><strong>เงินสด</strong><div>${money(cash)} บาท</div></div>
+    <div class="list-card"><strong>โอน/QR</strong><div>${money(qr)} บาท</div></div>`;
+  qs('sales-list').innerHTML = '';
+  sales.slice().reverse().forEach((sale) => {
+    const row = document.createElement('div');
+    row.className = 'list-card';
+    row.textContent = `${unitLabel()} ${sale.target_id} • ${money(sale.total)} บาท • ${sale.payment_method}`;
+    qs('sales-list').appendChild(row);
   });
 }
 
@@ -211,7 +221,6 @@ function renderSystem() {
   qs('store-name').value = s.storeName || 'FAKDU';
   qs('bank-name').value = s.bankName || '';
   qs('promptpay').value = s.promptPay || '';
-  qs('admin-pin').value = s.adminPin || 'admin';
   qs('dynamic-qr').checked = Boolean(s.dynamicPromptPay);
   renderTableQRList();
 }
@@ -221,7 +230,7 @@ function openQRModal(title, url, imageUrl) {
   qs('client-qr-image').src = imageUrl;
   qs('qr-download').href = imageUrl;
   qs('qr-download').download = `${title}.png`;
-  qs('qr-print').onclick = () => window.open(url, '_blank');
+  qs('qr-print').onclick = () => window.open(imageUrl, '_blank');
   qs('qr-modal').classList.remove('hidden');
 }
 
@@ -231,24 +240,13 @@ function renderTableQRList() {
   db.tables.forEach((table) => {
     const btn = document.createElement('button');
     btn.className = 'btn-soft table-pick-btn';
-    btn.textContent = `${unitLabel()} ${table.id}`;
+    btn.textContent = `Table ${table.id}`;
     btn.addEventListener('click', () => {
       const url = customerScanUrl(table.id);
-      openQRModal(`${unitLabel()}-${table.id}`, url, buildQrImageUrl(url));
+      openQRModal(`Table-${table.id}`, url, buildQrImageUrl(url));
     });
     wrap.appendChild(btn);
   });
-}
-
-function syncAdminUI() {
-  qs('open-admin-login').classList.toggle('hidden', adminUnlocked);
-  qs('admin-logout').classList.toggle('hidden', !adminUnlocked);
-}
-
-function requestAdminAccess(targetScreen) {
-  if (adminUnlocked) return showScreen(targetScreen);
-  qs('admin-login-modal').classList.remove('hidden');
-  qs('admin-login-submit').dataset.targetScreen = targetScreen;
 }
 
 async function loadData() {
@@ -259,65 +257,68 @@ async function loadData() {
   renderTables();
   renderCashier();
   renderMenu();
+  renderSales();
   renderSystem();
 }
 
 function bind() {
-  document.querySelectorAll('[data-screen]').forEach((btn) => btn.addEventListener('click', () => {
-    if (['backstore', 'system'].includes(btn.dataset.screen)) return requestAdminAccess(btn.dataset.screen);
-    showScreen(btn.dataset.screen);
-  }));
+  document.querySelectorAll('[data-screen]').forEach((btn) => btn.addEventListener('click', () => showScreen(btn.dataset.screen)));
   document.querySelectorAll('[data-system-tab]').forEach((btn) => btn.addEventListener('click', () => {
     document.querySelectorAll('[data-system-tab]').forEach((s) => s.classList.toggle('is-active', s === btn));
-    ['profile', 'payment', 'backup', 'qr'].forEach((name) => qs(`system-${name}`).classList.toggle('hidden', name !== btn.dataset.systemTab));
+    ['general', 'payment', 'qr'].forEach((name) => qs(`system-${name}`).classList.toggle('hidden', name !== btn.dataset.systemTab));
+  }));
+  document.querySelectorAll('[data-backstore-tab]').forEach((btn) => btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-backstore-tab]').forEach((s) => s.classList.toggle('is-active', s === btn));
+    ['menu', 'sales'].forEach((name) => qs(`backstore-${name}`).classList.toggle('hidden', name !== btn.dataset.backstoreTab));
   }));
 
-  qs('open-client-qr').addEventListener('click', () => openQRModal('staff-mode', `${window.location.origin}/scan/staff`, buildQrImageUrl(`${window.location.origin}/scan/staff`)));
+  qs('open-client-qr').addEventListener('click', () => openQRModal('staff-mode', `${window.location.origin}/staff`, buildQrImageUrl(`${window.location.origin}/staff`)));
   qs('close-qr-modal').addEventListener('click', () => qs('qr-modal').classList.add('hidden'));
-
-  qs('open-admin-login').addEventListener('click', () => qs('admin-login-modal').classList.remove('hidden'));
-  qs('close-admin-login').addEventListener('click', () => {
-    qs('admin-login-modal').classList.add('hidden');
-    qs('admin-login-pin').value = '';
-  });
-  qs('admin-logout').addEventListener('click', () => { adminUnlocked = false; localStorage.removeItem('fakdu_admin_auth'); syncAdminUI(); showScreen('customer'); });
-  qs('admin-login-submit').addEventListener('click', () => {
-    const pin = qs('admin-login-pin').value.trim();
-    if (pin && pin === (db.settings?.adminPin || 'admin')) {
-      adminUnlocked = true;
-      localStorage.setItem('fakdu_admin_auth', '1');
-      qs('admin-login-modal').classList.add('hidden');
-      qs('admin-login-pin').value = '';
-      syncAdminUI();
-      showScreen(qs('admin-login-submit').dataset.targetScreen || 'backstore');
-    }
-  });
-  qs('admin-login-pin').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') qs('admin-login-submit').click();
-  });
-
-  qs('accept-table-order').addEventListener('click', async () => {
-    if (!selectedTableId) return;
-    await api('/api/table/accept', { method: 'POST', body: JSON.stringify({ table_id: selectedTableId }) });
-    await loadData();
-    selectTable(selectedTableId);
-  });
+  qs('close-table-order-modal').addEventListener('click', () => qs('table-order-modal').classList.add('hidden'));
+  qs('close-payment-modal').addEventListener('click', () => qs('payment-modal').classList.add('hidden'));
 
   qs('order-submit').addEventListener('click', submitOrderFromPanel);
 
-  qs('bill-pay-cash').addEventListener('click', async () => { if (!activeCashierTableId) return; await api('/api/checkout', { method: 'POST', body: JSON.stringify({ target: 'table', target_id: activeCashierTableId, payment_method: 'cash' }) }); await loadData(); });
-  qs('bill-pay-qr').addEventListener('click', async () => { if (!activeCashierTableId) return; await api('/api/checkout', { method: 'POST', body: JSON.stringify({ target: 'table', target_id: activeCashierTableId, payment_method: 'qr' }) }); await loadData(); });
+  qs('bill-pay-cash').addEventListener('click', async () => {
+    if (!activeCashierTableId) return;
+    await api('/api/checkout', { method: 'POST', body: JSON.stringify({ target: 'table', target_id: activeCashierTableId, payment_method: 'cash' }) });
+    qs('payment-modal').classList.add('hidden');
+    await loadData();
+  });
+  qs('bill-pay-qr').addEventListener('click', async () => {
+    if (!activeCashierTableId) return;
+    await api('/api/checkout', { method: 'POST', body: JSON.stringify({ target: 'table', target_id: activeCashierTableId, payment_method: 'qr' }) });
+    qs('payment-modal').classList.add('hidden');
+    await loadData();
+  });
 
-  qs('update-table-count').addEventListener('click', async () => { await api('/api/settings', { method: 'POST', body: JSON.stringify({ tableCount: Number(qs('table-count').value), settings: { serviceMode: qs('service-mode').value } }) }); await loadData(); });
+  qs('update-table-count').addEventListener('click', async () => {
+    await api('/api/settings', { method: 'POST', body: JSON.stringify({ tableCount: Number(qs('table-count').value), settings: { serviceMode: qs('service-mode').value } }) });
+    await loadData();
+  });
+
+  qs('menu-image-file').addEventListener('change', async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    menuImagePreviewData = await new Promise((resolve) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.readAsDataURL(file); });
+    qs('menu-image-preview').src = menuImagePreviewData;
+  });
+
   qs('save-menu').addEventListener('click', async () => {
     const name = qs('menu-name').value.trim();
     const price = Number(qs('menu-price').value || 0);
     if (!name || price <= 0) return;
-    const payload = { name, price, addons: qs('menu-addons').value.split(',').map((x) => x.trim()).filter(Boolean), image: '' };
+    const payload = { name, price, addons: qs('menu-addons').value.split(',').map((x) => x.trim()).filter(Boolean), image: menuImagePreviewData || '' };
     if (menuEditIndex >= 0) db.menu[menuEditIndex] = { ...db.menu[menuEditIndex], ...payload };
     else db.menu.push({ id: Date.now(), ...payload });
     await api('/api/settings', { method: 'POST', body: JSON.stringify({ menu: db.menu }) });
-    qs('menu-name').value = ''; qs('menu-price').value = ''; qs('menu-addons').value = ''; menuEditIndex = -1;
+    qs('menu-name').value = '';
+    qs('menu-price').value = '';
+    qs('menu-addons').value = '';
+    qs('menu-image-file').value = '';
+    qs('menu-image-preview').src = '';
+    menuImagePreviewData = '';
+    menuEditIndex = -1;
     await loadData();
   });
 
@@ -330,26 +331,18 @@ function bind() {
 
   qs('save-system').addEventListener('click', async () => {
     let qrImage = db.settings?.qrImage || '';
-    let logoImage = qs('shop-logo-preview').src || db.settings?.logoImage || '';
+    const logoImage = qs('shop-logo-preview').src || db.settings?.logoImage || '';
     const qrFile = qs('qr-image').files?.[0];
     if (qrFile) qrImage = await new Promise((resolve) => { const r = new FileReader(); r.onload = () => resolve(r.result); r.readAsDataURL(qrFile); });
-    await api('/api/settings', { method: 'POST', body: JSON.stringify({ settings: { storeName: qs('store-name').value.trim(), bankName: qs('bank-name').value.trim(), promptPay: qs('promptpay').value.trim(), adminPin: qs('admin-pin').value.trim() || 'admin', dynamicPromptPay: qs('dynamic-qr').checked, qrImage, logoImage } }) });
+    await api('/api/settings', {
+      method: 'POST',
+      body: JSON.stringify({ settings: { storeName: qs('store-name').value.trim(), bankName: qs('bank-name').value.trim(), promptPay: qs('promptpay').value.trim(), dynamicPromptPay: qs('dynamic-qr').checked, qrImage, logoImage } }),
+    });
     await loadData();
   });
 
-  qs('backup-db').addEventListener('click', async () => {
-    const backup = await api('/api/backup');
-    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = `backup-${new Date().toISOString().slice(0, 10)}.json`; a.click(); URL.revokeObjectURL(url);
-  });
-  qs('restore-db').addEventListener('click', async () => { const file = qs('restore-file').files?.[0]; if (!file) return; await api('/api/restore', { method: 'POST', body: JSON.stringify(JSON.parse(await file.text())) }); await loadData(); });
-
   document.querySelectorAll('.modal').forEach((m) => m.addEventListener('click', (e) => {
-    if (e.target === m) {
-      m.classList.add('hidden');
-      if (m.id === 'admin-login-modal') qs('admin-login-pin').value = '';
-    }
+    if (e.target === m) m.classList.add('hidden');
   }));
 }
 
@@ -358,13 +351,10 @@ async function poll() {
   if (info.changed) {
     if ((info.tables || []).some((t) => t.status === 'pending_order')) qs('new-order-sound')?.play().catch(() => {});
     await loadData();
-    if (selectedTableId) selectTable(selectedTableId);
   }
 }
 
 (async function init() {
-  adminUnlocked = localStorage.getItem('fakdu_admin_auth') === '1';
-  syncAdminUI();
   bind();
   await loadData();
   setInterval(poll, 1200);
