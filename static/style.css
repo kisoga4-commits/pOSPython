@@ -232,3 +232,49 @@ input,select{width:100%;padding:10px;border-radius:10px;border:1px solid var(--l
 .theme-dot{width:18px;height:18px;border-radius:999px;border:1px solid rgba(0,0,0,.15)}
 #system-theme label{display:grid;gap:6px;font-size:.85rem;color:#4b5563}
 #system-theme input[type="color"]{height:48px;padding:4px;border-radius:12px}
+
+.printer-settings-block{margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:14px;background:#f8fafc;display:grid;gap:12px}
+.printer-grid{grid-template-columns:repeat(2,minmax(0,1fr));align-items:end}
+.compact-toggle{margin-bottom:0}
+.field-label{display:block;font-size:.85rem;color:#4b5563;margin-bottom:6px}
+.receipt-preview-wrap{display:grid;gap:8px}
+.receipt-preview{
+  --receipt-width:250px;
+  margin:0 auto;
+  width:min(100%,var(--receipt-width));
+  background:#fff;
+  color:#111827;
+  border-radius:8px;
+  box-shadow:0 12px 24px rgba(15,23,42,.14);
+  padding:14px 12px;
+  font-family:"Courier New","Noto Sans Mono",monospace;
+  position:relative;
+}
+.receipt-preview[data-paper-size="80"]{--receipt-width:350px}
+.receipt-preview::before,
+.receipt-preview::after{
+  content:"";
+  position:absolute;
+  left:0;
+  width:100%;
+  height:8px;
+  background:
+    linear-gradient(-45deg, transparent 75%, #fff 75%) 0 0/8px 8px,
+    linear-gradient(45deg, transparent 75%, #fff 75%) 4px 0/8px 8px;
+}
+.receipt-preview::before{top:-8px}
+.receipt-preview::after{bottom:-8px;transform:rotate(180deg)}
+.receipt-brand,.receipt-title,.receipt-footer{text-align:center}
+.receipt-brand{font-weight:700;letter-spacing:.6px}
+.receipt-title{margin-top:2px;margin-bottom:10px}
+.receipt-meta{font-size:.86rem}
+.receipt-divider{margin:8px 0;text-align:center;letter-spacing:.5px}
+.receipt-item-row,.receipt-total-row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.receipt-item-row{margin-bottom:4px}
+.receipt-total-row{justify-content:flex-end}
+.receipt-total-row span{margin-right:8px}
+.receipt-footer{margin-top:10px}
+
+@media (max-width:980px){
+  .printer-grid{grid-template-columns:1fr}
+}
