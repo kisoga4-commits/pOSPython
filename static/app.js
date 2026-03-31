@@ -300,7 +300,6 @@ function renderSettings() {
   document.getElementById('store-tax-rate').value = Number(settings.taxRate || 0);
   document.getElementById('store-service-rate').value = Number(settings.serviceRate || 0);
   document.getElementById('store-receipt-note').value = settings.receiptNote || '';
-  document.getElementById('admin-pin').value = settings.adminPin || '';
   document.getElementById('system-save-state').textContent = 'พร้อมแก้ไข';
 }
 
@@ -314,7 +313,6 @@ function getSystemPayload() {
     taxRate: Number(document.getElementById('store-tax-rate').value || 0),
     serviceRate: Number(document.getElementById('store-service-rate').value || 0),
     receiptNote: document.getElementById('store-receipt-note').value.trim(),
-    adminPin: document.getElementById('admin-pin').value.trim(),
   };
 }
 
@@ -362,23 +360,7 @@ async function pollLive() {
   }
 }
 
-async function checkLicense() {
-  const status = await api('/api/license');
-  document.getElementById('machine-id').textContent = status.machine_id || '-';
-  if (status.licensed) {
-    document.getElementById('license-screen').classList.add('hidden');
-    await loadData();
-  }
-}
-
 function bindActions() {
-  document.getElementById('activate-btn').addEventListener('click', async () => {
-    const key = document.getElementById('license-key').value.trim();
-    const res = await api('/api/activate', { method: 'POST', body: JSON.stringify({ key }) });
-    document.getElementById('license-message').textContent = res.status === 'success' ? 'Activated' : (res.message || 'Error');
-    await checkLicense();
-  });
-
   document.getElementById('submit-order').addEventListener('click', async () => {
     if (!currentTable || !cart.length) return;
     await api('/api/order', {
@@ -442,19 +424,8 @@ function bindActions() {
       taxRate: 0,
       serviceRate: 0,
       receiptNote: '',
-      adminPin: '',
     };
     await api('/api/settings', { method: 'POST', body: JSON.stringify({ settings: defaults }) });
-    await loadData();
-  });
-
-  document.getElementById('save-admin-pin').addEventListener('click', async () => {
-    const current = db.settings || {};
-    await api('/api/settings', {
-      method: 'POST',
-      body: JSON.stringify({ settings: { ...current, adminPin: document.getElementById('admin-pin').value.trim() } }),
-    });
-    document.getElementById('system-save-state').textContent = 'บันทึก PIN แล้ว';
     await loadData();
   });
 
@@ -520,6 +491,6 @@ function registerServiceWorker() {
   bindKitchenSubtabs();
   bindActions();
   registerServiceWorker();
-  checkLicense();
+  loadData();
   setInterval(pollLive, 2000);
 })();
