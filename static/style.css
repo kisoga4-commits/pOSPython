@@ -52,7 +52,7 @@ main { padding: 16px 0 32px; display: grid; gap: 16px; }
 .section-card {
   background: var(--card);
   border-radius: var(--radius-lg);
-  padding: 14px;
+  padding: 16px;
   box-shadow: var(--shadow);
 }
 .section-card.soft { background: #fffdfb; border: 1px solid #f3e7dc; box-shadow: none; margin-top: 12px; }
@@ -116,6 +116,27 @@ button {
 
 .chip-grid { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
 .chip-grid button { background: #fff4ec; color: #742121; border: 1px solid #f0d5c5; }
+.menu-editor {
+  display: grid;
+  grid-template-columns: 2fr 1fr auto;
+  gap: 8px;
+  align-items: end;
+}
+.menu-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #fff7f1;
+  border: 1px solid #f0d5c5;
+  border-radius: 12px;
+  padding: 6px;
+}
+.menu-chip-btn { padding: 6px 10px; font-size: .82rem; }
+.menu-chip-btn.danger {
+  background: #ffe6e6;
+  border: 1px solid #efb0b0;
+  color: #8c1f1f;
+}
 .order-list { display: grid; gap: 8px; margin-bottom: 10px; }
 .list-item {
   background: #fff;
@@ -154,6 +175,11 @@ input, select {
   border-radius: 12px;
   padding: 10px;
   background: #fffdfb;
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 .btn-row { display: flex; gap: 8px; }
 .system-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
@@ -258,5 +284,7 @@ a { color: #8d2525; }
 
 @media (max-width: 768px) {
   button { font-size: 1rem; padding: 12px 14px; }
+  .form-grid { grid-template-columns: 1fr; }
+  .menu-editor { grid-template-columns: 1fr; }
   .btn-row { flex-direction: column; }
 }

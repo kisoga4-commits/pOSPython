@@ -3,6 +3,7 @@ let currentTable = null;
 let cart = [];
 let version = 0;
 let pendingSeen = new Set();
+let menuEditIndex = -1;
 
 const TABLE_STATUS_META = {
   available: { label: 'ว่าง', className: 'status-available' },
@@ -163,9 +164,29 @@ function renderMenu() {
     list.appendChild(btn);
 
     if (preview) {
-      const chip = document.createElement('span');
-      chip.className = 'badge';
-      chip.textContent = m.name;
+      const chip = document.createElement('div');
+      chip.className = 'menu-chip';
+      chip.innerHTML = `<span class="badge">${m.name} · ${m.price}</span>`;
+      const editBtn = document.createElement('button');
+      editBtn.className = 'btn-secondary menu-chip-btn';
+      editBtn.type = 'button';
+      editBtn.textContent = 'แก้ไข';
+      editBtn.addEventListener('click', () => {
+        menuEditIndex = db.menu.findIndex((item) => item.name === m.name && Number(item.price) === Number(m.price));
+        document.getElementById('menu-name').value = m.name;
+        document.getElementById('menu-price').value = m.price;
+        document.getElementById('save-menu-item').textContent = 'บันทึกการแก้ไข';
+      });
+      const delBtn = document.createElement('button');
+      delBtn.className = 'btn-secondary menu-chip-btn danger';
+      delBtn.type = 'button';
+      delBtn.textContent = 'ลบ';
+      delBtn.addEventListener('click', async () => {
+        db.menu = db.menu.filter((_, idx) => idx !== db.menu.findIndex((item) => item.name === m.name && Number(item.price) === Number(m.price)));
+        await saveMenuItems();
+      });
+      chip.appendChild(editBtn);
+      chip.appendChild(delBtn);
       preview.appendChild(chip);
     }
   });
@@ -270,6 +291,38 @@ function renderReport() {
 
 function renderSettings() {
   document.getElementById('table-count').value = db.tableCount;
+  const settings = db.settings || {};
+  document.getElementById('store-name').value = settings.storeName || 'FAKDU';
+  document.getElementById('store-phone').value = settings.storePhone || '';
+  document.getElementById('store-address').value = settings.storeAddress || '';
+  document.getElementById('store-currency').value = settings.currency || 'บาท (฿)';
+  document.getElementById('store-tax-rate').value = Number(settings.taxRate || 0);
+  document.getElementById('store-service-rate').value = Number(settings.serviceRate || 0);
+  document.getElementById('store-receipt-note').value = settings.receiptNote || '';
+  document.getElementById('admin-pin').value = settings.adminPin || '';
+  document.getElementById('system-save-state').textContent = 'พร้อมแก้ไข';
+}
+
+function getSystemPayload() {
+  return {
+    storeName: document.getElementById('store-name').value.trim(),
+    storePhone: document.getElementById('store-phone').value.trim(),
+    storeAddress: document.getElementById('store-address').value.trim(),
+    currency: document.getElementById('store-currency').value.trim(),
+    taxRate: Number(document.getElementById('store-tax-rate').value || 0),
+    serviceRate: Number(document.getElementById('store-service-rate').value || 0),
+    receiptNote: document.getElementById('store-receipt-note').value.trim(),
+    adminPin: document.getElementById('admin-pin').value.trim(),
+  };
+}
+
+async function saveMenuItems() {
+  await api('/api/settings', { method: 'POST', body: JSON.stringify({ menu: db.menu }) });
+  menuEditIndex = -1;
+  document.getElementById('menu-name').value = '';
+  document.getElementById('menu-price').value = '';
+  document.getElementById('save-menu-item').textContent = 'เพิ่มรายการ';
+  await loadData();
 }
 
 function playPendingAlertIfNeeded() {
@@ -343,6 +396,88 @@ function bindActions() {
 
   document.getElementById('reset-day').addEventListener('click', async () => {
     await api('/api/settings', { method: 'POST', body: JSON.stringify({ reset: true }) });
+    await loadData();
+  });
+
+  document.getElementById('save-system-settings').addEventListener('click', async () => {
+    document.getElementById('system-save-state').textContent = 'กำลังบันทึก...';
+    await api('/api/settings', { method: 'POST', body: JSON.stringify({ settings: getSystemPayload() }) });
+    document.getElementById('system-save-state').textContent = 'บันทึกแล้ว';
+    await loadData();
+  });
+
+  document.getElementById('reset-system-settings').addEventListener('click', async () => {
+    const defaults = {
+      storeName: 'FAKDU',
+      storePhone: '',
+      storeAddress: '',
+      currency: 'บาท (฿)',
+      taxRate: 0,
+      serviceRate: 0,
+      receiptNote: '',
+      adminPin: '',
+    };
+    await api('/api/settings', { method: 'POST', body: JSON.stringify({ settings: defaults }) });
+    await loadData();
+  });
+
+  document.getElementById('save-admin-pin').addEventListener('click', async () => {
+    const current = db.settings || {};
+    await api('/api/settings', {
+      method: 'POST',
+      body: JSON.stringify({ settings: { ...current, adminPin: document.getElementById('admin-pin').value.trim() } }),
+    });
+    document.getElementById('system-save-state').textContent = 'บันทึก PIN แล้ว';
+    await loadData();
+  });
+
+  document.getElementById('save-menu-item').addEventListener('click', async () => {
+    const name = document.getElementById('menu-name').value.trim();
+    const price = Number(document.getElementById('menu-price').value || 0);
+    if (!name || price <= 0) return;
+
+    if (menuEditIndex >= 0) {
+      db.menu[menuEditIndex] = { name, price };
+    } else {
+      db.menu.push({ name, price });
+    }
+    await saveMenuItems();
+  });
+
+  document.getElementById('add-menu-item').addEventListener('click', () => {
+    menuEditIndex = -1;
+    document.getElementById('menu-name').value = '';
+    document.getElementById('menu-price').value = '';
+    document.getElementById('menu-name').focus();
+    document.getElementById('save-menu-item').textContent = 'เพิ่มรายการ';
+  });
+
+  document.getElementById('export-data').addEventListener('click', () => {
+    if (!db) return;
+    const blob = new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `backup-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  });
+
+  document.getElementById('import-data').addEventListener('click', async () => {
+    const fileInput = document.getElementById('import-file');
+    const file = fileInput.files && fileInput.files[0];
+    if (!file) return;
+    const text = await file.text();
+    const imported = JSON.parse(text);
+    if (!imported || !Array.isArray(imported.menu) || !Array.isArray(imported.tables)) return;
+    await api('/api/settings', {
+      method: 'POST',
+      body: JSON.stringify({
+        tableCount: Number(imported.tableCount || 8),
+        menu: imported.menu,
+        settings: imported.settings || {},
+      }),
+    });
     await loadData();
   });
 }
