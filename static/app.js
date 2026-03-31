@@ -4,6 +4,8 @@ let cart = [];
 let version = 0;
 let pendingSeen = new Set();
 let menuEditIndex = -1;
+let pendingMenuImageData = '';
+let isAdminAuthenticated = false;
 
 const TABLE_STATUS_META = {
   available: { label: 'ว่าง', className: 'status-available' },
@@ -75,14 +77,14 @@ function mountQRCode(el, text) {
 
 function renderLinks() {
   const base = window.location.origin;
-  const staff = `${base}/staff`;
+  const staff = `${base}/scan/staff`;
   const staffNode = document.getElementById('staff-link');
   staffNode.href = staff;
   staffNode.textContent = staff;
 
   const customerNode = document.getElementById('customer-link');
-  customerNode.href = `${base}/customer?table=1`;
-  customerNode.textContent = `${base}/customer?table={table_id}`;
+  customerNode.href = `${base}/scan/customer/1`;
+  customerNode.textContent = `${base}/scan/customer/{table_id}`;
 
   const staffScanLink = document.getElementById('staff-scan-link');
   if (staffScanLink) {
@@ -97,7 +99,7 @@ function renderLinks() {
   if (qrGrid) qrGrid.innerHTML = '';
 
   db.tables.forEach((table) => {
-    const tableUrl = `${base}/customer?table=${table.id}`;
+    const tableUrl = `${base}/scan/customer/${table.id}`;
 
     const link = document.createElement('a');
     link.href = tableUrl;
@@ -113,7 +115,7 @@ function renderLinks() {
       const qrMount = card.querySelector('.qr-inline');
       const qrLink = card.querySelector('.qr-inline-link');
       qrLink.href = tableUrl;
-      qrLink.textContent = `table=${table.id}`;
+      qrLink.textContent = `/scan/customer/${table.id}`;
       mountQRCode(qrMount, tableUrl);
       qrGrid.appendChild(card);
     }
@@ -156,7 +158,7 @@ function renderMenu() {
 
   db.menu.forEach((m) => {
     const btn = document.createElement('button');
-    btn.textContent = `${m.name} - ${m.price}`;
+    btn.innerHTML = `${m.image ? `<img src="${m.image}" class="menu-thumb" alt="${m.name}" />` : ''}<span>${m.name} - ${m.price}</span>`;
     btn.addEventListener('click', () => {
       cart.push(m);
       renderCart();
@@ -175,6 +177,7 @@ function renderMenu() {
         menuEditIndex = db.menu.findIndex((item) => item.name === m.name && Number(item.price) === Number(m.price));
         document.getElementById('menu-name').value = m.name;
         document.getElementById('menu-price').value = m.price;
+        pendingMenuImageData = m.image || '';
         document.getElementById('save-menu-item').textContent = 'บันทึกการแก้ไข';
       });
       const delBtn = document.createElement('button');
@@ -238,13 +241,16 @@ function renderCashier() {
     const total = items.reduce((sum, i) => sum + Number(i.price || 0), 0);
     const btn = document.createElement('button');
     btn.className = 'list-item checkout-item';
-    btn.innerHTML = `<strong>โต๊ะ ${table.id}</strong><div>ยอดรวม ${total}</div>`;
-    btn.addEventListener('click', async () => {
-      await api('/api/checkout', {
-        method: 'POST',
-        body: JSON.stringify({ target: 'table', target_id: table.id }),
+    btn.innerHTML = `<strong>โต๊ะ ${table.id}</strong><div>ยอดรวม ${total}</div><div class="btn-row"><button class="btn-secondary pay-btn" data-method="cash">💵</button><button class="btn-secondary pay-btn" data-method="qr">📱</button></div>`;
+    btn.querySelectorAll('.pay-btn').forEach((payBtn) => {
+      payBtn.addEventListener('click', async (event) => {
+        event.stopPropagation();
+        await api('/api/checkout', {
+          method: 'POST',
+          body: JSON.stringify({ target: 'table', target_id: table.id, payment_method: payBtn.dataset.method }),
+        });
+        await loadData();
       });
-      await loadData();
     });
     list.appendChild(btn);
   });
@@ -282,9 +288,10 @@ function renderReport() {
   }
 
   db.sales.slice().reverse().forEach((sale) => {
+    const paymentSymbol = sale.payment_method === 'qr' ? '📱' : '💵';
     const row = document.createElement('div');
     row.className = 'list-item';
-    row.textContent = `${sale.id} | ${sale.target} ${sale.target_id} | ${sale.total}`;
+    row.textContent = `${sale.id} | ${sale.target} ${sale.target_id} | ${paymentSymbol} ${sale.total}`;
     list.appendChild(row);
   });
 }
@@ -297,6 +304,7 @@ function renderSettings() {
   document.getElementById('store-address').value = settings.storeAddress || '';
   document.getElementById('store-currency').value = settings.currency || 'บาท (฿)';
   document.getElementById('store-promptpay').value = settings.promptPay || '';
+  document.getElementById('admin-pin').value = settings.adminPin || '2468';
   document.getElementById('store-tax-rate').value = Number(settings.taxRate || 0);
   document.getElementById('store-service-rate').value = Number(settings.serviceRate || 0);
   document.getElementById('store-receipt-note').value = settings.receiptNote || '';
@@ -310,6 +318,7 @@ function getSystemPayload() {
     storeAddress: document.getElementById('store-address').value.trim(),
     currency: document.getElementById('store-currency').value.trim(),
     promptPay: document.getElementById('store-promptpay').value.trim(),
+    adminPin: document.getElementById('admin-pin').value.trim() || '2468',
     taxRate: Number(document.getElementById('store-tax-rate').value || 0),
     serviceRate: Number(document.getElementById('store-service-rate').value || 0),
     receiptNote: document.getElementById('store-receipt-note').value.trim(),
@@ -321,8 +330,33 @@ async function saveMenuItems() {
   menuEditIndex = -1;
   document.getElementById('menu-name').value = '';
   document.getElementById('menu-price').value = '';
+  document.getElementById('menu-image').value = '';
+  pendingMenuImageData = '';
   document.getElementById('save-menu-item').textContent = 'เพิ่มรายการ';
   await loadData();
+}
+
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function enforceAdminScreens() {
+  const protectedScreens = ['kitchen', 'settings'];
+  if (!isAdminAuthenticated && protectedScreens.includes(document.querySelector('.main-tab.is-active')?.dataset.screen)) {
+    showScreen('customer');
+  }
+  document.querySelectorAll('[data-screen]').forEach((btn) => {
+    const isProtected = protectedScreens.includes(btn.dataset.screen);
+    btn.disabled = isProtected && !isAdminAuthenticated;
+    btn.title = btn.disabled ? 'ต้อง login admin ก่อน' : '';
+  });
+  document.getElementById('admin-login-btn').classList.toggle('hidden', isAdminAuthenticated);
+  document.getElementById('admin-logout-btn').classList.toggle('hidden', !isAdminAuthenticated);
 }
 
 function playPendingAlertIfNeeded() {
@@ -351,6 +385,7 @@ async function loadData() {
   renderOrders();
   renderReport();
   renderSettings();
+  enforceAdminScreens();
 }
 
 async function pollLive() {
@@ -421,6 +456,7 @@ function bindActions() {
       storeAddress: '',
       currency: 'บาท (฿)',
       promptPay: '',
+      adminPin: '2468',
       taxRate: 0,
       serviceRate: 0,
       receiptNote: '',
@@ -434,10 +470,14 @@ function bindActions() {
     const price = Number(document.getElementById('menu-price').value || 0);
     if (!name || price <= 0) return;
 
+    const imageFile = document.getElementById('menu-image').files?.[0];
+    let image = pendingMenuImageData || '';
+    if (imageFile) image = await fileToDataUrl(imageFile);
+
     if (menuEditIndex >= 0) {
-      db.menu[menuEditIndex] = { name, price };
+      db.menu[menuEditIndex] = { ...db.menu[menuEditIndex], name, price, image };
     } else {
-      db.menu.push({ name, price });
+      db.menu.push({ name, price, image });
     }
     await saveMenuItems();
   });
@@ -446,8 +486,29 @@ function bindActions() {
     menuEditIndex = -1;
     document.getElementById('menu-name').value = '';
     document.getElementById('menu-price').value = '';
+    document.getElementById('menu-image').value = '';
+    pendingMenuImageData = '';
     document.getElementById('menu-name').focus();
     document.getElementById('save-menu-item').textContent = 'เพิ่มรายการ';
+  });
+
+  document.getElementById('admin-login-btn').addEventListener('click', () => {
+    const enteredPin = window.prompt('กรอกรหัส Admin');
+    if (!enteredPin) return;
+    const validPin = String((db.settings && db.settings.adminPin) || '2468');
+    if (enteredPin === validPin) {
+      isAdminAuthenticated = true;
+      localStorage.setItem('fakdu_admin_auth', '1');
+      enforceAdminScreens();
+    } else {
+      window.alert('รหัสไม่ถูกต้อง');
+    }
+  });
+
+  document.getElementById('admin-logout-btn').addEventListener('click', () => {
+    isAdminAuthenticated = false;
+    localStorage.removeItem('fakdu_admin_auth');
+    enforceAdminScreens();
   });
 
   document.getElementById('export-data').addEventListener('click', () => {
@@ -491,6 +552,8 @@ function registerServiceWorker() {
   bindKitchenSubtabs();
   bindActions();
   registerServiceWorker();
+  isAdminAuthenticated = localStorage.getItem('fakdu_admin_auth') === '1';
+  enforceAdminScreens();
   loadData();
   setInterval(pollLive, 2000);
 })();

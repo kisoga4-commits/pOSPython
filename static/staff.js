@@ -103,12 +103,22 @@ function renderCheckoutTab() {
 
   checkoutTables.forEach((table) => {
     list.appendChild(tableCard(table, [{
-      label: 'ปิดบิลโต๊ะนี้',
+      label: '💵 ปิดบิลเงินสด',
       className: 'btn-secondary',
       onClick: async () => {
         await api('/api/checkout', {
           method: 'POST',
-          body: JSON.stringify({ target: 'table', target_id: table.id }),
+          body: JSON.stringify({ target: 'table', target_id: table.id, payment_method: 'cash' }),
+        });
+        await loadLive();
+      },
+    }, {
+      label: '📱 ปิดบิล QR',
+      className: 'btn-secondary',
+      onClick: async () => {
+        await api('/api/checkout', {
+          method: 'POST',
+          body: JSON.stringify({ target: 'table', target_id: table.id, payment_method: 'qr' }),
         });
         await loadLive();
       },

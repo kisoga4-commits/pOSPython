@@ -31,7 +31,7 @@ function renderMenu() {
   menu.forEach((item) => {
     const btn = document.createElement('button');
     btn.className = 'menu-btn';
-    btn.textContent = `${item.name} - ${item.price}`;
+    btn.innerHTML = `${item.image ? `<img src="${item.image}" class="menu-thumb" alt="${item.name}" />` : ''}<span>${item.name} - ${item.price}</span>`;
     btn.disabled = !lockedTableId;
     btn.addEventListener('click', () => {
       cart.push(item);
