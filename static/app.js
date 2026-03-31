@@ -13,6 +13,10 @@ async function api(path, options = {}) {
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach((el) => el.classList.add('hidden'));
   document.getElementById(id).classList.remove('hidden');
+
+  document.querySelectorAll('.tabs .tab').forEach((el) => el.classList.remove('is-active'));
+  const activeTab = document.querySelector(`.tabs .tab[data-screen="${id}"]`);
+  if (activeTab) activeTab.classList.add('is-active');
 }
 
 function bindNav() {
@@ -127,5 +131,11 @@ function bindActions() {
 (async function init() {
   bindNav();
   bindActions();
+
+  const mode = new URLSearchParams(window.location.search).get('mode');
+  if (mode && ['order', 'cashier', 'report'].includes(mode)) {
+    showScreen(mode);
+  }
+
   await loadData();
 })();
