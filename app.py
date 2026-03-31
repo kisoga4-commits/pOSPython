@@ -13,8 +13,6 @@ log.setLevel(logging.ERROR)
 app = Flask(__name__)
 ASSET_VERSION = "20260331-scan-status-admin"
 
-TABLE_STATUSES = {"available", "pending_order", "accepted_order", "checkout_requested", "closed"}
-
 
 def bootstrap() -> None:
     ensure_db_exists()
