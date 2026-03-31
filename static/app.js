@@ -127,7 +127,7 @@ function renderTables() {
     const meta = getStatusMeta(table.status);
     const btn = document.createElement('button');
     btn.className = `table-card ${meta.className}`;
-    btn.innerHTML = `<p class="table-id">โต๊ะ ${table.id}</p><span class="badge table-status ${meta.className}">${meta.label}</span>`;
+    btn.innerHTML = `<p class="table-id">โต๊ะ ${table.id}</p><span class="status-badge table-status ${meta.className}">${meta.label}</span>`;
 
     if (table.status === 'pending_order') {
       const dot = document.createElement('span');
@@ -237,8 +237,8 @@ function renderCashier() {
     const items = tableOrders.flatMap((o) => o.items || []);
     const total = items.reduce((sum, i) => sum + Number(i.price || 0), 0);
     const btn = document.createElement('button');
-    btn.className = 'list-item';
-    btn.textContent = `Checkout โต๊ะ ${table.id} (${total})`;
+    btn.className = 'list-item checkout-item';
+    btn.innerHTML = `<strong>โต๊ะ ${table.id}</strong><div>ยอดรวม ${total}</div>`;
     btn.addEventListener('click', async () => {
       await api('/api/checkout', {
         method: 'POST',
