@@ -224,6 +224,24 @@ def api_settings():
     return jsonify({"status": "success", "version": db["meta"]["version"]})
 
 
+@app.route("/api/backup", methods=["GET"])
+@require_server_request
+@require_license
+def api_backup():
+    return jsonify(load_db())
+
+
+@app.route("/api/restore", methods=["POST"])
+@require_server_request
+@require_license
+def api_restore():
+    payload = read_json()
+    if not isinstance(payload, dict):
+        return jsonify({"error": "invalid payload"}), 400
+    db = save_db(payload)
+    return jsonify({"status": "success", "version": db["meta"]["version"]})
+
+
 @app.route("/api/kitchen/orders", methods=["GET"])
 @require_license
 def api_kitchen_orders():
