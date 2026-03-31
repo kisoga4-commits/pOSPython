@@ -276,7 +276,10 @@ function bind() {
   qs('close-qr-modal').addEventListener('click', () => qs('qr-modal').classList.add('hidden'));
 
   qs('open-admin-login').addEventListener('click', () => qs('admin-login-modal').classList.remove('hidden'));
-  qs('close-admin-login').addEventListener('click', () => qs('admin-login-modal').classList.add('hidden'));
+  qs('close-admin-login').addEventListener('click', () => {
+    qs('admin-login-modal').classList.add('hidden');
+    qs('admin-login-pin').value = '';
+  });
   qs('admin-logout').addEventListener('click', () => { adminUnlocked = false; localStorage.removeItem('fakdu_admin_auth'); syncAdminUI(); showScreen('customer'); });
   qs('admin-login-submit').addEventListener('click', () => {
     const pin = qs('admin-login-pin').value.trim();
@@ -284,9 +287,13 @@ function bind() {
       adminUnlocked = true;
       localStorage.setItem('fakdu_admin_auth', '1');
       qs('admin-login-modal').classList.add('hidden');
+      qs('admin-login-pin').value = '';
       syncAdminUI();
       showScreen(qs('admin-login-submit').dataset.targetScreen || 'backstore');
     }
+  });
+  qs('admin-login-pin').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') qs('admin-login-submit').click();
   });
 
   qs('accept-table-order').addEventListener('click', async () => {
@@ -338,7 +345,12 @@ function bind() {
   });
   qs('restore-db').addEventListener('click', async () => { const file = qs('restore-file').files?.[0]; if (!file) return; await api('/api/restore', { method: 'POST', body: JSON.stringify(JSON.parse(await file.text())) }); await loadData(); });
 
-  document.querySelectorAll('.modal').forEach((m) => m.addEventListener('click', (e) => { if (e.target === m) m.classList.add('hidden'); }));
+  document.querySelectorAll('.modal').forEach((m) => m.addEventListener('click', (e) => {
+    if (e.target === m) {
+      m.classList.add('hidden');
+      if (m.id === 'admin-login-modal') qs('admin-login-pin').value = '';
+    }
+  }));
 }
 
 async function poll() {
