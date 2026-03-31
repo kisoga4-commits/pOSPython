@@ -6,15 +6,24 @@ let activeBill = null;
 let pwaDeferredPrompt = null;
 
 const statusMap = {
-  available: { label: '🟢', note: '' },
+  available: { label: '⚪', note: '' },
   pending_order: { label: '🟠', note: '' },
-  accepted_order: { label: '🔵', note: '' },
+  accepted_order: { label: '🟢', note: '' },
   checkout_requested: { label: '🟣', note: '' },
 };
 
 const qs = (id) => document.getElementById(id);
 const money = (n) => Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const unitLabel = () => (db?.settings?.serviceMode === 'queue' ? 'คิว' : 'โต๊ะ');
+const qrApiBase = 'https://api.qrserver.com/v1/create-qr-code/';
+
+function customerScanUrl(tableId) {
+  return `${window.location.origin}/scan/customer/${tableId}`;
+}
+
+function buildQrImageUrl(text) {
+  return `${qrApiBase}?size=300x300&margin=8&data=${encodeURIComponent(text)}`;
+}
 
 async function api(path, options = {}) {
   const res = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...options });
@@ -302,6 +311,24 @@ function renderSystem() {
   qs('master-node').value = s.masterNode || 'main';
   if (s.themeColor) qs('theme-color').value = s.themeColor;
   if (s.bgColor) qs('bg-color').value = s.bgColor;
+  renderTableQRCodes();
+}
+
+function renderTableQRCodes() {
+  const wrap = qs('table-qr-list');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  (db.tables || []).forEach((table) => {
+    const tableUrl = customerScanUrl(table.id);
+    const card = document.createElement('div');
+    card.className = 'qr-table-card';
+    card.innerHTML = `
+      <strong>${unitLabel()} ${table.id}</strong>
+      <img src="${buildQrImageUrl(tableUrl)}" alt="QR ${unitLabel()} ${table.id}" loading="lazy" />
+      <a class="btn-soft" href="${tableUrl}" target="_blank" rel="noopener">เปิดลิงก์ลูกค้า</a>
+    `;
+    wrap.appendChild(card);
+  });
 }
 
 async function loadData() {
