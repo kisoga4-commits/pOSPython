@@ -1,0 +1,13 @@
+body { font-family: Arial, sans-serif; margin: 0; background: #f3f4f6; color: #111827; }
+header { background: #fff; padding: 12px 16px; position: sticky; top: 0; border-bottom: 1px solid #e5e7eb; }
+nav button { margin-right: 8px; }
+main { padding: 16px; }
+.screen { background: #fff; border-radius: 10px; padding: 16px; }
+.hidden { display: none; }
+#table-grid, #checkout-list, #menu-list, #cart-list { display: grid; gap: 8px; margin-top: 10px; }
+button { border: 1px solid #d1d5db; border-radius: 8px; padding: 8px 12px; background: #fff; cursor: pointer; }
+button:hover { background: #f9fafb; }
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; }
+.card { background: #fff; border-radius: 12px; padding: 16px; max-width: 540px; width: 90%; }
+input { width: 100%; margin: 6px 0; padding: 8px; border: 1px solid #d1d5db; border-radius: 8px; }
+code { background: #f3f4f6; padding: 2px 6px; border-radius: 6px; }

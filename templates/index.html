@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SHABU POS</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+  <div id="license-screen" class="overlay">
+    <div class="card">
+      <h2>🔒 Activate License</h2>
+      <p>Machine ID: <span id="machine-id"></span></p>
+      <input id="license-key" placeholder="License Key" maxlength="16" />
+      <button id="activate-btn">Activate</button>
+      <p id="license-message"></p>
+    </div>
+  </div>
+
+  <header>
+    <h1>🍲 SHABU POS</h1>
+    <nav>
+      <button data-screen="order">โหมดรับออร์เดอร์</button>
+      <button data-screen="cashier">โหมดแคชเชียร์</button>
+      <button data-screen="report">โหมดหลังร้าน/รายงาน</button>
+      <button id="show-qr">QR สำหรับเครื่องลูก</button>
+    </nav>
+  </header>
+
+  <main>
+    <section id="order" class="screen">
+      <h2>โหมดรับออร์เดอร์</h2>
+      <div id="table-grid"></div>
+      <div id="menu-area" class="hidden">
+        <h3>โต๊ะ <span id="active-table"></span></h3>
+        <div id="menu-list"></div>
+        <div id="cart-list"></div>
+        <button id="submit-order">ส่งออร์เดอร์</button>
+      </div>
+    </section>
+
+    <section id="cashier" class="screen hidden">
+      <h2>โหมดแคชเชียร์</h2>
+      <div id="checkout-list"></div>
+    </section>
+
+    <section id="report" class="screen hidden">
+      <h2>โหมดหลังร้าน / รายงาน</h2>
+      <p>ยอดขายรวม: <span id="sales-total">0</span> บาท</p>
+      <button id="reset-day">รีเซ็ตทั้งวัน</button>
+    </section>
+  </main>
+
+  <div id="qr-modal" class="overlay hidden">
+    <div class="card">
+      <h3>QR URL สำหรับเครื่องลูก</h3>
+      <p>Order: <code id="order-url"></code></p>
+      <p>Cashier: <code id="cashier-url"></code></p>
+      <button id="close-qr">ปิด</button>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
