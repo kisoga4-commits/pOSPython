@@ -34,19 +34,20 @@ function renderMenu() {
   const list = document.getElementById('menu-list');
   list.innerHTML = '';
   menu.forEach((item) => {
-    const btn = document.createElement('button');
-    btn.className = 'menu-btn';
-    btn.innerHTML = `${item.name}<br><small>${money(item.price)} บาท</small>`;
-    btn.disabled = !lockedTableId;
-    btn.addEventListener('click', () => {
-      const addonChoices = Array.isArray(item.addons) ? item.addons : [];
-      const addon = addonChoices.length ? (window.prompt(`add-on (${addonChoices.join(', ')})`, addonChoices[0]) || '') : '';
-      const qty = Math.max(1, Number(window.prompt('จำนวน', '1') || '1'));
-      const note = (window.prompt('หมายเหตุ', '') || '').trim();
-      cart.push({ ...item, addon: addon.trim(), qty, note });
+    const card = document.createElement('article');
+    card.className = 'menu-mobile-card';
+    card.innerHTML = `
+      <div>
+        <strong>${item.name}</strong>
+        <small>${money(item.price)} บาท</small>
+      </div>
+      <button type="button" class="mini-add-btn" ${!lockedTableId ? 'disabled' : ''}>＋</button>
+    `;
+    card.querySelector('.mini-add-btn').addEventListener('click', () => {
+      cart.push({ ...item, addon: '', qty: 1, note: '' });
       renderCart();
     });
-    list.appendChild(btn);
+    list.appendChild(card);
   });
 }
 
@@ -83,8 +84,8 @@ function updateTableStatus(tables = []) {
   badge.className = `badge ${meta.className}`;
   badge.textContent = `${unit} ${lockedTableId} · ${meta.label}`;
   note.textContent = table.status === 'pending_order'
-    ? 'ร้านได้รับรายการของคุณแล้ว'
-    : (table.status === 'accepted_order' ? 'กำลังเตรียมอาหารให้คุณ' : `สถานะล่าสุด: ${meta.label}`);
+    ? 'ส่งออร์เดอร์แล้ว · รอพนักงานกดรับ'
+    : (table.status === 'accepted_order' ? 'พนักงานรับออร์เดอร์แล้ว · กำลังเตรียมอาหาร' : `สถานะล่าสุด: ${meta.label}`);
 }
 
 function renderExistingOrders() {
