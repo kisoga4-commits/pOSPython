@@ -1,10 +1,10 @@
 import logging
 import base64
 import io
+import importlib.util
 from datetime import datetime, timezone
 
 from flask import Flask, abort, jsonify, render_template, request
-from PIL import Image
 
 from db import ensure_db_exists, load_db, reset_tables, save_db
 
@@ -329,6 +329,11 @@ def api_order_item():
 @app.route("/api/menu/upload-image", methods=["POST"])
 @require_license
 def api_menu_upload_image():
+    if importlib.util.find_spec("PIL") is None:
+        return jsonify({"error": "missing_dependency_pillow"}), 503
+
+    from PIL import Image
+
     payload = read_json()
     raw_image = str(payload.get("image", ""))
     if not raw_image.startswith("data:image/"):
