@@ -59,6 +59,30 @@
     </div>
   </div>
 
+  <div id="item-detail-modal" class="modal hidden">
+    <div class="modal-card cart-modal-card">
+      <div class="section-head">
+        <h3 id="item-detail-title">เลือกตัวเลือก</h3>
+        <button id="close-item-detail-modal" class="btn-soft" type="button">ปิด</button>
+      </div>
+      <div class="order-list">
+        <label>
+          ตัวเลือกเพิ่มเติม
+          <select id="item-addon-select"></select>
+        </label>
+        <label>
+          หมายเหตุ
+          <input id="item-note-input" type="text" maxlength="120" placeholder="เช่น ไม่ใส่ผักชี" />
+        </label>
+      </div>
+      <div class="btn-row">
+        <button id="item-detail-add-btn" class="btn-primary" type="button">เพิ่มลงตะกร้า</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="cart-toast" class="cart-toast hidden" role="status" aria-live="polite">เพิ่มลงตะกร้าแล้ว</div>
+
   <script src="{{ url_for('static', filename='customer.js') }}?v={{ asset_version }}"></script>
 </body>
 </html>
