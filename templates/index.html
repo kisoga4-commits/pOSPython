@@ -19,7 +19,7 @@
         </div>
       </div>
       <div class="header-icons">
-        <button id="open-client-qr" class="icon-btn" title="QR Staff">🔔</button>
+        <button id="open-client-qr" class="icon-btn" title="QR Staff">QR</button>
       </div>
     </header>
 
@@ -34,9 +34,26 @@
       <section id="customer" class="screen section-card">
         <div class="section-head">
           <h2>แผนผังโต๊ะ</h2>
-          <span class="pill">คลิกโต๊ะเพื่อเปิดเมนูในโมดัล</span>
+          <span class="pill">Staff/Desktop Layout</span>
         </div>
-        <div id="table-grid" class="table-grid clean-table-grid"></div>
+        <div class="staff-split-layout">
+          <section class="staff-main-pane">
+            <div id="table-grid" class="table-grid clean-table-grid"></div>
+          </section>
+
+          <aside class="staff-cart-pane">
+            <h3>Order Summary</h3>
+            <div id="desk-selected-table" class="meta-chip">ยังไม่ได้เลือกโต๊ะ</div>
+            <div id="desk-selected-status" class="muted">เลือกโต๊ะเพื่อดูสรุปคำสั่งซื้อ</div>
+            <div id="desk-selected-items" class="order-list"></div>
+            <div id="desk-selected-total" class="order-total">รวม 0.00 บาท</div>
+            <div class="desk-action-stack">
+              <button id="desk-open-order-modal" class="btn-primary" type="button">เปิดหน้าออเดอร์</button>
+              <button id="desk-open-bill-modal" class="btn-secondary" type="button">Billing</button>
+              <button id="desk-open-table-qr" class="btn-soft" type="button">ดู QR โต๊ะนี้</button>
+            </div>
+          </aside>
+        </div>
       </section>
 
       <section id="cashier" class="screen section-card hidden">
