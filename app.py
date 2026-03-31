@@ -5,7 +5,6 @@ from flask import Flask, jsonify, render_template, request
 
 from db import ensure_db_exists, load_db, reset_tables, save_db
 
-from license_service import LicenseError, activate_license, ensure_license_file, get_machine_id, license_status
 from security import get_local_ip, read_json, require_license, require_server_request
 
 
@@ -13,7 +12,7 @@ log = logging.getLogger("werkzeug")
 log.setLevel(logging.ERROR)
 
 app = Flask(__name__)
-ASSET_VERSION = "20260331-fakdu-home-admin-session"
+ASSET_VERSION = "20260331-ui-refresh-license-off"
 
 
 def bootstrap() -> None:
@@ -72,12 +71,6 @@ def api_license_status():
 
 @app.route("/api/activate", methods=["POST"])
 def api_activate():
-
-    payload = read_json()
-    ok, message = activate_license(payload.get("key", ""))
-    if ok:
-        return jsonify({"status": "success"})
-
     return jsonify({"status": "success", "message": "license_disabled"})
 
 

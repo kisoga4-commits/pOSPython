@@ -2,6 +2,7 @@ import hashlib
 import hmac
 import os
 import re
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -37,8 +38,19 @@ def _linux_physical_mac() -> str:
     raise LicenseError("No physical MAC address found")
 
 
+def _fallback_mac() -> str:
+    mac_int = uuid.getnode()
+    mac = ":".join(f"{(mac_int >> shift) & 0xFF:02X}" for shift in range(40, -1, -8))
+    if mac == "00:00:00:00:00:00":
+        raise LicenseError("Cannot detect MAC address")
+    return mac
+
+
 def get_physical_mac_address() -> str:
-    return _linux_physical_mac()
+    try:
+        return _linux_physical_mac()
+    except LicenseError:
+        return _fallback_mac()
 
 
 def get_machine_id() -> str:

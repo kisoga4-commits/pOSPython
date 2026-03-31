@@ -1,9 +1,10 @@
+import os
 import socket
 from functools import wraps
 
-from flask import jsonify, request
+from flask import request
 
-from license_service import is_licensed
+LICENSE_DISABLED = os.environ.get("POS_DISABLE_LICENSE", "1") != "0"
 
 
 def get_local_ip() -> str:
@@ -26,8 +27,8 @@ def is_server_request() -> bool:
 def require_license(view):
     @wraps(view)
     def wrapped(*args, **kwargs):
-        if not is_licensed():
-            return jsonify({"error": "ระบบยังไม่ได้เปิดใช้งาน"}), 403
+        if LICENSE_DISABLED:
+            return view(*args, **kwargs)
         return view(*args, **kwargs)
 
     return wrapped
@@ -37,7 +38,7 @@ def require_server_request(view):
     @wraps(view)
     def wrapped(*args, **kwargs):
         if not is_server_request():
-            return jsonify({"error": "Unauthorized"}), 403
+            return {"error": "Unauthorized"}, 403
         return view(*args, **kwargs)
 
     return wrapped

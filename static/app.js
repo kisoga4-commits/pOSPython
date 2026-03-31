@@ -27,7 +27,17 @@ function buildQrImageUrl(text) {
 
 async function api(path, options = {}) {
   const res = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...options });
-  return res.json();
+  const text = await res.text();
+  let data = {};
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch (error) {
+    data = { error: 'invalid_json', raw: text };
+  }
+  if (!res.ok) {
+    return { error: data.error || `request_failed_${res.status}`, status: res.status, ...data };
+  }
+  return data;
 }
 
 function applyTheme() {
@@ -93,6 +103,7 @@ function buildPromptPayPayload(promptPayId, amount) {
 
 async function openBill(target, targetId) {
   activeBill = await api(`/api/bill/${target}/${targetId}`);
+  if (activeBill.error) return;
   qs('bill-title').textContent = `${unitLabel()} ${targetId}`;
 
   const list = qs('bill-items');
@@ -333,7 +344,10 @@ function renderTableQRCodes() {
 
 async function loadData() {
   db = await api('/api/data');
-  if (db.error) return;
+  if (db.error) {
+    console.error('Failed to load data', db);
+    return;
+  }
   version = db.meta.version;
   applyTheme();
   renderTables();
