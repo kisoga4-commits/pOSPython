@@ -8,11 +8,11 @@
   <title>FAKDU POS Dashboard</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version }}" />
 </head>
-<body>
+<body data-local-ip="{{ local_ip }}">
   <div class="app-shell desktop-shell">
     <header class="app-header modern-header">
       <div class="brand-left">
-        <div id="store-logo" class="logo-slot">LOGO</div>
+        <div id="store-logo" class="logo-slot hero-logo">LOGO</div>
         <div>
           <p class="muted-light">POS ร้านอาหารตามสั่ง</p>
           <h1 id="header-store-name">FAKDU</h1>
@@ -107,7 +107,7 @@
           <div class="sales-body-grid">
             <section class="sales-panel">
               <h3>ประวัติการขาย</h3>
-              <div id="sales-list" class="order-list"></div>
+              <div id="sales-list" class="sales-history-list"></div>
             </section>
             <section class="sales-panel">
               <h3>รายการขายดี</h3>
@@ -187,13 +187,16 @@
   </div>
 
   <div id="payment-modal" class="modal hidden">
-    <div class="modal-card compact">
+    <div class="modal-card bill-modal-card">
       <div class="section-head"><h3 id="bill-title">ชำระเงิน</h3><button id="close-payment-modal" class="btn-soft">ปิด</button></div>
-      <div id="bill-items"></div>
+      <div id="bill-items" class="bill-items-clean"></div>
       <div class="bill-foot"><strong>รวม <span id="bill-total">0</span> บาท</strong></div>
-      <div class="manage-row two-col">
-        <button id="bill-pay-cash" class="btn-primary">💵 Cash</button>
-        <button id="bill-pay-qr" class="btn-secondary">📱 QR/Transfer</button>
+      <div class="bill-payment-qr">
+        <img id="bill-payment-qr-image" class="qr-preview" alt="Payment QR" />
+      </div>
+      <div class="manage-row two-col bill-action-row">
+        <button id="bill-pay-cash" class="btn-primary">💵 รับเงินสด (Cash)</button>
+        <button id="bill-pay-qr" class="btn-secondary">📱 รับโอน (Transfer)</button>
       </div>
     </div>
   </div>
