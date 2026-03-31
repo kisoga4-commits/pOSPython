@@ -66,11 +66,6 @@ def staff_page():
     return render_template("staff.html", asset_version=ASSET_VERSION)
 
 
-@app.route("/scan/staff")
-def staff_scan_page():
-    return render_template("staff.html", asset_version=ASSET_VERSION)
-
-
 @app.route("/api/license", methods=["GET"])
 def api_license_status():
     return jsonify({"licensed": True, "machine_id": "DISABLED"})

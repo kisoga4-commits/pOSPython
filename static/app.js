@@ -18,7 +18,14 @@ const money = (n) => Number(n || 0).toLocaleString('th-TH', { minimumFractionDig
 const unitLabel = () => (db?.settings?.serviceMode === 'queue' ? 'คิว' : 'Table');
 const qrApiBase = 'https://api.qrserver.com/v1/create-qr-code/';
 
-function customerScanUrl(tableId) { return `${window.location.origin}/customer?table=${tableId}`; }
+function resolveRuntimeHost() {
+  const runtimeHost = window.location.hostname;
+  const fallbackHost = document.body.dataset.localIp || runtimeHost;
+  const host = (!runtimeHost || runtimeHost === 'localhost' || runtimeHost === '127.0.0.1') ? fallbackHost : runtimeHost;
+  return `${window.location.protocol}//${host}:${window.location.port || '5000'}`;
+}
+
+function customerScanUrl(tableId) { return `${resolveRuntimeHost()}/customer?table=${tableId}`; }
 function buildQrImageUrl(text) { return `${qrApiBase}?size=320x320&margin=8&data=${encodeURIComponent(text)}`; }
 
 async function api(path, options = {}) {
@@ -182,13 +189,18 @@ async function openBill(targetId) {
   activeCashierTableId = targetId;
   qs('bill-title').textContent = `${unitLabel()} ${targetId}`;
   qs('bill-items').innerHTML = '';
+  if (!bill.items.length) {
+    qs('bill-items').innerHTML = '<div class="empty">ยังไม่มีรายการค้างชำระ</div>';
+  }
   bill.items.forEach((item) => {
     const row = document.createElement('div');
-    row.className = 'list-card';
-    row.textContent = `${item.name} • ${money(item.price)} บาท`;
+    row.className = 'bill-row-item';
+    row.innerHTML = `<strong>${item.name}</strong><span>฿${money(item.price)}</span>`;
     qs('bill-items').appendChild(row);
   });
   qs('bill-total').textContent = money(bill.total);
+  const paymentImage = db.settings?.qrImage || buildQrImageUrl(`promptpay:${db.settings?.promptPay || ''}|amount:${Number(bill.total || 0).toFixed(2)}`);
+  qs('bill-payment-qr-image').src = paymentImage;
   qs('payment-modal').classList.remove('hidden');
 }
 
@@ -262,17 +274,26 @@ function renderSales() {
   const cash = sales.filter((s) => s.payment_method === 'cash').reduce((sum, s) => sum + Number(s.total || 0), 0);
   const qr = sales.filter((s) => s.payment_method === 'qr').reduce((sum, s) => sum + Number(s.total || 0), 0);
   qs('sales-overview').innerHTML = `
-    <div class="list-card"><strong>Today</strong><div>${money(sumTotal(todaySales))}</div></div>
-    <div class="list-card"><strong>7 Days</strong><div>${money(sumTotal(sevenSales))}</div></div>
-    <div class="list-card"><strong>30 Days</strong><div>${money(sumTotal(monthSales))}</div></div>
-    <div class="list-card"><strong>Cash</strong><div>${money(cash)}</div></div>
-    <div class="list-card"><strong>Transfer</strong><div>${money(qr)}</div></div>
-    <div class="list-card"><strong>Grand Total</strong><div>${money(total)}</div></div>`;
+    <div class="list-card sales-kpi"><strong>Today</strong><div>฿${money(sumTotal(todaySales))}</div></div>
+    <div class="list-card sales-kpi"><strong>7 Days</strong><div>฿${money(sumTotal(sevenSales))}</div></div>
+    <div class="list-card sales-kpi"><strong>30 Days</strong><div>฿${money(sumTotal(monthSales))}</div></div>
+    <div class="list-card sales-kpi"><strong>Cash</strong><div>฿${money(cash)}</div></div>
+    <div class="list-card sales-kpi"><strong>Transfer</strong><div>฿${money(qr)}</div></div>
+    <div class="list-card sales-kpi total"><strong>Grand Total</strong><div>฿${money(total)}</div></div>`;
   qs('sales-list').innerHTML = '';
   sales.slice().reverse().forEach((sale) => {
+    const paymentIcon = sale.payment_method === 'qr' ? '📱' : '💵';
+    const itemSummary = (sale.items || []).map((item) => `${item.name}`).join(', ') || '-';
     const row = document.createElement('div');
-    row.className = 'list-card';
-    row.textContent = `${unitLabel()} ${sale.target_id} • ${money(sale.total)} บาท • ${sale.payment_method}`;
+    row.className = 'list-card sales-row-card';
+    row.innerHTML = `
+      <div class="sales-row-head">
+        <strong>${unitLabel()} ${sale.target_id}</strong>
+        <span class="sales-pay-icon" title="${sale.payment_method}">${paymentIcon}</span>
+      </div>
+      <div class="muted">${itemSummary}</div>
+      <div class="sales-row-foot"><strong>฿${money(sale.total)}</strong></div>
+    `;
     qs('sales-list').appendChild(row);
   });
 
