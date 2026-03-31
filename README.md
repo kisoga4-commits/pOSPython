@@ -1,8 +1,8 @@
 # FAKDU POS (Python/Flask)
 
 ## สรุปการรันที่ถูกต้อง
-- ให้รัน **`python app.py`** (แนะนำ)
-- หรือรัน **`python lock.py`** (รองรับเพื่อความเข้ากันได้เดิม)
+- ให้รัน **`python app.py`** (entry หลักของระบบ)
+- `lock.py` / `Lock3.py` เป็น alias เดิมเพื่อ backward compatibility เท่านั้น (ไม่ใช่ flow หลักแล้ว)
 - **ไม่ต้องเปิด `templates/index.html` ตรง ๆ** เพราะหน้านี้ต้องถูก render โดย Flask และต้องใช้ API จาก backend
 
 ## วิธีเริ่มใช้งาน
@@ -18,8 +18,10 @@
    - `http://127.0.0.1:5000`
    - หรือ `http://<LAN-IP>:5000` (ดูจากข้อความที่แสดงตอนเริ่มรัน)
 
-## โครงสร้างสำคัญ
-- `app.py` = entrypoint หลัก + Flask routes/API
-- `lock.py` = entrypoint สำรอง (เรียกไปที่ `app.py`)
-- `templates/index.html` = หน้าเว็บหลัก (ต้องเสิร์ฟผ่าน Flask)
-- `Lock3.py` = alias เก่า (ยังใช้ได้ แต่แนะนำใช้ `lock.py`)
+## โครงสร้างสำคัญที่ใช้งานจริง
+- `app.py` = Flask app หลัก + API สำหรับ customer/staff/cashier/backstore/system
+- `db.py` = โครงสร้างข้อมูล, normalize, versioning, reset tables/queue
+- `templates/index.html` + `static/app.js` = หน้าเครื่องแม่ 4 แท็บ (ลูกค้า, เช็คบิล, หลังร้าน, ระบบ)
+- `templates/customer.html` + `static/customer.js` = โหมดลูกค้า (สั่งอาหาร/เรียกเช็คบิล)
+- `templates/staff.html` + `static/staff.js` = โหมดพนักงานหน้าร้าน
+- `static/manifest.webmanifest` = PWA + shortcuts (รวม shortcut หน้าเครื่องแม่)

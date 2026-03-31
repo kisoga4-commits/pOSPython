@@ -374,6 +374,7 @@ def api_staff_live():
         "changed": True,
         "orders": orders,
         "tables": db["tables"],
+        "settings": db["settings"],
         "version": db["meta"]["version"],
     })
 

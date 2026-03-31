@@ -17,6 +17,7 @@ const statusMap = {
 
 const qs = (id) => document.getElementById(id);
 const money = (n) => Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const unitLabel = () => (db?.settings?.serviceMode === 'queue' ? 'คิว' : 'โต๊ะ');
 
 async function api(path, options = {}) {
   const res = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...options });
@@ -72,7 +73,7 @@ function openCustomerFlow(tableId) {
 function renderTables() {
   const grid = qs('table-grid');
   grid.innerHTML = '';
-  const unit = db.settings?.serviceMode === 'queue' ? 'คิว' : 'โต๊ะ';
+  const unit = unitLabel();
   db.tables.forEach((table) => {
     const meta = statusMap[table.status] || statusMap.available;
     const card = document.createElement('div');
@@ -112,7 +113,7 @@ function buildPromptPayPayload(promptPayId, amount) {
 
 async function openBill(target, targetId) {
   activeBill = await api(`/api/bill/${target}/${targetId}`);
-  qs('bill-title').textContent = `${db.settings?.serviceMode === 'queue' ? 'คิว' : 'โต๊ะ'} ${targetId}`;
+  qs('bill-title').textContent = `${unitLabel()} ${targetId}`;
 
   const list = qs('bill-items');
   list.innerHTML = '';
@@ -183,7 +184,7 @@ function renderCashier() {
     const row = document.createElement('div');
     row.className = 'list-card';
     row.innerHTML = `
-      <strong>${db.settings?.serviceMode === 'queue' ? 'คิว' : 'โต๊ะ'} ${table.id}</strong>
+      <strong>${unitLabel()} ${table.id}</strong>
       <div>สถานะ: ${(statusMap[table.status] || statusMap.available).label}</div>
       <div>ยอดรวม ${money(total)} บาท · รอ ${waitingMinutes(firstOrder?.created_at)}</div>
       <div class="manage-row two-col">
