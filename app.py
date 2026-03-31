@@ -3,15 +3,7 @@ from datetime import datetime
 
 from flask import Flask, jsonify, render_template, request
 
-from db import load_db, reset_tables, save_db, ensure_db_exists
-from license_service import (
-    LicenseError,
-    activate_license,
-    ensure_license_file,
-    get_machine_id,
-    license_status,
-)
-from security import require_license, require_server_request
+from db import ensure_db_exists, load_db, reset_tables, save_db
 
 log = logging.getLogger("werkzeug")
 log.setLevel(logging.ERROR)
@@ -21,7 +13,6 @@ app = Flask(__name__)
 
 def bootstrap() -> None:
     ensure_db_exists()
-    ensure_license_file()
 
 
 @app.route("/")
@@ -31,31 +22,21 @@ def index():
 
 @app.route("/api/license", methods=["GET"])
 def api_license_status():
-    try:
-        return jsonify(license_status())
-    except LicenseError as exc:
-        return jsonify({"licensed": False, "error": str(exc)}), 500
+    return jsonify({"licensed": True, "machine_id": "DISABLED"})
 
 
 @app.route("/api/activate", methods=["POST"])
-@require_server_request
 def api_activate():
-    payload = request.get_json(silent=True) or {}
-    ok, message = activate_license(payload.get("key", ""))
-    if ok:
-        return jsonify({"status": "success"})
-    return jsonify({"status": "error", "message": message}), 400
+    return jsonify({"status": "success", "message": "license_disabled"})
 
 
 @app.route("/api/data", methods=["GET"])
-@require_license
 def api_data():
     db = load_db()
     return jsonify(db)
 
 
 @app.route("/api/order", methods=["POST"])
-@require_license
 def api_order():
     payload = request.get_json(silent=True) or {}
     table_id = payload.get("table_id")
@@ -72,7 +53,6 @@ def api_order():
 
 
 @app.route("/api/checkout", methods=["POST"])
-@require_license
 def api_checkout():
     payload = request.get_json(silent=True) or {}
     table_id = payload.get("table_id")
@@ -93,8 +73,6 @@ def api_checkout():
 
 
 @app.route("/api/settings", methods=["POST"])
-@require_server_request
-@require_license
 def api_settings():
     payload = request.get_json(silent=True) or {}
     db = load_db()
@@ -115,11 +93,6 @@ def api_settings():
 
     save_db(db)
     return jsonify({"status": "success"})
-
-
-@app.route("/api/machine-id", methods=["GET"])
-def api_machine_id():
-    return jsonify({"machine_id": get_machine_id()})
 
 
 if __name__ == "__main__":

@@ -101,27 +101,7 @@ async function loadData() {
   renderReport();
 }
 
-async function checkLicense() {
-  const status = await api('/api/license');
-  document.getElementById('machine-id').textContent = status.machine_id || '-';
-  if (status.licensed) {
-    document.getElementById('license-screen').classList.add('hidden');
-    await loadData();
-  }
-}
-
 function bindActions() {
-  document.getElementById('activate-btn').addEventListener('click', async () => {
-    const key = document.getElementById('license-key').value.trim();
-    const result = await api('/api/activate', { method: 'POST', body: JSON.stringify({ key }) });
-    if (result.status === 'success') {
-      document.getElementById('license-message').textContent = 'เปิดใช้งานสำเร็จ';
-      await checkLicense();
-    } else {
-      document.getElementById('license-message').textContent = result.message || 'ไม่สำเร็จ';
-    }
-  });
-
   document.getElementById('submit-order').addEventListener('click', async () => {
     if (!currentTable || !cart.length) return;
     await api('/api/order', { method: 'POST', body: JSON.stringify({ table_id: currentTable, cart }) });
@@ -144,8 +124,8 @@ function bindActions() {
   document.getElementById('close-qr').addEventListener('click', () => qr.classList.add('hidden'));
 }
 
-(function init() {
+(async function init() {
   bindNav();
   bindActions();
-  checkLicense();
+  await loadData();
 })();
