@@ -3,9 +3,7 @@ let version = 0;
 let menuEditIndex = -1;
 let filteredSales = [];
 let activeBill = null;
-
-const ADMIN_SESSION_KEY = 'fakdu_admin_logged_in';
-let isAdminAuthenticated = localStorage.getItem(ADMIN_SESSION_KEY) === '1';
+let pwaDeferredPrompt = null;
 
 const statusMap = {
   available: { label: '🟢', note: '' },
@@ -35,34 +33,9 @@ function applyTheme() {
 }
 
 function showScreen(id) {
-  if (['backstore', 'system'].includes(id) && !ensureAdminSession()) return;
-
   document.querySelectorAll('.screen').forEach((s) => s.classList.add('hidden'));
   qs(id).classList.remove('hidden');
   document.querySelectorAll('[data-screen]').forEach((b) => b.classList.toggle('is-active', b.dataset.screen === id));
-}
-
-function getAdminPin() {
-  return String(db?.settings?.adminPin || 'admin').trim();
-}
-
-function ensureAdminSession() {
-  if (isAdminAuthenticated) return true;
-  const pin = window.prompt('กรุณาใส่รหัส Admin');
-  if (pin === null) return false;
-  if (pin.trim() === getAdminPin()) {
-    isAdminAuthenticated = true;
-    localStorage.setItem(ADMIN_SESSION_KEY, '1');
-    return true;
-  }
-  window.alert('รหัส Admin ไม่ถูกต้อง');
-  return false;
-}
-
-function logoutAdmin() {
-  isAdminAuthenticated = false;
-  localStorage.removeItem(ADMIN_SESSION_KEY);
-  showScreen('customer');
 }
 
 function openCustomerFlow(tableId) {
@@ -449,8 +422,19 @@ function bind() {
     await loadData();
   });
 
-  qs('logout-backstore').addEventListener('click', logoutAdmin);
-  qs('logout-system').addEventListener('click', logoutAdmin);
+  window.addEventListener('beforeinstallprompt', (event) => {
+    event.preventDefault();
+    pwaDeferredPrompt = event;
+    qs('pwa-install-banner').classList.remove('hidden');
+  });
+
+  qs('install-pwa').addEventListener('click', async () => {
+    if (!pwaDeferredPrompt) return;
+    pwaDeferredPrompt.prompt();
+    await pwaDeferredPrompt.userChoice;
+    pwaDeferredPrompt = null;
+    qs('pwa-install-banner').classList.add('hidden');
+  });
 }
 
 async function poll() {
