@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SHABU POS</title>
+  <title>POS แม่ข่าย</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
 </head>
 <body>
@@ -18,47 +18,60 @@
   </div>
 
   <header>
-    <h1>🍲 SHABU POS</h1>
-    <nav>
-      <button data-screen="order">โหมดรับออร์เดอร์</button>
-      <button data-screen="cashier">โหมดแคชเชียร์</button>
-      <button data-screen="report">โหมดหลังร้าน/รายงาน</button>
-      <button id="show-qr">QR สำหรับเครื่องลูก</button>
-    </nav>
+    <h1>🍲 POS เครื่องแม่</h1>
+    <small>LAN IP: {{ local_ip }}:5000</small>
   </header>
 
   <main>
-    <section id="order" class="screen">
-      <h2>โหมดรับออร์เดอร์</h2>
+    <section class="screen">
+      <h2>ศูนย์ควบคุม</h2>
+      <div class="action-grid">
+        <button data-screen="pos">POS</button>
+        <button data-screen="cashier">แคชเชียร์</button>
+        <button data-screen="kitchen">หลังร้าน/ครัว</button>
+        <button data-screen="settings">ตั้งค่า</button>
+        <button data-screen="report">รายงาน</button>
+      </div>
+      <div class="links">
+        <p>Customer: <a id="customer-link" target="_blank"></a></p>
+        <p>Staff: <a id="staff-link" target="_blank"></a></p>
+      </div>
+    </section>
+
+    <section id="pos" class="screen hidden">
+      <h2>POS</h2>
       <div id="table-grid"></div>
       <div id="menu-area" class="hidden">
         <h3>โต๊ะ <span id="active-table"></span></h3>
         <div id="menu-list"></div>
         <div id="cart-list"></div>
-        <button id="submit-order">ส่งออร์เดอร์</button>
+        <button id="submit-order">ส่งออเดอร์</button>
       </div>
     </section>
 
     <section id="cashier" class="screen hidden">
-      <h2>โหมดแคชเชียร์</h2>
+      <h2>แคชเชียร์</h2>
       <div id="checkout-list"></div>
     </section>
 
+    <section id="kitchen" class="screen hidden">
+      <h2>ออเดอร์ทั้งหมด</h2>
+      <div id="all-orders"></div>
+    </section>
+
+    <section id="settings" class="screen hidden">
+      <h2>ตั้งค่า</h2>
+      <label>จำนวนโต๊ะ <input id="table-count" type="number" min="1" /></label>
+      <button id="save-settings">บันทึก</button>
+      <button id="reset-day">รีเซ็ตวัน</button>
+    </section>
+
     <section id="report" class="screen hidden">
-      <h2>โหมดหลังร้าน / รายงาน</h2>
-      <p>ยอดขายรวม: <span id="sales-total">0</span> บาท</p>
-      <button id="reset-day">รีเซ็ตทั้งวัน</button>
+      <h2>รายงาน</h2>
+      <p>ยอดขายรวม: <strong id="sales-total">0</strong> บาท</p>
+      <div id="sales-list"></div>
     </section>
   </main>
-
-  <div id="qr-modal" class="overlay hidden">
-    <div class="card">
-      <h3>QR URL สำหรับเครื่องลูก</h3>
-      <p>Order: <code id="order-url"></code></p>
-      <p>Cashier: <code id="cashier-url"></code></p>
-      <button id="close-qr">ปิด</button>
-    </div>
-  </div>
 
   <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>

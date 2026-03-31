@@ -1,6 +1,7 @@
 let db = null;
 let currentTable = null;
 let cart = [];
+let version = 0;
 
 async function api(path, options = {}) {
   const res = await fetch(path, {
@@ -11,26 +12,41 @@ async function api(path, options = {}) {
 }
 
 function showScreen(id) {
-  document.querySelectorAll('.screen').forEach((el) => el.classList.add('hidden'));
-  document.getElementById(id).classList.remove('hidden');
+  document.querySelectorAll('main .screen').forEach((el) => {
+    if (el.id) el.classList.add('hidden');
+  });
+  const node = document.getElementById(id);
+  if (node) node.classList.remove('hidden');
 }
 
 function bindNav() {
-  document.querySelectorAll('nav button[data-screen]').forEach((btn) => {
+  document.querySelectorAll('[data-screen]').forEach((btn) => {
     btn.addEventListener('click', () => showScreen(btn.dataset.screen));
   });
+}
+
+function renderLinks() {
+  const base = window.location.origin;
+  const customer = `${base}/customer`;
+  const staff = `${base}/staff`;
+  const customerNode = document.getElementById('customer-link');
+  const staffNode = document.getElementById('staff-link');
+  customerNode.href = customer;
+  customerNode.textContent = customer;
+  staffNode.href = staff;
+  staffNode.textContent = staff;
 }
 
 function renderTables() {
   const grid = document.getElementById('table-grid');
   grid.innerHTML = '';
-  db.tables.forEach((t) => {
+  db.tables.forEach((table) => {
     const btn = document.createElement('button');
-    btn.textContent = `โต๊ะ ${t.id} (${t.status})`;
+    btn.textContent = `โต๊ะ ${table.id} (${table.status})`;
     btn.addEventListener('click', () => {
-      currentTable = t.id;
+      currentTable = table.id;
       cart = [];
-      document.getElementById('active-table').textContent = String(t.id);
+      document.getElementById('active-table').textContent = String(table.id);
       document.getElementById('menu-area').classList.remove('hidden');
       renderMenu();
       renderCart();
@@ -56,10 +72,10 @@ function renderMenu() {
 function renderCart() {
   const list = document.getElementById('cart-list');
   list.innerHTML = '';
-  const total = cart.reduce((sum, i) => sum + Number(i.price || 0), 0);
+  const total = cart.reduce((sum, item) => sum + Number(item.price || 0), 0);
   cart.forEach((item) => {
     const row = document.createElement('div');
-    row.textContent = `${item.name} ${item.price}`;
+    row.textContent = `${item.name} - ${item.price}`;
     list.appendChild(row);
   });
   const totalRow = document.createElement('strong');
@@ -70,17 +86,22 @@ function renderCart() {
 function renderCashier() {
   const list = document.getElementById('checkout-list');
   list.innerHTML = '';
-  db.tables.filter((t) => t.items.length).forEach((t) => {
-    const total = t.items.reduce((sum, i) => sum + Number(i.price || 0), 0);
+  const grouped = {};
+  db.orders.forEach((o) => {
+    const key = `${o.target}:${o.target_id}`;
+    grouped[key] = grouped[key] || [];
+    grouped[key].push(...o.items);
+  });
+
+  Object.entries(grouped).forEach(([key, items]) => {
+    const [target, targetId] = key.split(':');
+    const total = items.reduce((sum, i) => sum + Number(i.price || 0), 0);
     const btn = document.createElement('button');
-    btn.textContent = `เช็คบิลโต๊ะ ${t.id} (${total})`;
+    btn.textContent = `Checkout ${target} ${targetId} (${total})`;
     btn.addEventListener('click', async () => {
       await api('/api/checkout', {
         method: 'POST',
-        body: JSON.stringify({
-          table_id: t.id,
-          sale_record: { table_id: t.id, total, items: t.items },
-        }),
+        body: JSON.stringify({ target, target_id: Number(targetId) }),
       });
       await loadData();
     });
@@ -88,17 +109,50 @@ function renderCashier() {
   });
 }
 
+function renderOrders() {
+  const list = document.getElementById('all-orders');
+  list.innerHTML = '';
+  db.orders.slice().reverse().forEach((order) => {
+    const row = document.createElement('div');
+    row.className = 'list-item';
+    row.textContent = `${order.id} | ${order.target} ${order.target_id} | ${order.status} | ${order.items.length} รายการ`;
+    list.appendChild(row);
+  });
+}
+
 function renderReport() {
   const total = db.sales.reduce((sum, s) => sum + Number(s.total || 0), 0);
   document.getElementById('sales-total').textContent = String(total);
+  const list = document.getElementById('sales-list');
+  list.innerHTML = '';
+  db.sales.slice().reverse().forEach((sale) => {
+    const row = document.createElement('div');
+    row.textContent = `${sale.id} | ${sale.target} ${sale.target_id} | ${sale.total}`;
+    list.appendChild(row);
+  });
+}
+
+function renderSettings() {
+  document.getElementById('table-count').value = db.tableCount;
 }
 
 async function loadData() {
-  db = await api('/api/data');
-  if (db.error) return;
+  const data = await api('/api/data');
+  if (data.error) return;
+  db = data;
+  version = db.meta.version;
   renderTables();
   renderCashier();
+  renderOrders();
   renderReport();
+  renderSettings();
+}
+
+async function pollLive() {
+  const data = await api(`/api/staff/live?since=${version}`);
+  if (data.changed) {
+    await loadData();
+  }
 }
 
 async function checkLicense() {
@@ -113,19 +167,25 @@ async function checkLicense() {
 function bindActions() {
   document.getElementById('activate-btn').addEventListener('click', async () => {
     const key = document.getElementById('license-key').value.trim();
-    const result = await api('/api/activate', { method: 'POST', body: JSON.stringify({ key }) });
-    if (result.status === 'success') {
-      document.getElementById('license-message').textContent = 'เปิดใช้งานสำเร็จ';
-      await checkLicense();
-    } else {
-      document.getElementById('license-message').textContent = result.message || 'ไม่สำเร็จ';
-    }
+    const res = await api('/api/activate', { method: 'POST', body: JSON.stringify({ key }) });
+    document.getElementById('license-message').textContent = res.status === 'success' ? 'Activated' : (res.message || 'Error');
+    await checkLicense();
   });
 
   document.getElementById('submit-order').addEventListener('click', async () => {
     if (!currentTable || !cart.length) return;
-    await api('/api/order', { method: 'POST', body: JSON.stringify({ table_id: currentTable, cart }) });
+    await api('/api/order', {
+      method: 'POST',
+      body: JSON.stringify({ target: 'table', target_id: currentTable, cart, source: 'host' }),
+    });
+    cart = [];
     document.getElementById('menu-area').classList.add('hidden');
+    await loadData();
+  });
+
+  document.getElementById('save-settings').addEventListener('click', async () => {
+    const tableCount = Number(document.getElementById('table-count').value || 8);
+    await api('/api/settings', { method: 'POST', body: JSON.stringify({ tableCount }) });
     await loadData();
   });
 
@@ -133,19 +193,12 @@ function bindActions() {
     await api('/api/settings', { method: 'POST', body: JSON.stringify({ reset: true }) });
     await loadData();
   });
-
-  const qr = document.getElementById('qr-modal');
-  document.getElementById('show-qr').addEventListener('click', () => {
-    const base = window.location.origin;
-    document.getElementById('order-url').textContent = `${base}/?mode=order`;
-    document.getElementById('cashier-url').textContent = `${base}/?mode=cashier`;
-    qr.classList.remove('hidden');
-  });
-  document.getElementById('close-qr').addEventListener('click', () => qr.classList.add('hidden'));
 }
 
 (function init() {
   bindNav();
   bindActions();
+  renderLinks();
   checkLicense();
+  setInterval(pollLive, 2500);
 })();
