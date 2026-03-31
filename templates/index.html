@@ -3,30 +3,26 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <meta name="theme-color" content="#8f1d2a" />
+  <meta name="theme-color" content="#3b82f6" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <title>FAKDU POS</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version }}" />
 </head>
 <body>
   <div class="app-shell">
-    <header class="app-header" id="app-header">
-      <div class="brand-row">
-        <div class="brand-left">
-          <div id="store-logo" class="logo-slot">LOGO</div>
-          <div>
-            <p class="muted-light">ระบบหน้าร้านอาหารตามสั่ง</p>
-            <h1 id="header-store-name">FAKDU</h1>
-          </div>
+    <header class="app-header modern-header">
+      <div class="brand-left">
+        <div id="store-logo" class="logo-slot">LOGO</div>
+        <div>
+          <p class="muted-light">POS ร้านอาหารตามสั่ง</p>
+          <h1 id="header-store-name">FAKDU</h1>
         </div>
-        <div class="header-actions">
-          <span class="pill online">ระบบออนไลน์</span>
-          <button id="open-client-qr" class="btn-soft light">เปิด QR เครื่องลูก</button>
-          <button id="header-action" class="btn-soft light">หน้าโต๊ะ</button>
-          <button id="open-admin-login" class="btn-gold">เข้าสู่ระบบแอดมิน</button>
-          <button id="admin-logout" class="btn-soft light hidden">ออกจากระบบ</button>
-        </div>
+      </div>
+      <div class="header-icons">
+        <button id="header-search" class="icon-btn" title="ค้นหาโต๊ะ">🔍</button>
+        <button id="open-client-qr" class="icon-btn" title="QR โหมดพนักงาน">📱</button>
+        <button id="open-admin-login" class="icon-btn" title="ผู้ดูแลระบบ">⚙️</button>
+        <button id="admin-logout" class="icon-btn hidden" title="ออกจากระบบ">↩️</button>
       </div>
     </header>
 
@@ -40,52 +36,38 @@
 
       <section id="customer" class="screen section-card">
         <div class="section-head">
-          <h2>ศูนย์จัดการโต๊ะ/คิว</h2>
-          <div class="control-pack">
-            <button id="quick-down" class="btn-soft">ย่อ</button>
-            <button id="quick-mid" class="btn-soft">พอดี</button>
-            <button id="quick-up" class="btn-soft">ขยาย</button>
-          </div>
+          <h2>แผนผังโต๊ะ</h2>
+          <span class="pill">คลิกโต๊ะเพื่อรับออเดอร์และสั่งเพิ่ม</span>
         </div>
         <div class="customer-layout">
-          <section class="desk-pane">
-            <div id="table-grid" class="table-grid"></div>
-          </section>
+          <section><div id="table-grid" class="table-grid"></div></section>
           <aside class="order-workspace">
-            <div id="order-panel-empty" class="empty order-empty">เลือกโต๊ะ/คิวทางซ้ายเพื่อเริ่มสั่งอาหาร</div>
+            <div id="order-panel-empty" class="empty">เลือกโต๊ะก่อนเริ่มทำรายการ</div>
             <div id="order-panel-active" class="hidden">
               <div class="order-meta-strip">
-                <span id="order-meta-table" class="meta-chip">🪑 โต๊ะ -</span>
-                <span id="order-meta-status" class="meta-chip">🔖 สถานะ -</span>
-                <span id="order-latest-time" class="meta-chip">🕒 --:--</span>
+                <span id="order-meta-table" class="meta-chip"></span>
+                <span id="order-meta-status" class="meta-chip"></span>
+                <button id="accept-table-order" class="btn-primary hidden">รับออเดอร์โต๊ะนี้</button>
               </div>
               <div class="order-panel-layout">
-                <section class="order-panel menu-panel">
-                  <h4>เมนูอาหาร</h4>
+                <section class="order-panel">
+                  <h4>เมนู</h4>
                   <div id="order-menu-grid" class="menu-choice-grid"></div>
                 </section>
-                <section class="order-panel cart-panel">
+                <section class="order-panel">
                   <h4>เพิ่มรายการ</h4>
                   <div class="quick-add-box">
-                    <input id="order-selected-menu" disabled placeholder="เลือกเมนูก่อน" />
-                    <div class="inline-controls">
-                      <select id="order-addon"><option value="">+ add-on</option></select>
-                      <div class="qty-control">
-                        <button id="order-qty-minus" type="button" class="btn-soft">−</button>
-                        <input id="order-qty" type="number" min="1" value="1" />
-                        <button id="order-qty-plus" type="button" class="btn-soft">＋</button>
-                      </div>
-                    </div>
+                    <input id="order-selected-menu" disabled placeholder="เลือกเมนู" />
+                    <select id="order-addon"><option value="">+ add-on</option></select>
                     <input id="order-note" placeholder="หมายเหตุ" />
-                    <button id="order-add-item" class="btn-primary order-primary-btn">เพิ่มลงตะกร้า</button>
+                    <button id="order-add-item" class="btn-primary">เพิ่มลงตะกร้า</button>
                   </div>
-                  <div class="order-section-title">ตะกร้าปัจจุบัน</div>
                   <div id="order-cart-list" class="order-list"></div>
                   <div id="order-cart-total" class="order-total"></div>
-                  <button id="order-submit" class="btn-primary order-submit-btn">ส่งออร์เดอร์เข้าครัว</button>
+                  <button id="order-submit" class="btn-primary">ส่งเข้าครัว</button>
                 </section>
-                <section class="order-panel existing-panel">
-                  <h4>รายการที่สั่งไปแล้ว</h4>
+                <section class="order-panel">
+                  <h4>รายการที่ลูกค้าสั่งแล้ว</h4>
                   <div id="order-existing-list" class="order-list"></div>
                   <div id="order-existing-total" class="order-total"></div>
                 </section>
@@ -96,23 +78,15 @@
       </section>
 
       <section id="cashier" class="screen section-card hidden">
-        <div class="section-head">
-          <h2>ศูนย์เช็คบิล</h2>
-          <span id="checkout-count" class="pill">0 รายการ</span>
-        </div>
+        <div class="section-head"><h2>เช็คบิล</h2><span id="checkout-count" class="pill">0 รายการ</span></div>
         <div class="cashier-layout">
           <div id="checkout-list" class="checkout-queue"></div>
           <div class="cashier-detail">
-            <div id="cashier-empty" class="empty">เลือกโต๊ะเพื่อดูรายละเอียดบิล</div>
+            <div id="cashier-empty" class="empty">เลือกโต๊ะเพื่อดูบิล</div>
             <div id="cashier-bill" class="hidden">
-              <div class="section-head">
-                <h3 id="bill-title">รายละเอียดบิล</h3>
-              </div>
+              <h3 id="bill-title">รายละเอียดบิล</h3>
               <div id="bill-items"></div>
-              <div class="bill-foot">
-                <strong>รวม: <span id="bill-total">0</span> บาท</strong>
-                <div id="bill-qr-preview" class="hidden"></div>
-              </div>
+              <div class="bill-foot"><strong>รวม <span id="bill-total">0</span> บาท</strong></div>
               <div class="manage-row two-col">
                 <button id="bill-pay-cash" class="btn-primary">รับเงินสด</button>
                 <button id="bill-pay-qr" class="btn-secondary">รับโอน/QR</button>
@@ -123,163 +97,91 @@
       </section>
 
       <section id="backstore" class="screen section-card hidden">
-        <div class="section-head">
-            <h2>หลังร้าน</h2>
-          <div class="admin-head-actions">
-            <div class="subtabs">
-              <button class="subtab is-active" data-subtab="sales">ยอดขาย</button>
-              <button class="subtab" data-subtab="manage">จัดการร้าน</button>
-            </div>
+        <div class="section-head"><h2>หลังร้าน</h2></div>
+        <div class="panel-block">
+          <h3>ตั้งค่าการให้บริการ</h3>
+          <div class="manage-row">
+            <select id="service-mode"><option value="table">โต๊ะ</option><option value="queue">คิว</option></select>
+            <input id="table-count" type="number" min="1" />
+            <button id="update-table-count" class="btn-primary">อัปเดต</button>
           </div>
         </div>
-
-        <div id="panel-sales" class="subpanel">
-          <div class="filter-row">
-            <label>ตัวกรองวันที่</label>
-            <input id="date-from" type="date" />
-            <input id="date-to" type="date" />
-            <button id="apply-filter" class="btn-soft">กรอง</button>
+        <div class="panel-block">
+          <h3>เมนูอาหาร</h3>
+          <div class="menu-form">
+            <input id="menu-name" placeholder="ชื่อเมนู" />
+            <input id="menu-price" type="number" min="1" placeholder="ราคา" />
+            <input id="menu-addons" placeholder="add-on (คั่นด้วย ,)" />
+            <button id="save-menu" class="btn-primary">บันทึกเมนู</button>
           </div>
-          <div class="stats-grid sales-main-stats">
-            <div class="stat"><small>วันนี้</small><strong id="sale-today">0</strong></div>
-            <div class="stat"><small>7 วัน</small><strong id="sale-week">0</strong></div>
-            <div class="stat"><small>30 วัน</small><strong id="sale-month">0</strong></div>
-            <div class="stat"><small>เงินสดสะสม</small><strong id="cash-total">0</strong></div>
-            <div class="stat"><small>โอนสะสม</small><strong id="qr-total">0</strong></div>
-            <div class="stat highlight"><small>เงินรวม</small><strong id="grand-total">0</strong></div>
-          </div>
-          <div class="panel-block">
-            <div class="section-head">
-              <h3>Insight</h3>
-              <button id="open-insight" class="btn-soft">เทียบช่วงก่อนหน้า</button>
-            </div>
-            <p id="insight-summary" class="muted"></p>
-          </div>
-          <div class="desktop-split">
-            <div class="panel-block">
-              <h3>ประวัติการขาย</h3>
-              <div id="sales-history"></div>
-            </div>
-            <div class="panel-block">
-              <h3>ยอดฮิต</h3>
-              <div id="hot-menu"></div>
-            </div>
-          </div>
-        </div>
-
-        <div id="panel-manage" class="subpanel hidden">
-          <div class="panel-block">
-            <h3>ตั้งค่าจำนวนโต๊ะ/คิว</h3>
-            <div class="manage-row">
-              <select id="service-mode">
-                <option value="table">โต๊ะ</option>
-                <option value="queue">คิว</option>
-              </select>
-              <input id="table-count" type="number" min="1" />
-              <button id="update-table-count" class="btn-primary">อัปเดต</button>
-            </div>
-          </div>
-          <div class="panel-block">
-            <div class="section-head">
-              <h3>รายการเมนู</h3>
-              <button id="open-add-menu" class="btn-soft">+ เพิ่ม</button>
-            </div>
-            <div class="menu-form">
-              <input id="menu-name" placeholder="ชื่อเมนู" />
-              <input id="menu-price" type="number" min="1" placeholder="ราคา" />
-              <input id="menu-image" placeholder="URL รูปเมนู" />
-              <input id="menu-addons" placeholder="add-on (คั่นด้วย ,)" />
-              <button id="save-menu" class="btn-primary">บันทึกเมนู</button>
-            </div>
-            <div id="menu-list"></div>
-          </div>
+          <div id="menu-list"></div>
         </div>
       </section>
 
       <section id="system" class="screen section-card hidden">
         <div class="section-head"><h2>ตั้งค่าระบบ</h2></div>
-        <div class="system-layout">
-          <div class="panel-block">
-            <h3>ข้อมูลร้าน</h3>
-            <div class="form-grid">
-              <input id="store-name" placeholder="ชื่อร้าน" />
-              <input id="store-logo-name" placeholder="โลโก้ (emoji/url)" />
-              <input id="bank-name" placeholder="ธนาคาร" />
-              <input id="promptpay" placeholder="พร้อมเพย์" />
-            </div>
+        <div class="subtabs">
+          <button class="subtab is-active" data-system-tab="profile">ร้านค้า</button>
+          <button class="subtab" data-system-tab="payment">การชำระเงิน</button>
+          <button class="subtab" data-system-tab="backup">สำรองข้อมูล</button>
+          <button class="subtab" data-system-tab="qr">QR โต๊ะ</button>
+        </div>
+
+        <div id="system-profile" class="panel-block system-panel">
+          <h3>ข้อมูลร้าน</h3>
+          <div class="form-grid">
+            <input id="store-name" placeholder="ชื่อร้าน" />
+            <input id="bank-name" placeholder="ธนาคาร" />
+            <input id="promptpay" placeholder="พร้อมเพย์" />
+            <input id="admin-pin" type="password" placeholder="Admin PIN" />
           </div>
-          <div class="panel-block">
-            <h3>ธีม/สี</h3>
-            <div class="form-grid">
-              <input id="theme-color" type="color" value="#8f1d2a" />
-              <input id="bg-color" type="color" value="#f6efe9" />
-            </div>
-          </div>
-          <div class="panel-block">
-            <h3>พร้อมเพย์/QR</h3>
-            <div class="form-grid single">
-              <label class="check-row"><input id="dynamic-qr" type="checkbox" /> ใช้ Dynamic PromptPay ตามยอด</label>
-              <input id="qr-image" type="file" accept="image/*" />
-            </div>
-          </div>
-          <div class="panel-block">
-            <h3>Admin PIN</h3>
-            <div class="form-grid single">
-              <input id="admin-pin" type="password" placeholder="ADMIN PIN" />
-            </div>
-          </div>
-          <div class="panel-block">
-            <h3>Backup / Restore</h3>
-            <div class="manage-row">
-              <button id="backup-db" class="btn-soft">Backup JSON</button>
-              <input id="restore-file" type="file" accept="application/json" />
-              <button id="restore-db" class="btn-primary">Restore JSON</button>
-            </div>
-          </div>
-          <div class="panel-block system-save-row">
-            <button id="save-system" class="btn-primary big-save">บันทึกการตั้งค่า</button>
-          </div>
-          <div class="panel-block system-full">
-            <div class="section-head"><h3>QR แยกตามโต๊ะ</h3></div>
-            <div id="table-qr-list" class="qr-table-grid"></div>
+          <div class="form-grid">
+            <label>อัปโหลดโลโก้ร้าน <input id="shop-logo-file" type="file" accept="image/*" /></label>
+            <div><small>ตัวอย่างโลโก้</small><img id="shop-logo-preview" class="logo-preview" alt="Logo preview" /></div>
           </div>
         </div>
+
+        <div id="system-payment" class="panel-block system-panel hidden">
+          <h3>QR รับเงิน</h3>
+          <label class="check-row"><input id="dynamic-qr" type="checkbox" /> ใช้ Dynamic PromptPay</label>
+          <input id="qr-image" type="file" accept="image/*" />
+        </div>
+
+        <div id="system-backup" class="panel-block system-panel hidden">
+          <h3>Backup / Restore</h3>
+          <div class="manage-row">
+            <button id="backup-db" class="btn-soft">Backup JSON</button>
+            <input id="restore-file" type="file" accept="application/json" />
+            <button id="restore-db" class="btn-primary">Restore</button>
+          </div>
+        </div>
+
+        <div id="system-qr" class="panel-block system-panel hidden">
+          <h3>QR แยกโต๊ะ</h3>
+          <div id="table-qr-list" class="qr-table-list"></div>
+        </div>
+
+        <button id="save-system" class="btn-primary big-save">บันทึกการตั้งค่า</button>
       </section>
     </main>
   </div>
 
-  <div id="insight-modal" class="modal hidden">
-    <div class="modal-card">
-      <div class="section-head">
-        <h3>Insight เทียบช่วงก่อนหน้า</h3>
-        <button id="close-insight" class="btn-soft">ปิด</button>
-      </div>
-      <div id="insight-body"></div>
-    </div>
-  </div>
-
   <div id="qr-modal" class="modal hidden">
     <div class="modal-card compact">
-      <div class="section-head">
-        <h3>QR สำหรับเครื่องลูก</h3>
-        <button id="close-qr-modal" class="btn-soft">ปิด</button>
-      </div>
-      <div class="qr-modal-body">
-        <img id="client-qr-image" class="qr-preview large" alt="Client QR" />
+      <div class="section-head"><h3 id="qr-modal-title">QR</h3><button id="close-qr-modal" class="btn-soft">ปิด</button></div>
+      <img id="client-qr-image" class="qr-preview large" alt="QR" />
+      <div class="btn-row">
+        <a id="qr-download" class="btn-soft" download>ดาวน์โหลด</a>
+        <button id="qr-print" class="btn-primary">พิมพ์</button>
       </div>
     </div>
   </div>
 
   <div id="admin-login-modal" class="modal hidden">
     <div class="modal-card compact">
-      <div class="section-head">
-        <h3>เข้าสู่ระบบแอดมิน</h3>
-        <button id="close-admin-login" class="btn-soft">ปิด</button>
-      </div>
-      <div class="form-grid single">
-        <input id="admin-login-pin" type="password" placeholder="กรอกรหัส PIN" />
-        <button id="admin-login-submit" class="btn-primary">เข้าสู่ระบบ</button>
-      </div>
+      <div class="section-head"><h3>ยืนยันผู้ดูแลระบบ</h3><button id="close-admin-login" class="btn-soft">ปิด</button></div>
+      <input id="admin-login-pin" type="password" placeholder="PIN" />
+      <button id="admin-login-submit" class="btn-primary">เข้าสู่ระบบ</button>
     </div>
   </div>
 
