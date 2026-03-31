@@ -38,6 +38,11 @@ def index():
     return render_template("index.html", local_ip=get_local_ip(), asset_version=ASSET_VERSION)
 
 
+@app.route("/manifest.webmanifest")
+def manifest():
+    return app.send_static_file("manifest.webmanifest")
+
+
 @app.route("/customer")
 def customer_page():
     table_id = request.args.get("table", type=int)
@@ -160,6 +165,87 @@ def api_checkout():
 
     db = save_db(db)
     return jsonify({"status": "success", "sale_record": sale_record, "version": db["meta"]["version"]})
+
+
+@app.route("/api/bill/<string:target>/<int:target_id>", methods=["GET"])
+@require_license
+def api_bill(target: str, target_id: int):
+    db = load_db()
+    orders = [
+        order for order in db["orders"]
+        if order["target"] == target and order["target_id"] == target_id and order["status"] != "cancelled"
+    ]
+    items = []
+    first_created = None
+    for order in orders:
+        created_at = order.get("created_at")
+        if created_at and (first_created is None or created_at < first_created):
+            first_created = created_at
+        for idx, item in enumerate(order.get("items", [])):
+            items.append({
+                "order_id": order["id"],
+                "item_index": idx,
+                "name": item.get("name", "-"),
+                "price": float(item.get("price", 0)),
+                "addon": item.get("addon", ""),
+            })
+    total = sum(i["price"] for i in items)
+    return jsonify({
+        "target": target,
+        "target_id": target_id,
+        "items": items,
+        "total": total,
+        "opened_at": first_created,
+        "version": db["meta"]["version"],
+    })
+
+
+@app.route("/api/order/item", methods=["PATCH", "DELETE"])
+@require_license
+def api_order_item():
+    payload = read_json()
+    order_id = payload.get("order_id")
+    item_index = payload.get("item_index")
+    if not isinstance(item_index, int):
+        return jsonify({"error": "invalid item_index"}), 400
+
+    db = load_db()
+    for order in db["orders"]:
+        if order["id"] != order_id:
+            continue
+        items = order.get("items", [])
+        if item_index < 0 or item_index >= len(items):
+            return jsonify({"error": "item not found"}), 404
+
+        if request.method == "DELETE":
+            items.pop(item_index)
+        else:
+            if "price" in payload:
+                items[item_index]["price"] = float(payload.get("price", 0))
+            if "addon" in payload:
+                items[item_index]["addon"] = str(payload.get("addon", "")).strip()
+
+        order["items"] = items
+        order["updated_at"] = utc_now()
+
+        if order["target"] == "table" and isinstance(order.get("target_id"), int):
+            for table in db["tables"]:
+                if table["id"] == order["target_id"]:
+                    merged_items = []
+                    for table_order in db["orders"]:
+                        if (
+                            table_order["target"] == "table"
+                            and table_order.get("target_id") == order["target_id"]
+                            and table_order.get("status") != "cancelled"
+                        ):
+                            merged_items.extend(table_order.get("items", []))
+                    table["items"] = merged_items
+                    break
+
+        db = save_db(db)
+        return jsonify({"status": "success", "version": db["meta"]["version"]})
+
+    return jsonify({"error": "order not found"}), 404
 
 
 @app.route("/api/table/accept", methods=["POST"])
