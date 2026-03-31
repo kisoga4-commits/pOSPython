@@ -342,6 +342,8 @@ function renderSystem() {
   qs('store-name').value = s.storeName || 'FAKDU';
   qs('bank-name').value = s.bankName || '';
   qs('promptpay').value = s.promptPay || '';
+  qs('auto-print').checked = Boolean(s.autoPrint);
+  qs('paper-size').value = s.paperSize || '58';
   qs('dynamic-qr').checked = Boolean(s.dynamicPromptPay);
   qs('admin-recovery-phone').value = s.adminRecoveryPhone || '';
   setSelectOptions('admin-recovery-color', RECOVERY_COLORS, s.adminRecoveryColor || '');
@@ -352,8 +354,28 @@ function renderSystem() {
   qs('theme-bg').value = s.bgColor || '#f3f4f6';
   qs('theme-card').value = s.cardColor || '#ffffff';
   renderThemePresets(s.themePreset || '');
+  updateReceiptPreview();
   renderStaffQR();
   renderTableQRList();
+}
+
+function updateReceiptPreview() {
+  const paperSize = qs('paper-size')?.value || '58';
+  const preview = qs('receipt-preview');
+  preview.dataset.paperSize = paperSize;
+  const storeName = qs('store-name')?.value.trim() || 'FAKDU POS';
+  const brand = preview.querySelector('.receipt-brand');
+  if (brand) brand.textContent = storeName;
+  const datetime = new Date();
+  const dateText = datetime.toLocaleString('th-TH', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+  qs('receipt-preview-datetime').textContent = `วันที่/เวลา: ${dateText}`;
 }
 
 function setSelectOptions(id, options, selectedValue) {
@@ -465,6 +487,8 @@ function bind() {
   qs('close-payment-modal').addEventListener('click', () => qs('payment-modal').classList.add('hidden'));
   qs('sales-from')?.addEventListener('change', renderSales);
   qs('sales-to')?.addEventListener('change', renderSales);
+  qs('paper-size')?.addEventListener('change', updateReceiptPreview);
+  qs('store-name')?.addEventListener('input', updateReceiptPreview);
 
   qs('order-submit').addEventListener('click', submitOrderFromPanel);
 
@@ -587,6 +611,8 @@ function bind() {
           storeName: qs('store-name').value.trim(),
           bankName: qs('bank-name').value.trim(),
           promptPay: qs('promptpay').value.trim(),
+          autoPrint: qs('auto-print').checked,
+          paperSize: qs('paper-size').value,
           dynamicPromptPay: qs('dynamic-qr').checked,
           qrImage,
           logoImage,

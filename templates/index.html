@@ -133,6 +133,39 @@
             <input id="bank-name" placeholder="ธนาคาร" />
             <input id="promptpay" placeholder="พร้อมเพย์" />
           </div>
+          <div class="printer-settings-block">
+            <h3>Printer Settings</h3>
+            <div class="form-grid printer-grid">
+              <label class="toggle-row compact-toggle">
+                <input id="auto-print" type="checkbox" />
+                <span class="toggle-slider"></span>
+                <span>Auto-Print</span>
+              </label>
+              <label>
+                <span class="field-label">Paper Size</span>
+                <select id="paper-size">
+                  <option value="58">58mm</option>
+                  <option value="80">80mm</option>
+                </select>
+              </label>
+            </div>
+            <div class="receipt-preview-wrap">
+              <h3>ตัวอย่างใบเสร็จ (Receipt Preview)</h3>
+              <div id="receipt-preview" class="receipt-preview" data-paper-size="58">
+                <div class="receipt-brand">FAKDU POS</div>
+                <div class="receipt-title">ใบเสร็จรับเงิน / Receipt</div>
+                <div class="receipt-meta" id="receipt-preview-datetime">31/03/2026 12:00</div>
+                <div class="receipt-meta">โต๊ะ (Table): 5</div>
+                <div class="receipt-divider">------------------------</div>
+                <div class="receipt-item-row"><span>กะเพราหมูสับ</span><span>50.-</span></div>
+                <div class="receipt-item-row"><span>ไข่ดาว</span><span>15.-</span></div>
+                <div class="receipt-item-row"><span>โค้ก</span><span>35.-</span></div>
+                <div class="receipt-divider">------------------------</div>
+                <div class="receipt-total-row"><span>ยอดรวม (Total):</span><strong>150.-</strong></div>
+                <div class="receipt-footer">ขอบคุณที่ใช้บริการ</div>
+              </div>
+            </div>
+          </div>
           <div class="form-grid">
             <label>อัปโหลดโลโก้ร้าน <input id="shop-logo-file" type="file" accept="image/*" /></label>
             <div><small>ตัวอย่างโลโก้</small><img id="shop-logo-preview" class="logo-preview" alt="Logo preview" /></div>
