@@ -53,6 +53,25 @@ function bindKitchenSubtabs() {
   });
 }
 
+function mountQRCode(el, text) {
+  if (!el) return;
+  el.innerHTML = '';
+  if (window.QRCode) {
+    new window.QRCode(el, {
+      text,
+      width: 118,
+      height: 118,
+      correctLevel: window.QRCode.CorrectLevel.M,
+    });
+  } else {
+    const fallback = document.createElement('a');
+    fallback.href = text;
+    fallback.target = '_blank';
+    fallback.textContent = text;
+    el.appendChild(fallback);
+  }
+}
+
 function renderLinks() {
   const base = window.location.origin;
   const staff = `${base}/staff`;
@@ -64,15 +83,39 @@ function renderLinks() {
   customerNode.href = `${base}/customer?table=1`;
   customerNode.textContent = `${base}/customer?table={table_id}`;
 
+  const staffScanLink = document.getElementById('staff-scan-link');
+  if (staffScanLink) {
+    staffScanLink.href = staff;
+    staffScanLink.textContent = staff;
+  }
+  mountQRCode(document.getElementById('staff-qr-box'), staff);
+
   const wrap = document.getElementById('customer-qr-links');
+  const qrGrid = document.getElementById('customer-qr-grid');
   wrap.innerHTML = '';
+  if (qrGrid) qrGrid.innerHTML = '';
+
   db.tables.forEach((table) => {
+    const tableUrl = `${base}/customer?table=${table.id}`;
+
     const link = document.createElement('a');
-    link.href = `${base}/customer?table=${table.id}`;
+    link.href = tableUrl;
     link.target = '_blank';
     link.textContent = `โต๊ะ ${table.id}`;
     link.className = 'badge';
     wrap.appendChild(link);
+
+    if (qrGrid) {
+      const card = document.createElement('div');
+      card.className = 'table-qr-card';
+      card.innerHTML = `<div class="qr-table-title">โต๊ะ ${table.id}</div><div class="qr-inline"></div><a class="qr-inline-link" target="_blank"></a>`;
+      const qrMount = card.querySelector('.qr-inline');
+      const qrLink = card.querySelector('.qr-inline-link');
+      qrLink.href = tableUrl;
+      qrLink.textContent = `table=${table.id}`;
+      mountQRCode(qrMount, tableUrl);
+      qrGrid.appendChild(card);
+    }
   });
 }
 

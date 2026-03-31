@@ -45,10 +45,35 @@
           <button class="tab-card" data-screen="kitchen"><span>👨‍🍳</span><b>หลังร้าน</b></button>
           <button class="tab-card" data-screen="settings"><span>⚙️</span><b>ระบบ</b></button>
         </div>
-        <div class="links section-card soft">
-          <p>Customer QR Base: <a id="customer-link" target="_blank"></a></p>
-          <p>Staff QR: <a id="staff-link" target="_blank"></a></p>
-          <div id="customer-qr-links" class="chip-grid"></div>
+
+        <div class="desktop-links-grid">
+          <div class="links section-card soft">
+            <h3>ลิงก์ใช้งาน</h3>
+            <p>Customer QR Base: <a id="customer-link" target="_blank"></a></p>
+            <p>Staff QR: <a id="staff-link" target="_blank"></a></p>
+            <div id="customer-qr-links" class="chip-grid"></div>
+          </div>
+
+          <div class="section-card soft">
+            <div class="section-head">
+              <h3>โหมดสแกน QR</h3>
+              <span class="badge">2 โหมด</span>
+            </div>
+            <div class="scan-mode-grid">
+              <article class="scan-mode-card">
+                <h4>👨‍🍳 โหมดพนักงาน</h4>
+                <p>สแกนแล้วเข้าหน้า /staff เพื่อรับออเดอร์และเช็คบิลทันที</p>
+                <div class="qr-box" id="staff-qr-box"></div>
+                <a id="staff-scan-link" class="badge" target="_blank"></a>
+              </article>
+
+              <article class="scan-mode-card">
+                <h4>👨‍👩‍👧 โหมดลูกค้า (ตามโต๊ะ)</h4>
+                <p>สแกนแล้วเด้งไปหน้าโต๊ะของลูกค้าทันที เช่น ?table=1</p>
+                <div id="customer-qr-grid" class="customer-qr-grid"></div>
+              </article>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -154,6 +179,7 @@
   </div>
 
   <audio id="new-order-sound" src="{{ url_for('static', filename='sounds/new_order.mp3') }}"></audio>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
 </html>
