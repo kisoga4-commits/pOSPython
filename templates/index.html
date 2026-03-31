@@ -48,21 +48,13 @@
           <h2>แผนผังโต๊ะ</h2>
           <span class="pill">Staff/Desktop Layout</span>
         </div>
-        <div class="staff-split-layout">
-          <section class="staff-main-pane">
-            <div id="table-grid" class="table-grid clean-table-grid"></div>
-          </section>
-
-          <aside class="staff-cart-pane">
-            <div id="desk-selected-table" class="meta-chip">ยังไม่ได้เลือกโต๊ะ</div>
-            <div id="desk-selected-status" class="muted">เลือกโต๊ะเพื่อดูสรุปคำสั่งซื้อ</div>
-            <div id="desk-selected-items" class="order-list"></div>
-            <div id="desk-selected-total" class="order-total">รวม 0.00 บาท</div>
-            <div class="desk-action-stack">
-              <button id="desk-accept-order" class="btn-secondary" type="button">✅ ออเดอร์ใหม่ / รับงาน</button>
-              <button id="desk-open-order-modal" class="btn-primary" type="button">เปิดหน้าออเดอร์</button>
-            </div>
-          </aside>
+        <div class="zoom-bar" aria-label="zoom tables">
+          <span>➖</span>
+          <input id="table-zoom" type="range" min="85" max="140" value="100" />
+          <span>➕</span>
+        </div>
+        <div class="staff-main-pane full-width-pane">
+          <div id="table-grid" class="table-grid clean-table-grid"></div>
         </div>
       </section>
 
@@ -85,14 +77,9 @@
             <button id="update-table-count" class="btn-primary">อัปเดตโต๊ะ</button>
           </div>
 
-          <div class="menu-form extended-form">
-            <input id="menu-name" placeholder="ชื่อเมนู" />
-            <input id="menu-price" type="number" min="1" placeholder="ราคา" />
-            <input id="menu-addons" placeholder="Add-on คั่นด้วย ," />
-            <input id="menu-image-file" type="file" accept="image/*" />
-            <button id="save-menu" class="btn-primary">บันทึกเมนู</button>
+          <div class="menu-form single-row">
+            <button id="open-menu-modal" class="btn-primary" type="button">+ Add Menu</button>
           </div>
-          <img id="menu-image-preview" class="menu-image-preview" alt="preview" />
           <div id="menu-list"></div>
         </div>
 
@@ -103,12 +90,13 @@
               <input id="sales-to" type="date" />
               <button id="open-sales-insight" class="btn-secondary" type="button">Insight</button>
             </div>
-            <div id="sales-overview" class="sales-overview-grid"></div>
+            <div id="sales-overview" class="sales-overview-grid premium-kpi"></div>
+            <div id="sales-chart" class="sales-chart"></div>
           </div>
           <div class="sales-body-grid">
             <section class="sales-panel">
               <h3>ประวัติการขาย</h3>
-              <div id="sales-list" class="sales-history-list"></div>
+              <table class="sales-table"><thead><tr><th>เวลา</th><th>โต๊ะ</th><th>จ่าย</th><th>รวม</th></tr></thead><tbody id="sales-list"></tbody></table>
             </section>
             <section class="sales-panel">
               <h3>รายการขายดี</h3>
@@ -207,6 +195,15 @@
           </div>
         </div>
 
+                <div class="panel-block system-panel">
+          <h3>เสียง UI</h3>
+          <label class="toggle-row">
+            <input id="ui-sound-toggle" type="checkbox" />
+            <span class="toggle-slider"></span>
+            <span id="ui-sound-label">🔊</span>
+          </label>
+        </div>
+
         <button id="save-system" class="btn-primary big-save">บันทึกการตั้งค่า</button>
       </section>
     </main>
@@ -297,6 +294,21 @@
         <input id="new-admin-pin" placeholder="รหัส Admin ใหม่" />
         <button id="reset-admin-pin" class="btn-primary" type="button">ยืนยันรีเซ็ตรหัส</button>
       </div>
+    </div>
+  </div>
+
+  <div id="menu-modal" class="modal hidden">
+    <div class="modal-card">
+      <div class="section-head"><h3>Add Menu</h3><button id="close-menu-modal" class="btn-soft">ปิด</button></div>
+      <div class="form-grid three-col">
+        <input id="menu-name" placeholder="ชื่อเมนู" />
+        <input id="menu-price" type="number" min="1" placeholder="ราคา" />
+        <input id="menu-image-file" type="file" accept="image/*" />
+      </div>
+      <img id="menu-image-preview" class="menu-image-preview" alt="preview" />
+      <div class="section-head" style="margin-top:8px"><strong>Add-ons</strong><button id="add-addon-row" class="btn-soft" type="button">+ Row</button></div>
+      <div id="addon-rows" class="order-list"></div>
+      <button id="save-menu" class="btn-primary big-save" type="button">บันทึกเมนู</button>
     </div>
   </div>
 
