@@ -11,7 +11,7 @@ log = logging.getLogger("werkzeug")
 log.setLevel(logging.ERROR)
 
 app = Flask(__name__)
-ASSET_VERSION = "20260331-new-ui"
+ASSET_VERSION = "20260331-scan-status-admin"
 
 TABLE_STATUSES = {"available", "pending_order", "accepted_order", "checkout_requested", "closed"}
 
@@ -33,12 +33,22 @@ def index():
 @app.route("/customer")
 def customer_page():
     table_id = request.args.get("table", type=int)
-    return render_template("customer.html", table_id=table_id)
+    return render_template("customer.html", table_id=table_id, asset_version=ASSET_VERSION)
+
+
+@app.route("/scan/customer/<int:table_id>")
+def customer_scan_page(table_id: int):
+    return render_template("customer.html", table_id=table_id, asset_version=ASSET_VERSION)
 
 
 @app.route("/staff")
 def staff_page():
-    return render_template("staff.html")
+    return render_template("staff.html", asset_version=ASSET_VERSION)
+
+
+@app.route("/scan/staff")
+def staff_scan_page():
+    return render_template("staff.html", asset_version=ASSET_VERSION)
 
 
 @app.route("/api/license", methods=["GET"])
@@ -108,6 +118,9 @@ def api_checkout():
     payload = read_json()
     target = str(payload.get("target", "table"))
     target_id = payload.get("target_id")
+    payment_method = str(payload.get("payment_method", "cash")).lower()
+    if payment_method not in {"cash", "qr"}:
+        payment_method = "cash"
 
     db = load_db()
     pending_items = []
@@ -125,6 +138,7 @@ def api_checkout():
         "target_id": target_id,
         "items": pending_items,
         "total": total,
+        "payment_method": payment_method,
         "paid_at": utc_now(),
     }
     db["sales"].append(sale_record)

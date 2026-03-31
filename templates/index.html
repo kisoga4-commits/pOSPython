@@ -19,6 +19,8 @@
         </div>
         <div class="header-side">
           <span class="badge badge-soft">🟢 Online</span>
+          <button id="admin-login-btn" class="btn-secondary" type="button">🔐 Admin Login</button>
+          <button id="admin-logout-btn" class="btn-secondary hidden" type="button">🚪 Logout</button>
           <button class="btn-accent">ทดลองใช้งาน</button>
         </div>
       </div>
@@ -137,6 +139,10 @@
                 <label>ราคา</label>
                 <input id="menu-price" type="number" min="0" step="1" placeholder="เช่น 69" />
               </div>
+              <div class="input-shell">
+                <label>รูปเมนู</label>
+                <input id="menu-image" type="file" accept="image/*" />
+              </div>
               <button id="save-menu-item" class="btn-primary primary-button" type="button">เพิ่มรายการ</button>
             </div>
             <div id="menu-preview" class="chip-grid"></div>
@@ -157,6 +163,7 @@
             <div class="input-shell"><label>ที่อยู่ร้าน</label><input id="store-address" type="text" placeholder="ที่อยู่ร้านค้า" /></div>
             <div class="input-shell"><label>สีร้าน</label><input id="store-currency" type="text" placeholder="แดงไวน์ / ครีม" /></div>
             <div class="input-shell"><label>PromptPay</label><input id="store-promptpay" type="text" placeholder="เลข PromptPay" /></div>
+            <div class="input-shell"><label>รหัส Admin</label><input id="admin-pin" type="password" placeholder="เช่น 2468" /></div>
             <div class="input-shell"><label>ภาษี (%)</label><input id="store-tax-rate" type="number" min="0" step="0.01" placeholder="0" /></div>
             <div class="input-shell"><label>Service Charge (%)</label><input id="store-service-rate" type="number" min="0" step="0.01" placeholder="0" /></div>
           </div>

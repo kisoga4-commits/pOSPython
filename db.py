@@ -25,9 +25,9 @@ def default_db() -> dict:
     return {
         "meta": {"version": 1, "updated_at": now_iso()},
         "menu": [
-            {"id": 1, "name": "เนื้อใบพายพรีเมียม", "price": 150, "category": "เนื้อ"},
-            {"id": 2, "name": "หมูสันคอสไลซ์", "price": 120, "category": "หมู"},
-            {"id": 3, "name": "ชุดผักรวมสุขภาพ", "price": 50, "category": "ผัก"},
+            {"id": 1, "name": "เนื้อใบพายพรีเมียม", "price": 150, "category": "เนื้อ", "image": ""},
+            {"id": 2, "name": "หมูสันคอสไลซ์", "price": 120, "category": "หมู", "image": ""},
+            {"id": 3, "name": "ชุดผักรวมสุขภาพ", "price": 50, "category": "ผัก", "image": ""},
         ],
         "tableCount": table_count,
         "tables": [{"id": i, "status": "available", "items": []} for i in range(1, table_count + 1)],
@@ -39,6 +39,7 @@ def default_db() -> dict:
             "pollingMs": 2500,
             "serviceChargePct": 0,
             "vatPct": 0,
+            "adminPin": "2468",
         },
     }
 
@@ -56,6 +57,14 @@ def _normalize_db(data: dict) -> dict:
     merged["tables"] = [
         {**table, "status": normalize_table_status(table.get("status", "available")), "items": table.get("items", [])}
         for table in merged.get("tables", [])
+    ]
+    merged["menu"] = [
+        {**item, "image": item.get("image", "")}
+        for item in merged.get("menu", [])
+    ]
+    merged["sales"] = [
+        {**sale, "payment_method": sale.get("payment_method", "cash")}
+        for sale in merged.get("sales", [])
     ]
     if "meta" not in merged:
         merged["meta"] = {"version": 1, "updated_at": now_iso()}

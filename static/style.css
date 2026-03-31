@@ -183,6 +183,26 @@ button { border: none; border-radius: 12px; padding: 11px 14px; font-weight: 700
 .order-panel h3 { margin-top: 0; }
 .chip-grid { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
 .chip-grid button { background: #fff5ee; color: #69212b; border: 1px solid #f0d7c8; }
+.chip-grid button,
+.menu-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1rem;
+}
+.main-tab:disabled,
+.landing-pill:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.menu-thumb {
+  width: 42px;
+  height: 42px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid #efd7c9;
+  flex: 0 0 auto;
+}
 .order-list { display: grid; gap: 8px; margin-bottom: 10px; }
 .list-item {
   background: #fff;
@@ -312,6 +332,7 @@ a { color: #8b1f2f; }
   border: 1px solid #f0d9cc;
   background: #fffaf6;
   text-align: left;
+  min-height: 56px;
 }
 
 .overlay {
