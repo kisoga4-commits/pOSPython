@@ -40,7 +40,7 @@ function bindNav() {
   document.querySelectorAll('[data-screen]').forEach((btn) => {
     btn.addEventListener('click', () => showScreen(btn.dataset.screen));
   });
-  showScreen('pos');
+  showScreen('customer');
 }
 
 function bindKitchenSubtabs() {
@@ -510,9 +510,9 @@ function bindActions() {
 }
 
 function registerServiceWorker() {
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/static/sw.js').catch(() => {});
-  }
+  if (!('serviceWorker' in navigator)) return;
+  const version = window.__ASSET_VERSION__ || Date.now().toString();
+  navigator.serviceWorker.register(`/static/sw.js?v=${encodeURIComponent(version)}`).catch(() => {});
 }
 
 (function init() {

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>FAKDU POS เครื่องแม่</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version }}" />
 </head>
 <body>
   <div id="license-screen" class="overlay">
@@ -38,9 +38,10 @@
     <main>
       <section class="section-card landing-highlight">
         <h2>FAKDU 4 ระบบ</h2>
+        <p class="new-ui-proof">FAKDU 4 ระบบ NEW UI</p>
         <p class="section-subtitle">เริ่มใช้งานได้ทันทีจากเมนูหลักด้านล่าง</p>
         <div class="landing-grid">
-          <button class="landing-pill" data-screen="pos" type="button">ลูกค้า</button>
+          <button class="landing-pill" data-screen="customer" type="button">ลูกค้า</button>
           <button class="landing-pill" data-screen="cashier" type="button">เช็คบิล</button>
           <button class="landing-pill" data-screen="kitchen" type="button">หลังร้าน</button>
           <button class="landing-pill" data-screen="settings" type="button">ระบบ</button>
@@ -48,13 +49,13 @@
       </section>
 
       <nav class="main-tab-wrap section-card">
-        <button class="main-tab is-active" data-screen="pos"><span>ลูกค้า</span></button>
+        <button class="main-tab is-active" data-screen="customer"><span>ลูกค้า</span></button>
         <button class="main-tab" data-screen="cashier"><span>เช็คบิล</span></button>
         <button class="main-tab" data-screen="kitchen"><span>หลังร้าน</span></button>
         <button class="main-tab" data-screen="settings"><span>ระบบ</span></button>
       </nav>
 
-      <section id="pos" class="screen section-card">
+      <section id="customer" class="screen section-card">
         <div class="section-head with-controls">
           <div>
             <h2>ลูกค้า</h2>
@@ -214,6 +215,9 @@
 
   <audio id="new-order-sound" src="{{ url_for('static', filename='sounds/new_order.mp3') }}"></audio>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="{{ url_for('static', filename='app.js') }}"></script>
+  <script>
+    window.__ASSET_VERSION__ = "{{ asset_version }}";
+  </script>
+  <script src="{{ url_for('static', filename='app.js') }}?v={{ asset_version }}"></script>
 </body>
 </html>
