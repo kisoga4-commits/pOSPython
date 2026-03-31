@@ -11,7 +11,7 @@ log = logging.getLogger("werkzeug")
 log.setLevel(logging.ERROR)
 
 app = Flask(__name__)
-ASSET_VERSION = "20260331-scan-status-admin"
+ASSET_VERSION = "20260331-fakdu-home-admin-session"
 
 
 def bootstrap() -> None:

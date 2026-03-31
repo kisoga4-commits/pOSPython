@@ -10,23 +10,20 @@
   <div class="app-shell">
     <header class="app-header">
       <div class="brand-row">
-        <div>
+        <div class="brand-left">
+          <div class="logo-slot">LOGO</div>
+          <div>
           <p class="muted-light">FAKDU POS · เครื่องแม่หลัก</p>
           <h1>FAKDU</h1>
+          </div>
         </div>
-        <span class="badge online">LAN {{ local_ip }}:5000</span>
+        <button id="header-action" class="btn-gold">เปิดรับออเดอร์</button>
       </div>
       <p class="muted-light">มือถือ = เครื่องลูก/ลูกค้า · คอม = หลังบ้านหลัก</p>
+      <span class="badge online">LAN {{ local_ip }}:5000</span>
     </header>
 
     <main>
-      <section class="section-card home-grid">
-        <button class="home-card" data-screen="customer">👥 ลูกค้า</button>
-        <button class="home-card" data-screen="cashier">🧾 เช็คบิล</button>
-        <button class="home-card" data-screen="backstore">📊 หลังร้าน</button>
-        <button class="home-card" data-screen="system">⚙️ ระบบ</button>
-      </section>
-
       <nav class="section-card tab-bar">
         <button class="main-tab is-active" data-screen="customer">ลูกค้า</button>
         <button class="main-tab" data-screen="cashier">เช็คบิล</button>
@@ -66,9 +63,12 @@
       <section id="backstore" class="screen section-card hidden">
         <div class="section-head">
           <h2>หลังร้าน</h2>
-          <div class="subtabs">
-            <button class="subtab is-active" data-subtab="sales">ยอดขาย</button>
-            <button class="subtab" data-subtab="manage">จัดการร้าน</button>
+          <div class="admin-head-actions">
+            <div class="subtabs">
+              <button class="subtab is-active" data-subtab="sales">ยอดขาย</button>
+              <button class="subtab" data-subtab="manage">จัดการร้าน</button>
+            </div>
+            <button id="logout-backstore" class="btn-soft danger">Logout</button>
           </div>
         </div>
 
@@ -128,7 +128,10 @@
       </section>
 
       <section id="system" class="screen section-card hidden">
-        <h2>ระบบ</h2>
+        <div class="section-head">
+          <h2>ระบบ</h2>
+          <button id="logout-system" class="btn-soft danger">Logout</button>
+        </div>
         <div class="panel-block">
           <h3>ข้อมูลร้านค้า</h3>
           <div class="form-grid">

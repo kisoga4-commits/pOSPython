@@ -2,6 +2,8 @@ let db;
 let version = 0;
 let menuEditIndex = -1;
 let filteredSales = [];
+const ADMIN_SESSION_KEY = 'fakdu_admin_logged_in';
+let isAdminAuthenticated = localStorage.getItem(ADMIN_SESSION_KEY) === '1';
 
 const statusMap = {
   available: { label: 'ว่าง', note: 'พร้อมรับลูกค้า' },
@@ -19,9 +21,33 @@ async function api(path, options = {}) {
 }
 
 function showScreen(id) {
+  if (['backstore', 'system'].includes(id) && !ensureAdminSession()) return;
   document.querySelectorAll('.screen').forEach((s) => s.classList.add('hidden'));
   qs(id).classList.remove('hidden');
   document.querySelectorAll('[data-screen]').forEach((b) => b.classList.toggle('is-active', b.dataset.screen === id));
+}
+
+function getAdminPin() {
+  return String(db?.settings?.adminPin || '2468').trim();
+}
+
+function ensureAdminSession() {
+  if (isAdminAuthenticated) return true;
+  const pin = window.prompt('กรุณาใส่รหัส Admin');
+  if (pin === null) return false;
+  if (pin.trim() === getAdminPin()) {
+    isAdminAuthenticated = true;
+    localStorage.setItem(ADMIN_SESSION_KEY, '1');
+    return true;
+  }
+  window.alert('รหัส Admin ไม่ถูกต้อง');
+  return false;
+}
+
+function logoutAdmin() {
+  isAdminAuthenticated = false;
+  localStorage.removeItem(ADMIN_SESSION_KEY);
+  showScreen('customer');
 }
 
 function renderTables() {
@@ -236,6 +262,9 @@ function bind() {
     await api('/api/restore', { method: 'POST', body: JSON.stringify(json) });
     await loadData();
   });
+
+  qs('logout-backstore').addEventListener('click', logoutAdmin);
+  qs('logout-system').addEventListener('click', logoutAdmin);
 }
 
 async function poll() {
