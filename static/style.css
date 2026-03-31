@@ -7,7 +7,7 @@
   --line:#ead8cc;
 }
 *{box-sizing:border-box}
-body{margin:0;font-family:"Noto Sans Thai","Prompt",sans-serif;background:linear-gradient(180deg,#fff,var(--bg));color:var(--ink)}
+body{margin:0;font-family:"Noto Sans Thai","Prompt",sans-serif;background:radial-gradient(circle at top,#fff 0%,var(--bg) 70%);color:var(--ink)}
 .hidden{display:none!important}
 .app-shell{max-width:1180px;margin:auto;padding:12px}
 .app-header{background:linear-gradient(120deg,#5e1116,var(--wine));color:#fff;border-radius:20px;padding:16px;box-shadow:0 10px 30px rgba(94,17,22,.2)}
@@ -17,7 +17,7 @@ body{margin:0;font-family:"Noto Sans Thai","Prompt",sans-serif;background:linear
 h1{margin:0}
 .muted-light{margin:4px 0;color:rgba(255,255,255,.85)}
 .btn-gold{border:none;border-radius:12px;padding:10px 14px;font-weight:800;background:linear-gradient(120deg,#d6ad58,#f4d38f);color:#412200;cursor:pointer;box-shadow:0 8px 20px rgba(0,0,0,.2)}
-.section-card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;margin-top:12px}
+.section-card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;margin-top:12px;box-shadow:0 8px 24px rgba(60,22,22,.06)}
 .main-tab{padding:14px;border-radius:14px;border:1px solid var(--line);background:#fff;font-weight:800;cursor:pointer}
 .tab-bar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
 .main-tab.is-active{background:#fffdf6;border-color:#d7999f;box-shadow:inset 0 -4px 0 #b43844,0 6px 14px rgba(180,56,68,.14)}
@@ -36,11 +36,11 @@ h1{margin:0}
 .status-accepted_order{background:#e7f8eb}
 .status-checkout_requested{background:#f5e9ff}
 .table-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px}
-.table-card{padding:14px;border-radius:16px;border:1px solid var(--line);background:#fff;text-align:left}
+.table-card{padding:14px;border-radius:16px;border:1px solid var(--line);background:#fff;text-align:left;cursor:pointer;transition:transform .12s ease, box-shadow .12s ease}
 .table-card.pending_order{border:2px solid #ef9d62;background:#fff9f4}
 .table-card.accepted_order{border:2px solid #68bf7b;background:#f3fff5}
 .table-card.checkout_requested{border:2px solid #cbabec;background:#fcf7ff}
-.table-no{font-size:2rem;font-weight:900;line-height:1;margin:0}
+.table-no{font-size:2rem;font-weight:900;line-height:1;margin:0}.table-card:hover{transform:translateY(-2px);box-shadow:0 10px 20px rgba(81,28,28,.12)}
 .table-note{color:#6b6662;font-size:.9rem}
 .alert-dot{color:#cf4d00;font-weight:800}
 .subtabs{display:flex;gap:6px;background:#f9eee6;padding:4px;border-radius:999px}
@@ -77,3 +77,21 @@ input,select{width:100%;padding:10px;border-radius:10px;border:1px solid #e8d9cd
   .table-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .filter-row,.manage-row,.menu-form,.form-grid{grid-template-columns:1fr}
 }
+
+
+.mobile-shell{max-width:760px;margin:auto;padding:12px}
+.mobile-header{background:linear-gradient(130deg,#60131d,var(--wine));color:#fff;padding:16px;border-radius:18px;box-shadow:0 12px 28px rgba(80,19,25,.25)}
+.brand-zone{display:flex;align-items:center;gap:10px}
+.mobile-title{margin:0}
+.mobile-subtitle{margin:.4rem 0 0;color:rgba(255,255,255,.9)}
+.on-dark{color:rgba(255,255,255,.85)}
+.mobile-content{display:grid;gap:10px;margin-top:10px}
+.mobile-panel{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;box-shadow:0 6px 18px rgba(60,22,22,.06)}
+.chip-grid{display:grid;gap:8px}
+.order-list{display:grid;gap:8px;margin-top:8px}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.btn-secondary{border:none;border-radius:12px;padding:10px 14px;font-weight:700;cursor:pointer;background:#efe4ff;color:#4e2f73}
+.status-badge{padding:6px 10px;border-radius:999px;background:#f8ece3;font-size:.8rem;font-weight:700}
+.segmented{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.seg-btn{border:1px solid var(--line);background:#fff;border-radius:12px;padding:10px;font-weight:700;cursor:pointer}
+.seg-btn.is-active{background:#fff1f3;border-color:#d7999f}
