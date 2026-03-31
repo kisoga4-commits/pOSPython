@@ -3,50 +3,70 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SHABU POS</title>
+  <title>FAKDU POS</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
 </head>
 <body>
-  <header>
-    <h1>🍲 SHABU POS</h1>
-    <nav>
-      <button data-screen="order">โหมดรับออร์เดอร์</button>
-      <button data-screen="cashier">โหมดแคชเชียร์</button>
-      <button data-screen="report">โหมดหลังร้าน/รายงาน</button>
-      <button id="show-qr">QR สำหรับเครื่องลูก</button>
-    </nav>
-  </header>
-
-  <main>
-    <section id="order" class="screen">
-      <h2>โหมดรับออร์เดอร์</h2>
-      <div id="table-grid"></div>
-      <div id="menu-area" class="hidden">
-        <h3>โต๊ะ <span id="active-table"></span></h3>
-        <div id="menu-list"></div>
-        <div id="cart-list"></div>
-        <button id="submit-order">ส่งออร์เดอร์</button>
+  <div class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="brand-sub">ระบบขายหน้าร้าน</p>
+        <h1>🍲 FAKDU POS</h1>
       </div>
-    </section>
+      <button id="show-qr" class="btn btn-primary">QR สำหรับเครื่องลูก</button>
+    </header>
 
-    <section id="cashier" class="screen hidden">
-      <h2>โหมดแคชเชียร์</h2>
-      <div id="checkout-list"></div>
-    </section>
+    <nav class="tabs">
+      <button class="tab is-active" data-screen="order">โหมดรับออร์เดอร์</button>
+      <button class="tab" data-screen="cashier">โหมดแคชเชียร์</button>
+      <button class="tab" data-screen="report">โหมดหลังร้าน / รายงาน</button>
+    </nav>
 
-    <section id="report" class="screen hidden">
-      <h2>โหมดหลังร้าน / รายงาน</h2>
-      <p>ยอดขายรวม: <span id="sales-total">0</span> บาท</p>
-      <button id="reset-day">รีเซ็ตทั้งวัน</button>
-    </section>
-  </main>
+    <main class="workspace">
+      <section id="order" class="screen">
+        <div class="section-head">
+          <h2>จัดการโต๊ะ / รับออร์เดอร์</h2>
+          <span class="pill">Desktop First</span>
+        </div>
+
+        <div id="table-grid" class="grid cards"></div>
+
+        <div id="menu-area" class="hidden panel split">
+          <div>
+            <h3>เมนู (โต๊ะ <span id="active-table"></span>)</h3>
+            <div id="menu-list" class="grid"></div>
+          </div>
+          <div>
+            <h3>ตะกร้า</h3>
+            <div id="cart-list" class="list"></div>
+            <button id="submit-order" class="btn btn-accent">ส่งออร์เดอร์</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="cashier" class="screen hidden">
+        <div class="section-head">
+          <h2>คิวเช็คบิล</h2>
+        </div>
+        <div id="checkout-list" class="grid"></div>
+      </section>
+
+      <section id="report" class="screen hidden">
+        <div class="section-head">
+          <h2>ยอดขายรวม</h2>
+        </div>
+        <p class="sales-line"><span id="sales-total">0</span> บาท</p>
+        <button id="reset-day" class="btn btn-danger">รีเซ็ตทั้งวัน</button>
+      </section>
+    </main>
+  </div>
 
   <div id="qr-modal" class="overlay hidden">
     <div class="card">
       <h3>QR URL สำหรับเครื่องลูก</h3>
       <p>Order: <code id="order-url"></code></p>
       <p>Cashier: <code id="cashier-url"></code></p>
-      <button id="close-qr">ปิด</button>
+      <button id="close-qr" class="btn">ปิด</button>
     </div>
   </div>
 
