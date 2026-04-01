@@ -9,6 +9,7 @@ import os
 from datetime import datetime
 from datetime import timedelta
 from collections import defaultdict
+from typing import Optional
 
 from flask import Flask, abort, jsonify, render_template, request, session
 from flask import redirect, url_for
@@ -61,6 +62,51 @@ def _safe_parse_iso_datetime(value: str):
         return None
 
 
+def _get_locked_customer_table_id() -> Optional[int]:
+    value = session.get("customer_table_id")
+    if value is None:
+        return None
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        session.pop("customer_table_id", None)
+        return None
+    return parsed if parsed > 0 else None
+
+
+def _bind_customer_table_scope(table_id: int) -> None:
+    if is_admin_host_request():
+        return
+    locked_table_id = _get_locked_customer_table_id()
+    if locked_table_id is None:
+        session["customer_table_id"] = int(table_id)
+        session.permanent = True
+        return
+    if locked_table_id != int(table_id):
+        abort(403, description="customer_table_scope_denied")
+
+
+def _require_customer_table_scope(table_id: Optional[int], *, api_mode: bool = False) -> int:
+    def _fail(status: int, message: str):
+        if api_mode:
+            raise ValueError(message)
+        abort(status, description=message)
+
+    if is_admin_host_request():
+        if isinstance(table_id, int) and table_id > 0:
+            return table_id
+        _fail(400, "missing_or_invalid_table")
+
+    locked_table_id = _get_locked_customer_table_id()
+    if locked_table_id is None:
+        _fail(403, "customer_table_scope_missing")
+    if table_id is None:
+        return locked_table_id
+    if int(table_id) != locked_table_id:
+        _fail(403, "customer_table_scope_denied")
+    return locked_table_id
+
+
 @app.route("/")
 def index():
     if not is_admin_host_request():
@@ -104,6 +150,7 @@ def customer_page():
     table_id = request.args.get("table", type=int)
     if table_id is None or table_id < 1:
         abort(400, description="missing_or_invalid_table")
+    _bind_customer_table_scope(table_id)
     db = load_db()
     if not any(table.get("id") == table_id for table in db.get("tables", [])):
         abort(404, description="table_not_found")
@@ -120,6 +167,7 @@ def customer_page():
 
 @app.route("/scan/customer/<int:table_id>")
 def customer_scan_page(table_id: int):
+    _bind_customer_table_scope(table_id)
     db = load_db()
     if not any(table.get("id") == table_id for table in db.get("tables", [])):
         abort(404, description="table_not_found")
@@ -136,6 +184,7 @@ def customer_scan_page(table_id: int):
 
 @app.route("/table/<int:table_id>")
 def customer_table_page(table_id: int):
+    _bind_customer_table_scope(table_id)
     db = load_db()
     if not any(table.get("id") == table_id for table in db.get("tables", [])):
         abort(404, description="table_not_found")
@@ -283,6 +332,10 @@ def _create_order(payload: dict) -> dict:
     if target == "table":
         if not isinstance(target_id, int):
             raise ValueError("invalid table target_id")
+        if str(payload.get("source", "customer")) == "customer":
+            scoped_table_id = _require_customer_table_scope(target_id, api_mode=True)
+            target_id = scoped_table_id
+            payload["target_id"] = scoped_table_id
         if not any(table.get("id") == target_id for table in db.get("tables", [])):
             raise ValueError("table not found")
     order_id = f"ORD-{int(datetime.now().timestamp())}-{len(db['orders']) + 1}"
@@ -787,6 +840,10 @@ def api_table_call_staff():
     table_id = payload.get("table_id")
     if not isinstance(table_id, int):
         return jsonify({"error": "invalid table_id"}), 400
+    try:
+        table_id = _require_customer_table_scope(table_id, api_mode=True)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 403
 
     db = load_db()
     for table in db["tables"]:
@@ -826,6 +883,10 @@ def api_table_checkout_request():
     table_id = payload.get("table_id")
     if not isinstance(table_id, int):
         return jsonify({"error": "invalid table_id"}), 400
+    try:
+        table_id = _require_customer_table_scope(table_id, api_mode=True)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 403
 
     db = load_db()
     for table in db["tables"]:
@@ -948,7 +1009,13 @@ def api_staff_live():
 @require_license
 def api_customer_live():
     since = int(request.args.get("since", "0"))
-    table_id = request.args.get("table_id", type=int)
+    requested_table_id = request.args.get("table_id", type=int)
+    try:
+        table_id = _require_customer_table_scope(requested_table_id, api_mode=True)
+    except ValueError as exc:
+        message = str(exc)
+        status = 400 if message == "missing_or_invalid_table" else 403
+        return jsonify({"error": message}), status
     db = load_db()
     if table_id is not None and not any(table.get("id") == table_id for table in db.get("tables", [])):
         return jsonify({"error": "table_not_found"}), 404

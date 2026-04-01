@@ -6,7 +6,9 @@ let serviceMode = 'table';
 const blinkTimers = new Map();
 const USER_ROLE_KEY = 'user_role';
 const params = new URLSearchParams(window.location.search);
-const initialMode = params.get('mode') === 'checkout' ? 'checkout' : 'customer';
+const requestedScreen = (params.get('screen') || '').toLowerCase();
+const requestedMode = (params.get('mode') || '').toLowerCase();
+const initialMode = (requestedMode === 'checkout' || requestedScreen === 'cashier') ? 'checkout' : 'customer';
 
 const TABLE_STATUS_META = {
   available: { label: 'ว่าง', className: 'status-available' },
