@@ -10,6 +10,7 @@ let editingMenuId = null;
 let lastPendingTableIds = new Set();
 let lastCheckoutRequestIds = new Set();
 let activeOrderItemDraft = null;
+let acceptRequestInFlight = false;
 let salesPeriod = 'day';
 let salesFilterRange = null;
 let activeMenuCategory = 'ทั้งหมด';
@@ -194,11 +195,20 @@ function applyTheme() {
 }
 
 function getTableOrders(tableId) {
-  return db.orders.filter((o) => o.target === 'table' && o.target_id === tableId && !['cancelled', 'completed'].includes(o.status));
+  return db.orders.filter((o) => o.target === 'table' && o.target_id === tableId && o.status !== 'cancelled');
 }
 
-function getTableSummary(tableId) {
-  const orders = getTableOrders(tableId);
+function getTablePendingRequests(tableId) {
+  return getTableOrders(tableId).filter((order) => order.source === 'customer' && order.status === 'request_pending');
+}
+
+function getTableAcceptedOrders(tableId) {
+  return getTableOrders(tableId).filter((order) => ['accepted', 'completed'].includes(order.status));
+}
+
+function getTableSummary(tableId, options = {}) {
+  const acceptedOnly = options.acceptedOnly !== false;
+  const orders = acceptedOnly ? getTableAcceptedOrders(tableId) : getTableOrders(tableId);
   const items = orders.flatMap((o) => o.items || []);
   const total = items.reduce((s, i) => s + (Number(i.price || 0) * Math.max(1, Number(i.qty || 1))), 0);
   return { items, total };
@@ -270,13 +280,13 @@ function renderTables() {
   const grid = qs('table-grid');
   grid.innerHTML = '';
   db.tables.forEach((table) => {
-    const tableOrders = db.orders.filter((order) => order.target === 'table' && order.target_id === table.id);
-    const pendingRequests = tableOrders.filter((order) => order.source === 'customer' && order.status === 'request_pending');
+    const tableOrders = getTableOrders(table.id);
+    const pendingRequests = getTablePendingRequests(table.id);
     const hasAcceptedBefore = tableOrders.some((order) => order.status === 'accepted' || order.status === 'completed');
     const showAdditionalOrder = pendingRequests.length > 0 && hasAcceptedBefore;
     const displayStatus = table.call_staff_status === 'requested' ? 'checkout_requested' : table.status;
     const meta = statusMap[displayStatus] || statusMap.available;
-    const { items, total } = getTableSummary(table.id);
+    const { items, total } = getTableSummary(table.id, { acceptedOnly: true });
     const card = document.createElement('button');
     card.type = 'button';
     card.className = `table-card ${meta.tone}`;
@@ -513,7 +523,7 @@ function renderExistingOrders(tableId) {
   const totalNode = qs('order-existing-total');
   if (!list || !totalNode) return;
   list.innerHTML = '';
-  const orders = getTableOrders(tableId);
+  const orders = getTableAcceptedOrders(tableId);
   const rawItems = orders.flatMap((o) => o.items || []);
   const total = rawItems.reduce((sum, item) => sum + (Number(item.price || 0) * Math.max(1, Number(item.qty || 1))), 0);
   const stackedItems = summarizeItems(rawItems);
@@ -549,7 +559,7 @@ function renderDeskSummary() {
 
   const table = db.tables.find((t) => t.id === selectedTableId);
   const meta = statusMap[table?.status] || statusMap.available;
-  const { items, total } = getTableSummary(selectedTableId);
+  const { items, total } = getTableSummary(selectedTableId, { acceptedOnly: true });
   metaNode.textContent = `${unitLabel()} ${selectedTableId}`;
   statusNode.textContent = `สถานะ: ${meta.label}`;
   list.innerHTML = '';
@@ -564,10 +574,17 @@ function renderDeskSummary() {
     });
   }
   totalNode.textContent = `รวม ${money(total)} บาท`;
-  const hasCustomerNewOrder = getTableOrders(selectedTableId).some((o) => o.source === 'customer' && o.status === 'request_pending');
+  const pendingRequests = getTablePendingRequests(selectedTableId);
+  const hasCustomerNewOrder = pendingRequests.length > 0;
   if (acceptBtn) {
-    acceptBtn.disabled = !hasCustomerNewOrder;
-    acceptBtn.textContent = hasCustomerNewOrder ? '✅ ยืนยันรับออร์เดอร์ (Accept Order)' : '✅ รับออเดอร์แล้ว';
+    acceptBtn.disabled = !hasCustomerNewOrder || acceptRequestInFlight;
+    if (acceptRequestInFlight) {
+      acceptBtn.textContent = '⏳ กำลังรับทราบคำขอ...';
+    } else if (hasCustomerNewOrder) {
+      acceptBtn.textContent = `✅ รับทราบคำขอใหม่ (${pendingRequests.length})`;
+    } else {
+      acceptBtn.textContent = '✅ ไม่มีคำขอค้าง';
+    }
   }
 }
 
@@ -691,8 +708,8 @@ function renderCashier() {
   }
   queues.forEach((table) => {
     const meta = statusMap[table.status] || statusMap.available;
-    const tableOrders = getTableOrders(table.id);
-    const { items, total } = getTableSummary(table.id);
+    const tableOrders = getTableAcceptedOrders(table.id);
+    const { items, total } = getTableSummary(table.id, { acceptedOnly: true });
     const groupedItems = summarizeItems(items);
     const orderTimes = tableOrders
       .map((order) => new Date(order.created_at || order.updated_at || 0).getTime())
@@ -1187,13 +1204,19 @@ function bind() {
   });
 
   qs('desk-accept-order')?.addEventListener('click', async () => {
-    if (!selectedTableId) return;
-    const candidate = getTableOrders(selectedTableId)
-      .filter((order) => order.source === 'customer' && order.status === 'request_pending')
+    if (!selectedTableId || acceptRequestInFlight) return;
+    const candidate = getTablePendingRequests(selectedTableId)
       .sort((a, b) => String(a.created_at || '').localeCompare(String(b.created_at || '')))[0];
     if (!candidate?.id) return;
-    await api('/api/table/accept', { method: 'POST', body: JSON.stringify({ order_id: candidate.id }) });
-    await loadData();
+    acceptRequestInFlight = true;
+    renderDeskSummary();
+    try {
+      await api('/api/table/accept', { method: 'POST', body: JSON.stringify({ order_id: candidate.id }) });
+      await loadData();
+    } finally {
+      acceptRequestInFlight = false;
+      renderDeskSummary();
+    }
   });
 
   qs('desk-open-order-modal')?.addEventListener('click', () => { if (selectedTableId) selectTable(selectedTableId); });

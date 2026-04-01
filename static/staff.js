@@ -189,7 +189,10 @@ function tableCard(table, orders = [], actions = [], options = {}) {
 function renderCustomerTab() {
   const list = document.getElementById('staff-customer-list');
   list.innerHTML = '';
-  const customerTables = state.tables.filter((table) => ['pending_order', 'accepted_order'].includes(table.status));
+  const customerTables = state.tables.filter((table) => (
+    ['pending_order', 'accepted_order'].includes(table.status)
+    || table.call_staff_status === 'requested'
+  ));
 
   if (!customerTables.length) {
     list.innerHTML = '<div class="empty-state">ยังไม่มีโต๊ะรอดำเนินการ</div>';
@@ -206,6 +209,19 @@ function renderCustomerTab() {
       return sum + (Number(item.price || 0) * qty);
     }, 0);
     const actions = [];
+    if (table.call_staff_status === 'requested') {
+      actions.push({
+        label: '🔕 รับรู้การเรียกพนักงาน',
+        className: 'btn-primary',
+        onClick: async () => {
+          await api('/api/table/call-staff/ack', {
+            method: 'POST',
+            body: JSON.stringify({ table_id: table.id }),
+          });
+          await loadLive();
+        },
+      });
+    }
     pendingRequests.forEach((requestOrder) => {
       actions.push({
         label: `✅ ยืนยันคำขอ ${requestOrder.id}`,
@@ -239,8 +255,9 @@ function renderCustomerTab() {
 function renderCheckoutTab() {
   const list = document.getElementById('staff-checkout-list');
   list.innerHTML = '';
-  const checkoutTables = state.tables.filter((table) => state.orders.some(
-    (order) => order.target === 'table' && order.target_id === table.id && order.status === 'accepted'
+  const checkoutTables = state.tables.filter((table) => (
+    table.call_staff_status === 'requested'
+    || state.orders.some((order) => order.target === 'table' && order.target_id === table.id && order.status === 'accepted')
   ));
 
   if (!checkoutTables.length) {
