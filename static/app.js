@@ -11,6 +11,8 @@ let lastPendingTableIds = new Set();
 let lastCheckoutRequestIds = new Set();
 let activeOrderItemDraft = null;
 let salesPeriod = 'day';
+let salesFilterRange = null;
+let activeMenuCategory = 'ทั้งหมด';
 const CUSTOMER_DISPLAY_ACTIVE_TABLE_KEY = 'customer_display_active_table';
 const RECOVERY_COLORS = ['แดง', 'ส้ม', 'เหลือง', 'เขียว', 'ฟ้า', 'น้ำเงิน', 'ม่วง'];
 const CELEBRITIES = ['ณเดชน์ คูกิมิยะ', 'ญาญ่า อุรัสยา', 'ใหม่ ดาวิกา', 'มาริโอ้ เมาเร่อ', 'เบลล่า ราณี', 'ชมพู่ อารยา', 'อั้ม พัชราภา', 'แพนเค้ก เขมนิจ', 'เวียร์ ศุกลวัฒน์', 'โป๊ป ธนวรรธน์', 'เจมส์ จิรายุ', 'คิมเบอร์ลี่', 'บอย ปกรณ์', 'เต้ย จรินทร์พร', 'ใบเฟิร์น พิมพ์ชนก', 'โตโน่ ภาคิน', 'แพทริเซีย กู๊ด', 'แอฟ ทักษอร', 'นนกุล ชานน', 'กลัฟ คณาวุฒิ'];
@@ -284,7 +286,8 @@ function renderTables() {
 function renderOrderMenuChoices() {
   const grid = qs('order-menu-grid');
   grid.innerHTML = '';
-  db.menu.forEach((item) => {
+  const filteredMenu = (db.menu || []).filter((item) => activeMenuCategory === 'ทั้งหมด' || (item.category || 'ทั่วไป') === activeMenuCategory);
+  filteredMenu.forEach((item) => {
     const btn = document.createElement('article');
     btn.className = 'menu-choice visual large-thumb';
     btn.innerHTML = `<div class="menu-choice-thumb">${item.image ? `<img src="${item.image}" alt="${item.name}" />` : 'Image'}</div><strong>${item.name}</strong><small>฿${money(item.price)}</small>`;
@@ -307,6 +310,42 @@ function renderOrderMenuChoices() {
       qs('order-item-detail-modal').classList.remove('hidden');
     });
     grid.appendChild(btn);
+  });
+  if (!filteredMenu.length) {
+    grid.innerHTML = '<div class="empty">ไม่มีเมนูในหมวดนี้</div>';
+  }
+}
+
+function getMenuCategories() {
+  const categories = new Set(['ทั้งหมด']);
+  (db.menu || []).forEach((item) => categories.add(item.category || 'ทั่วไป'));
+  return [...categories];
+}
+
+function renderMenuCategoryAdmin() {
+  const wrap = qs('menu-category-admin');
+  if (!wrap) return;
+  const categories = getMenuCategories().filter((name) => name !== 'ทั้งหมด');
+  wrap.innerHTML = `<div class="list-card"><strong>หมวดที่มีอยู่:</strong> ${categories.length ? categories.map((cat) => `<span class="sales-order-chip">${cat}</span>`).join(' ') : 'ยังไม่มีหมวด'}</div>`;
+}
+
+function renderOrderCategoryTabs() {
+  const wrap = qs('order-menu-category-tabs');
+  if (!wrap) return;
+  const categories = getMenuCategories();
+  if (!categories.includes(activeMenuCategory)) activeMenuCategory = 'ทั้งหมด';
+  wrap.innerHTML = '';
+  categories.forEach((cat) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `subtab ${cat === activeMenuCategory ? 'is-active' : ''}`;
+    btn.textContent = cat;
+    btn.addEventListener('click', () => {
+      activeMenuCategory = cat;
+      renderOrderCategoryTabs();
+      renderOrderMenuChoices();
+    });
+    wrap.appendChild(btn);
   });
 }
 
@@ -360,6 +399,8 @@ function formatElapsedMinutes(value) {
 
 function renderExistingOrders(tableId) {
   const list = qs('order-existing-list');
+  const totalNode = qs('order-existing-total');
+  if (!list || !totalNode) return;
   list.innerHTML = '';
   const orders = getTableOrders(tableId);
   const rawItems = orders.flatMap((o) => o.items || []);
@@ -375,7 +416,7 @@ function renderExistingOrders(tableId) {
     row.innerHTML = `<strong>${item.name}${qtyText}</strong> • ${money(item.price)} บาท <span class="pill">sent</span>`;
     list.appendChild(row);
   });
-  qs('order-existing-total').textContent = `ยอดรวมตอนนี้ ${money(total)} บาท`;
+  totalNode.textContent = `ยอดรวมตอนนี้ ${money(total)} บาท`;
 }
 
 function renderDeskSummary() {
@@ -426,6 +467,7 @@ function selectTable(tableId) {
   const meta = statusMap[table?.status] || statusMap.available;
   qs('order-meta-table').textContent = `${unitLabel()} ${tableId}`;
   qs('order-meta-status').textContent = `สถานะ: ${meta.label}`;
+  renderOrderCategoryTabs();
   renderOrderMenuChoices();
   renderOrderCart();
   renderExistingOrders(tableId);
@@ -578,6 +620,7 @@ function renderMenu() {
     row.querySelector('[data-a="d"]').addEventListener('click', async () => { db.menu.splice(idx, 1); await api('/api/settings', { method: 'POST', body: JSON.stringify({ menu: db.menu }) }); await loadData(); });
     list.appendChild(row);
   });
+  renderMenuCategoryAdmin();
 }
 
 function resetMenuModal() {
@@ -587,6 +630,8 @@ function resetMenuModal() {
   qs('menu-price').value = '';
   qs('addon-rows').innerHTML = '';
   qs('menu-image-file').value = '';
+  qs('menu-category').value = '';
+  qs('menu-new-category').value = '';
   qs('menu-image-preview').src = '';
   qs('menu-image-preview').classList.add('hidden');
   menuImagePreviewData = '';
@@ -605,6 +650,8 @@ function openEditMenuModal(item) {
   menuImagePreviewData = item.image || '';
   qs('menu-image-preview').src = menuImagePreviewData;
   qs('menu-image-preview').classList.toggle('hidden', !menuImagePreviewData);
+  qs('menu-category').value = item.category || 'ทั่วไป';
+  qs('menu-new-category').value = '';
   qs('menu-modal').classList.remove('hidden');
 }
 
@@ -639,14 +686,16 @@ function periodRange(period, now = new Date()) {
 
 function renderSales() {
   const sales = db.sales || [];
-  const range = periodRange(salesPeriod, new Date());
+  const range = salesFilterRange || periodRange(salesPeriod, new Date());
   const inCurrent = sales.filter((s) => salesDate(s) >= range.start && salesDate(s) <= range.end);
   const inPrevious = sales.filter((s) => salesDate(s) >= range.previousStart && salesDate(s) <= range.previousEnd);
   const currentTotal = inCurrent.reduce((sum, s) => sum + Number(s.total || 0), 0);
   const previousTotal = inPrevious.reduce((sum, s) => sum + Number(s.total || 0), 0);
   const cash = inCurrent.filter((s) => s.payment_method === 'cash').reduce((sum, s) => sum + Number(s.total || 0), 0);
   const qr = inCurrent.filter((s) => s.payment_method === 'qr').reduce((sum, s) => sum + Number(s.total || 0), 0);
-  qs('sales-overview').innerHTML = `<div class="list-card sales-kpi total"><strong>ยอดรวม</strong><div>฿${money(currentTotal)}</div></div><div class="list-card sales-kpi"><strong>เงินสด</strong><div>฿${money(cash)}</div></div><div class="list-card sales-kpi"><strong>QR</strong><div>฿${money(qr)}</div></div><div class="list-card sales-kpi"><strong>จำนวนบิล</strong><div>${inCurrent.length}</div></div>`;
+  const comparePct = previousTotal > 0 ? (((currentTotal - previousTotal) / previousTotal) * 100) : (currentTotal > 0 ? 100 : 0);
+  qs('sales-comparison').innerHTML = `<strong>${range.label || 'ช่วงที่เลือก'}</strong><div class="sales-compare-value ${currentTotal >= previousTotal ? 'up' : 'down'}">${currentTotal >= previousTotal ? '▲' : '▼'} ${money(Math.abs(currentTotal - previousTotal))} บาท (${comparePct.toFixed(1)}%)</div><small>เทียบกับช่วงก่อนหน้า</small>`;
+  qs('sales-overview').innerHTML = `<div class="list-card sales-kpi"><strong>💵 เงินสด</strong><div>฿${money(cash)}</div></div><div class="list-card sales-kpi"><strong>📱 QR</strong><div>฿${money(qr)}</div></div><div class="list-card sales-kpi total"><strong>🧾 ยอดรวม</strong><div>฿${money(currentTotal)}</div></div><div class="list-card sales-kpi"><strong>จำนวนบิล</strong><div>${inCurrent.length}</div></div>`;
   const chart = qs('sales-chart');
   const bucket = {};
   inCurrent.forEach((sale) => {
@@ -654,7 +703,7 @@ function renderSales() {
     const key = salesPeriod === 'month' ? `${d.getDate()}` : (salesPeriod === 'week' ? d.toLocaleDateString('th-TH', { weekday: 'short' }) : d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false }).slice(0, 2));
     bucket[key] = (bucket[key] || 0) + Number(sale.total || 0);
   });
-  const points = Object.entries(bucket);
+  const points = Object.entries(bucket).sort((a, b) => a[0].localeCompare(b[0], 'th'));
   const max = Math.max(1, ...points.map(([, val]) => val));
   chart.innerHTML = points.map(([label, val]) => `<div class="chart-col"><div class="chart-bar" style="height:${Math.max(10, (val / max) * 100)}%"></div><small>${label}</small></div>`).join('') || '<div class="empty">ยังไม่มีข้อมูลยอดขายในช่วงนี้</div>';
   const body = qs('sales-list');
@@ -848,6 +897,7 @@ async function loadData() {
   renderTables();
   renderCashier();
   renderMenu();
+  renderOrderCategoryTabs();
   renderSales();
   await renderBestSellers();
   renderSystem();
@@ -909,6 +959,7 @@ function bind() {
   document.querySelectorAll('[data-sales-period]').forEach((btn) => {
     btn.addEventListener('click', () => {
       salesPeriod = btn.dataset.salesPeriod || 'day';
+      salesFilterRange = null;
       document.querySelectorAll('[data-sales-period]').forEach((node) => node.classList.toggle('is-active', node === btn));
       renderSales();
       const modal = qs('sales-period-modal');
@@ -924,6 +975,23 @@ function bind() {
   qs('close-sales-period-modal')?.addEventListener('click', () => qs('sales-period-modal')?.classList.add('hidden'));
   qs('sales-period-modal')?.addEventListener('click', (event) => {
     if (event.target.id === 'sales-period-modal') qs('sales-period-modal').classList.add('hidden');
+  });
+  qs('sales-range-apply')?.addEventListener('click', () => {
+    const fromRaw = qs('sales-range-from')?.value;
+    const toRaw = qs('sales-range-to')?.value;
+    if (!fromRaw || !toRaw) return;
+    const start = new Date(`${fromRaw}T00:00:00`);
+    const end = new Date(`${toRaw}T23:59:59.999`);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return;
+    const durationMs = end.getTime() - start.getTime() + 1;
+    salesFilterRange = {
+      start,
+      end,
+      previousStart: new Date(start.getTime() - durationMs),
+      previousEnd: new Date(start.getTime() - 1),
+      label: `ช่วงวันที่ ${fromRaw} ถึง ${toRaw}`,
+    };
+    renderSales();
   });
   qs('paper-size')?.addEventListener('change', updateReceiptPreview);
   qs('store-name')?.addEventListener('input', updateReceiptPreview);
@@ -981,7 +1049,10 @@ function bind() {
     const price = Number(qs('menu-price').value || 0);
     if (!name || price <= 0) return;
     const addons = [...document.querySelectorAll('#addon-rows .form-grid')].map((row) => ({ name: row.querySelector('.addon-name').value.trim(), price: Number(row.querySelector('.addon-price').value || 0) })).filter((a) => a.name);
-    const payload = { name, price, addons: addons.map((a) => `${a.name} (+${a.price})`), addon_json: addons, image: menuImagePreviewData || '' };
+    const newCategory = qs('menu-new-category').value.trim();
+    const selectedCategory = qs('menu-category').value.trim();
+    const category = newCategory || selectedCategory || 'ทั่วไป';
+    const payload = { name, price, category, addons: addons.map((a) => `${a.name} (+${a.price})`), addon_json: addons, image: menuImagePreviewData || '' };
     if (editingMenuId) {
       const targetIndex = db.menu.findIndex((item) => item.id === editingMenuId);
       if (targetIndex >= 0) db.menu[targetIndex] = { ...db.menu[targetIndex], ...payload, id: editingMenuId };
@@ -992,6 +1063,7 @@ function bind() {
     qs('menu-modal').classList.add('hidden');
     resetMenuModal();
     await loadData();
+    renderOrderCategoryTabs();
   });
 
   qs('shop-logo-file').addEventListener('change', async (event) => {
