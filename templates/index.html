@@ -12,14 +12,17 @@
   <div class="app-shell desktop-shell">
     <header class="app-header modern-header">
       <div class="brand-left">
-        <div id="store-logo" class="logo-slot hero-logo">LOGO</div>
+        <div class="logo-wrap">
+          <span id="network-status-dot" class="network-dot online" title="Online"></span>
+          <div id="store-logo" class="logo-slot hero-logo">LOGO</div>
+        </div>
         <div>
           <p class="muted-light">POS ร้านอาหารตามสั่ง</p>
           <h1 id="header-store-name">FAKDU</h1>
         </div>
       </div>
       <div class="header-icons">
-        <span id="network-status-dot" class="network-dot online" title="Online"></span>
+        <button id="open-staff-qr-modal" class="icon-btn" type="button" aria-label="Staff access QR">📱</button>
       </div>
     </header>
 
@@ -153,23 +156,18 @@
         </div>
 
         <div id="system-qr" class="panel-block system-panel">
-          <div class="section-head">
-            <h3>QR ระบบ</h3>
-            <button id="open-staff-qr-modal" class="icon-btn" type="button" aria-label="Staff access QR">📱</button>
-          </div>
-          <section class="qr-section">
-            <h3>QR สำหรับพนักงาน (Staff Access QR)</h3>
-            <p class="muted">สแกนเพื่อเข้าสู่ระบบหลังบ้าน (Staff PC/Tablet)</p>
-            <div class="staff-qr-card">
-              <img id="staff-qr-image" class="qr-preview staff-large" alt="Staff Access QR" />
-              <a id="staff-qr-link" class="muted" target="_blank" rel="noopener noreferrer"></a>
-            </div>
-          </section>
-
           <section class="qr-section">
             <h3>QR สำหรับโต๊ะลูกค้า (Customer Table QRs)</h3>
-            <p class="muted">เลือกโต๊ะเพื่อเปิด QR ในหน้าต่าง Modal</p>
-            <div id="table-qr-list" class="table-picker horizontal-picker"></div>
+            <p class="muted">เลือกโต๊ะจาก Dropdown แล้วจะแสดง QR เฉพาะโต๊ะนั้น</p>
+            <div class="form-grid single-row">
+              <select id="table-qr-select">
+                <option value="">-- เลือกโต๊ะ --</option>
+              </select>
+            </div>
+            <div id="table-qr-preview" class="table-qr-preview hidden">
+              <img id="table-qr-image" class="qr-preview" alt="Customer Table QR" />
+              <a id="table-qr-link" class="muted" target="_blank" rel="noopener noreferrer"></a>
+            </div>
           </section>
         </div>
 

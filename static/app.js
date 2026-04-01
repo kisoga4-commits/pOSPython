@@ -20,7 +20,7 @@ const THEME_PRESETS = [
 
 const statusMap = {
   available: { label: 'ว่าง', tone: 'available', icon: '○' },
-  pending_order: { label: 'ลูกค้ารอพนักงานยืนยัน', tone: 'pending', icon: '🔔' },
+  pending_order: { label: 'กำลังสั่ง', tone: 'pending', icon: '🔔' },
   accepted_order: { label: 'รับออร์เดอร์แล้ว', tone: 'accepted', icon: '✅' },
   checkout_requested: { label: 'รอเช็คบิล', tone: 'checkout', icon: '🧾' },
 };
@@ -459,7 +459,6 @@ function renderSystem() {
   renderPrinterDriverOptions(s.printerDriver || '');
   renderThemePresets(s.themePreset || '');
   updateReceiptPreview();
-  renderStaffQR();
   renderTableQRList();
 }
 
@@ -553,26 +552,36 @@ function openQRModal(title, url, imageUrl) {
   qs('qr-modal').classList.remove('hidden');
 }
 
-function renderStaffQR() {
-  const url = `${resolveRuntimeHost()}/`;
-  qs('staff-qr-image').src = buildQrImageUrl(url);
-  qs('staff-qr-link').textContent = url;
-  qs('staff-qr-link').href = url;
+function renderTableQRList() {
+  const select = qs('table-qr-select');
+  if (!select) return;
+  select.innerHTML = '<option value="">-- เลือกโต๊ะ --</option>';
+  db.tables.forEach((table) => {
+    const option = document.createElement('option');
+    option.value = String(table.id);
+    option.textContent = `Table ${table.id}`;
+    select.appendChild(option);
+  });
+  renderSelectedTableQR(select.value);
 }
 
-function renderTableQRList() {
-  const wrap = qs('table-qr-list');
-  wrap.innerHTML = '';
-  db.tables.forEach((table) => {
-    const btn = document.createElement('button');
-    btn.className = 'btn-soft table-pick-btn';
-    btn.textContent = `Table ${table.id}`;
-    btn.addEventListener('click', () => {
-      const url = customerScanUrl(table.id);
-      openQRModal(`Table-${table.id}`, url, buildQrImageUrl(url));
-    });
-    wrap.appendChild(btn);
-  });
+function renderSelectedTableQR(tableId) {
+  const wrap = qs('table-qr-preview');
+  const image = qs('table-qr-image');
+  const link = qs('table-qr-link');
+  if (!wrap || !image || !link) return;
+  if (!tableId) {
+    wrap.classList.add('hidden');
+    image.src = '';
+    link.textContent = '';
+    link.href = '';
+    return;
+  }
+  const url = customerScanUrl(Number(tableId));
+  image.src = buildQrImageUrl(url);
+  link.textContent = url;
+  link.href = url;
+  wrap.classList.remove('hidden');
 }
 
 async function loadData() {
@@ -762,6 +771,9 @@ function bind() {
   qs('open-staff-qr-modal')?.addEventListener('click', () => {
     const url = `${resolveRuntimeHost()}/`;
     openQRModal('Staff-Access', url, buildQrImageUrl(url));
+  });
+  qs('table-qr-select')?.addEventListener('change', (event) => {
+    renderSelectedTableQR(event.target.value);
   });
 
   qs('save-system').addEventListener('click', async () => {

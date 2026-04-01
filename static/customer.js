@@ -8,10 +8,11 @@ let toastTimer = null;
 const params = new URLSearchParams(window.location.search);
 const lockedTableId = Number(params.get('table') || document.body.dataset.tableId || 0);
 let masterBaseUrl = document.body.dataset.localBaseUrl || `${window.location.protocol}//${window.location.host}`;
+const cartStorageKey = `customer_cart_table_${lockedTableId || 'unknown'}`;
 
 const TABLE_STATUS_META = {
   available: { label: 'ว่าง', className: 'status-available' },
-  pending_order: { label: 'มีออร์เดอร์ใหม่', className: 'status-pending_order' },
+  pending_order: { label: 'กำลังสั่ง', className: 'status-pending_order' },
   accepted_order: { label: 'กำลังทำ', className: 'status-accepted_order' },
   checkout_requested: { label: 'รอเช็คบิล', className: 'status-checkout_requested' },
   closed: { label: 'ปิดบิล', className: 'status-closed' },
@@ -42,15 +43,36 @@ function normalizeAddonOptions(item) {
   return [];
 }
 
+function parseAddonOption(rawOption = '') {
+  const option = String(rawOption || '').trim();
+  const match = option.match(/\(\+([\d.]+)\)\s*$/);
+  return {
+    name: option.replace(/\s*\(\+[\d.]+\)\s*$/, '').trim() || option,
+    price: match ? Number(match[1]) : 0,
+    label: option,
+  };
+}
+
 function cartIdentity(item) {
-  return `${item.id || item.name}__${(item.addon || '').trim()}__${(item.note || '').trim()}`;
+  const addonKey = (item.addons || []).map((addon) => addon.name).join('|');
+  return `${item.id || item.name}__${addonKey}__${(item.note || '').trim()}`;
 }
 
 function addToCart(item, options = {}) {
-  const addon = String(options.addon || '').trim();
+  const selectedAddons = Array.isArray(options.addons) ? options.addons : [];
+  const addon = selectedAddons.map((addonItem) => addonItem.name).join(', ');
+  const addonTotal = selectedAddons.reduce((sum, addonItem) => sum + Number(addonItem.price || 0), 0);
   const note = '';
   const qty = Math.max(1, Number(options.qty || 1));
-  const candidate = { ...item, addon, note, qty };
+  const candidate = {
+    ...item,
+    base_price: Number(item.price || 0),
+    price: Number(item.price || 0) + addonTotal,
+    addon,
+    addons: selectedAddons,
+    note,
+    qty,
+  };
   const key = cartIdentity(candidate);
   const existing = cart.find((entry) => cartIdentity(entry) === key);
   if (existing) {
@@ -58,8 +80,32 @@ function addToCart(item, options = {}) {
   } else {
     cart.push(candidate);
   }
+  persistCart();
   renderCart();
   showAddedFeedback();
+}
+
+function persistCart() {
+  sessionStorage.setItem(cartStorageKey, JSON.stringify(cart));
+}
+
+function loadCartFromSession() {
+  try {
+    const raw = sessionStorage.getItem(cartStorageKey);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) cart = parsed;
+  } catch (error) {
+    cart = [];
+    sessionStorage.removeItem(cartStorageKey);
+  }
+}
+
+function clearCart(closeModal = false) {
+  cart = [];
+  sessionStorage.removeItem(cartStorageKey);
+  renderCart();
+  if (closeModal) document.getElementById('cart-modal').classList.add('hidden');
 }
 
 function showAddedFeedback() {
@@ -91,7 +137,8 @@ function updateFloatingCart() {
 
 function buildAddonText(item) {
   const bits = [];
-  if (item.addon) bits.push(item.addon);
+  if ((item.addons || []).length) bits.push(item.addons.map((addon) => addon.label || addon.name).join(', '));
+  else if (item.addon) bits.push(item.addon);
   if (item.note) bits.push(`โน้ต: ${item.note}`);
   return bits.length ? `<small>${bits.join(' · ')}</small>` : '';
 }
@@ -114,7 +161,7 @@ function renderMenu() {
       if (!lockedTableId) return;
       const addonOptions = normalizeAddonOptions(item);
       if (!addonOptions.length) {
-        addToCart(item, { addon: '', note: '', qty: 1 });
+        addToCart(item, { addons: [], note: '', qty: 1 });
         return;
       }
       openItemDetailModal(item, addonOptions);
@@ -149,6 +196,7 @@ function updateCartItemQty(index, diff) {
   if (item.qty <= 0) {
     cart.splice(index, 1);
   }
+  persistCart();
   renderCart();
 }
 
@@ -255,6 +303,19 @@ async function loadLive() {
   }
 }
 
+async function validateCartAgainstTableStatus() {
+  if (!lockedTableId) return;
+  try {
+    const data = await api('/api/customer/live?since=0');
+    const table = (data.tables || []).find((item) => Number(item.id) === Number(lockedTableId));
+    if (!table) return;
+    const isFreshTable = ['available', 'closed'].includes(table.status);
+    if (isFreshTable) clearCart();
+  } catch (error) {
+    // keep current session cart when validation endpoint is unavailable
+  }
+}
+
 function setLockedTableUI() {
   const unit = currentSettings.serviceMode === 'queue' ? 'คิว' : 'โต๊ะ';
   const tableBadge = document.getElementById('table-badge');
@@ -290,21 +351,26 @@ function bind() {
   document.getElementById('item-detail-add-btn').addEventListener('click', () => {
     if (!activeItemDraft) return;
     const checked = [...document.querySelectorAll('#item-addon-checkboxes input[type="checkbox"]:checked')].map((node) => node.value.trim()).filter(Boolean);
-    const addon = checked.join(', ');
-    addToCart(activeItemDraft, { addon, qty: 1 });
+    const selectedAddons = checked.map((label) => parseAddonOption(label));
+    addToCart(activeItemDraft, { addons: selectedAddons, qty: 1 });
     closeItemDetailModal();
   });
 
   document.getElementById('submit-order').addEventListener('click', async () => {
     if (!lockedTableId || !cart.length) return;
 
-    const payloadCart = [];
-    cart.forEach((item) => {
-      const qty = Math.max(1, Number(item.qty || 1));
-      for (let i = 0; i < qty; i += 1) {
-        payloadCart.push({ name: item.name, price: item.price, addon: item.addon, note: item.note, qty: 1 });
-      }
-    });
+    const payloadCart = cart.map((item) => ({
+      id: item.id,
+      name: item.name,
+      price: Number(item.base_price || item.price || 0),
+      addon: item.addon || '',
+      addons: (item.addons || []).map((addonItem) => ({
+        name: addonItem.name,
+        price: Number(addonItem.price || 0),
+      })),
+      note: item.note || '',
+      qty: Math.max(1, Number(item.qty || 1)),
+    }));
 
     const pendingPayload = {
       client_order_id: `mobile-${Date.now()}`,
@@ -322,8 +388,7 @@ function bind() {
 
       if (res.status === 'success') {
         document.getElementById('message').textContent = 'ส่งออเดอร์เรียบร้อย';
-        cart = [];
-        renderCart();
+        clearCart();
         document.getElementById('cart-modal').classList.add('hidden');
         await loadLive();
         return;
@@ -332,9 +397,17 @@ function bind() {
     } catch (error) {
       await window.posDB.enqueuePendingOrder(pendingPayload);
       document.getElementById('message').textContent = 'บันทึกคำสั่งซื้อไว้แล้ว จะซิงก์อัตโนมัติเมื่อเชื่อมต่อ LAN ได้';
-      cart = [];
-      renderCart();
+      clearCart();
       document.getElementById('cart-modal').classList.add('hidden');
+    }
+  });
+  document.getElementById('clear-cart-btn').addEventListener('click', () => {
+    if (!cart.length) {
+      document.getElementById('cart-modal').classList.add('hidden');
+      return;
+    }
+    if (confirm('ต้องการล้างตะกร้าใช่หรือไม่?')) {
+      clearCart(true);
     }
   });
 
@@ -360,8 +433,9 @@ function bind() {
     navigator.serviceWorker.register('/static/sw.js').catch(() => {});
   }
   bind();
+  loadCartFromSession();
   renderCart();
   window.posSync.startSync(masterBaseUrl);
-  loadLive().then(setLockedTableUI);
+  validateCartAgainstTableStatus().then(() => loadLive()).then(setLockedTableUI);
   setInterval(loadLive, 2000);
 })();
