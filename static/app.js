@@ -40,6 +40,7 @@ const unitLabel = () => (db?.settings?.serviceMode === 'queue' ? 'คิว' : '
 const qrApiBase = 'https://api.qrserver.com/v1/create-qr-code/';
 let networkBaseUrl = document.body.dataset.localBaseUrl || '';
 const scannerMode = document.body.dataset.scannerMode === '1';
+const kioskMode = document.body.dataset.kioskMode === '1';
 const role = localStorage.getItem('user_role') || '';
 const tableParam = Number(new URLSearchParams(window.location.search).get('table') || 0);
 const scannerAllowedScreens = new Set(['customer', 'cashier']);
@@ -67,6 +68,33 @@ function resolveRuntimeHost() {
 
 function customerScanUrl(tableId) { return `${resolveRuntimeHost()}/customer?table=${tableId}`; }
 function buildQrImageUrl(text) { return `${qrApiBase}?size=320x320&margin=8&data=${encodeURIComponent(text)}`; }
+
+function openAppWindow(url, windowName) {
+  const width = Math.max(1024, window.screen?.availWidth || 1280);
+  const height = Math.max(700, window.screen?.availHeight || 720);
+  const features = [
+    `width=${width}`,
+    `height=${height}`,
+    'left=0',
+    'top=0',
+    'toolbar=0',
+    'menubar=0',
+    'location=0',
+    'status=0',
+    'resizable=1',
+    'scrollbars=1',
+  ].join(',');
+  const popup = window.open(url, windowName, features);
+  if (!popup) return null;
+  popup.focus();
+  try {
+    popup.moveTo(0, 0);
+    popup.resizeTo(width, height);
+  } catch (_) {
+    // Ignore browser restrictions.
+  }
+  return popup;
+}
 function playAlert(id) {
   if (!uiSoundEnabled) return;
   const audio = qs(id);
@@ -707,8 +735,10 @@ function openCustomerDisplayWindow(tableId) {
   if (nextTableId > 0) {
     localStorage.setItem(CUSTOMER_DISPLAY_ACTIVE_TABLE_KEY, String(nextTableId));
   }
-  const popup = window.open(nextTableId > 0 ? `/customer-display?table=${encodeURIComponent(nextTableId)}` : '/customer-display', 'customer-bill-display');
-  if (popup) popup.focus();
+  const displayUrl = nextTableId > 0
+    ? `/customer-display?table=${encodeURIComponent(nextTableId)}&kiosk=1`
+    : '/customer-display?kiosk=1';
+  openAppWindow(displayUrl, 'customer-bill-display');
 }
 
 function sanitizePromptPay(raw) {
@@ -1663,6 +1693,14 @@ function blinkTableCard(tableId) {
 }
 
 (async function init() {
+  if (kioskMode) {
+    const launchFullscreen = () => {
+      if (document.fullscreenElement || !document.documentElement.requestFullscreen) return;
+      document.documentElement.requestFullscreen().catch(() => {});
+    };
+    launchFullscreen();
+    window.addEventListener('click', launchFullscreen, { once: true });
+  }
   applyRoleUI();
   applyScannerModeUI();
   bind();

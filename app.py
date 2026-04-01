@@ -51,6 +51,7 @@ def _safe_parse_iso_datetime(value: str):
 @app.route("/")
 def index():
     scanner_mode = request.args.get("mode") == "scanner" or not is_server_request()
+    kiosk_mode = request.args.get("kiosk") == "1"
     local_ip = get_local_ip()
     port = request.environ.get("SERVER_PORT", "5000")
     local_base_url = f"{request.scheme}://{local_ip}:{port}"
@@ -59,6 +60,7 @@ def index():
         local_ip=local_ip,
         local_base_url=local_base_url,
         scanner_mode=scanner_mode,
+        kiosk_mode=kiosk_mode,
         asset_version=ASSET_VERSION,
     )
 
@@ -139,6 +141,7 @@ def staff_page():
 @app.route("/customer-display")
 def customer_display_page():
     table_id = request.args.get("table", type=int)
+    kiosk_mode = request.args.get("kiosk") == "1"
     if table_id is not None:
         if table_id < 1:
             abort(400, description="missing_or_invalid_table")
@@ -148,6 +151,7 @@ def customer_display_page():
     return render_template(
         "customer_display.html",
         table_id=table_id,
+        kiosk_mode=kiosk_mode,
         asset_version=ASSET_VERSION,
     )
 

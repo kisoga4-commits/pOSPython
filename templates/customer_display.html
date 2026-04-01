@@ -6,7 +6,7 @@
   <title>Customer Bill Display</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version }}" />
 </head>
-<body class="customer-facing-body" data-table-id="{{ table_id }}">
+<body class="customer-facing-body" data-table-id="{{ table_id }}" data-kiosk-mode="{{ '1' if kiosk_mode else '0' }}">
   <main class="customer-facing-wrap">
     <header class="customer-facing-header">
       <h1>เช็คบิล โต๊ะ <span id="customer-facing-table">{{ table_id or '-' }}</span></h1>
