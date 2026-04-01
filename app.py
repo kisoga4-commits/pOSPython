@@ -40,6 +40,13 @@ def local_now() -> str:
     return datetime.now().isoformat()
 
 
+def _safe_parse_iso_datetime(value: str):
+    try:
+        return datetime.fromisoformat(str(value))
+    except Exception:
+        return None
+
+
 @app.route("/")
 def index():
     scanner_mode = request.args.get("mode") == "scanner" or not is_server_request()
@@ -213,6 +220,7 @@ def _create_order(payload: dict) -> dict:
         "source": source,
     }, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
     if source == "customer":
+        now_ts = datetime.now()
         for order in reversed(db["orders"]):
             if (
                 order.get("target") == target
@@ -221,7 +229,16 @@ def _create_order(payload: dict) -> dict:
                 and order.get("request_fingerprint") == request_fingerprint
                 and order.get("status") in {"request_pending", "accepted"}
             ):
-                return {"status": "success", "order": order, "version": db["meta"]["version"], "deduplicated": True}
+                existing_client_id = str(order.get("client_order_id") or "").strip()
+                incoming_client_id = str(payload.get("client_order_id") or "").strip()
+                created_at = _safe_parse_iso_datetime(order.get("created_at"))
+                is_recent_retry = False
+                if created_at is not None:
+                    is_recent_retry = (now_ts - created_at).total_seconds() <= 12
+                if incoming_client_id and existing_client_id and incoming_client_id == existing_client_id:
+                    return {"status": "success", "order": order, "version": db["meta"]["version"], "deduplicated": True}
+                if is_recent_retry and not incoming_client_id and not existing_client_id:
+                    return {"status": "success", "order": order, "version": db["meta"]["version"], "deduplicated": True}
 
     new_order = {
         "id": order_id,
@@ -251,6 +268,28 @@ def _create_order(payload: dict) -> dict:
 
     db = save_db(db)
     return {"status": "success", "order": new_order, "version": db["meta"]["version"]}
+
+
+def _refresh_table_state(db: dict, table_id: int) -> None:
+    pending_exists = False
+    accepted_items = []
+    has_accept_or_completed = False
+    for order in db["orders"]:
+        if order.get("target") != "table" or order.get("target_id") != table_id:
+            continue
+        status = order.get("status")
+        if status == "request_pending":
+            pending_exists = True
+        if status in {"accepted", "completed"}:
+            has_accept_or_completed = True
+            accepted_items.extend(order.get("items", []))
+
+    for table in db.get("tables", []):
+        if table.get("id") != table_id:
+            continue
+        table["status"] = "pending_order" if pending_exists else ("accepted_order" if has_accept_or_completed else "available")
+        table["items"] = accepted_items if has_accept_or_completed else []
+        break
 
 
 def _parse_addon_option_price(raw_option: str) -> tuple[str, float]:
@@ -694,7 +733,16 @@ def api_table_checkout_request():
     db = load_db()
     for table in db["tables"]:
         if table["id"] == table_id:
-            table["status"] = "checkout_requested"
+            accepted_exists = any(
+                order.get("target") == "table"
+                and order.get("target_id") == table_id
+                and order.get("status") in {"accepted", "completed"}
+                for order in db["orders"]
+            )
+            if accepted_exists:
+                table["status"] = "checkout_requested"
+            else:
+                _refresh_table_state(db, table_id)
             db = save_db(db)
             return jsonify({"status": "success", "version": db["meta"]["version"]})
     return jsonify({"error": "table not found"}), 404

@@ -9,9 +9,9 @@ let authState = null;
 
 const TABLE_STATUS_META = {
   available: { label: 'ว่าง', className: 'status-available' },
-  pending_order: { label: 'กำลังสั่ง', className: 'status-pending_order' },
+  pending_order: { label: 'กำลังรับออร์เดอร์', className: 'status-pending_order' },
   accepted_order: { label: 'มีลูกค้า', className: 'status-accepted_order' },
-  checkout_requested: { label: 'รอเช็คบิล', className: 'status-checkout_requested' },
+  checkout_requested: { label: 'เรียกเช็คบิล', className: 'status-checkout_requested' },
   closed: { label: 'ปิดบิล', className: 'status-closed' },
 };
 
@@ -32,6 +32,7 @@ function playNewOrderSound() {
   if (!audio) return;
   audio.currentTime = 0;
   audio.volume = 1;
+  audio.playbackRate = 1;
   audio.play().catch(() => {});
 }
 
@@ -40,6 +41,7 @@ function playCheckoutSound() {
   if (!audio) return;
   audio.currentTime = 0;
   audio.volume = 1;
+  audio.playbackRate = 1;
   audio.play().catch(() => {});
 }
 
@@ -49,6 +51,7 @@ function playCallStaffSound() {
   audio.currentTime = 0;
   audio.volume = 1;
   audio.playbackRate = 1;
+  audio.preservesPitch = false;
   audio.play().catch(() => {});
 }
 
@@ -123,6 +126,9 @@ function tableCard(table, orders = [], actions = [], options = {}) {
   const card = document.createElement('div');
   card.className = `mobile-table-card table-card ${meta.className}`;
   card.dataset.tableId = String(table.id);
+  if (table.call_staff_status === 'requested') {
+    card.classList.add('status-checkout_requested');
+  }
   card.innerHTML = `
     <div class="mobile-table-head">
       <strong>${unit} ${table.id}</strong>
