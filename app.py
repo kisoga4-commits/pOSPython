@@ -212,7 +212,11 @@ def _create_order(payload: dict) -> dict:
     source = payload.get("source", "customer")
     initial_status = "request_pending" if source == "customer" else "accepted"
     normalized_cart = _normalize_cart_items(cart, db.get("menu", []))
+    if not normalized_cart:
+        raise ValueError("cart has no valid items")
     total_price = sum(float(item.get("price", 0)) * max(1, int(item.get("qty", 1) or 1)) for item in normalized_cart)
+    if total_price <= 0:
+        raise ValueError("cart total must be greater than 0")
     request_fingerprint = hashlib.sha256(json.dumps({
         "target": target,
         "target_id": target_id,

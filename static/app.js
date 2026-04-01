@@ -284,11 +284,12 @@ function renderTables() {
     const stackedItems = summarizeItems(items);
     card.innerHTML = items.length
       ? `<div class="table-head-row"><strong>${unitLabel()} ${table.id}</strong><span class="status-chip ${meta.tone}">${meta.icon}</span></div>
-         <small>${stackedItems.slice(-4).map((i) => `${i.image ? '<img src="' + i.image + '" alt="' + i.name + '" class="table-item-thumb" /> ' : ''}${i.name}${Number(i.qty || 1) > 1 ? ` x${Number(i.qty || 1)}` : ''} • ${money(i.price)}`).join('<br>')}</small>
+         <small>${stackedItems.slice(-4).map((i) => `${i.image ? '<img src=\"' + i.image + '\" alt=\"' + i.name + '\" class=\"table-item-thumb\" /> ' : ''}${i.name}${Number(i.qty || 1) > 1 ? ` x${Number(i.qty || 1)}` : ''} • ${money(i.price)}`).join('<br>')}</small>
+         ${pendingRequests.length > 0 ? '<div class="dot-notify">🔔 มีคำขอรอยืนยัน</div>' : ''}
          ${showAdditionalOrder ? '<div class="dot-notify notify-additional">🆕 มีการสั่งเพิ่ม</div>' : ''}
          <div class="table-total">รวม ${money(total)} บาท</div>`
       : `<div class="table-head-row"><strong>${unitLabel()} ${table.id}</strong><span class="status-chip available">○</span></div>
-         <small></small>`;
+         <small>${pendingRequests.length > 0 ? '🔔 รอยืนยันคำขอ' : ''}</small>`;
     card.addEventListener('click', () => selectTable(table.id));
     grid.appendChild(card);
   });
@@ -370,11 +371,17 @@ function renderMenuCategoryAdmin() {
     return;
   }
   wrap.innerHTML = '';
+  wrap.classList.add('menu-category-admin-tabs');
   categories.forEach((cat) => {
     const row = document.createElement('div');
-    row.className = 'list-card';
+    row.className = 'list-card menu-category-tab-card';
     const isDefault = cat === 'ทั่วไป';
-    row.innerHTML = `<div class="menu-admin-meta"><strong>${cat}</strong><small>${countItemsByCategory(cat)} เมนู</small></div><div class="btn-row"><button data-a="rename" class="btn-soft" type="button">แก้ไข</button><button data-a="delete" class="btn-soft ${isDefault ? 'hidden' : ''}" type="button">ลบ</button></div>`;
+    row.innerHTML = `<button class="subtab menu-category-pill" type="button"># ${cat} (${countItemsByCategory(cat)})</button><div class="btn-row"><button data-a="rename" class="btn-soft" type="button">✏️</button><button data-a="delete" class="btn-soft ${isDefault ? 'hidden' : ''}" type="button">🗑️</button></div>`;
+    row.querySelector('.menu-category-pill')?.addEventListener('click', () => {
+      activeMenuCategory = cat;
+      renderOrderCategoryTabs();
+      renderOrderMenuChoices();
+    });
     row.querySelector('[data-a="rename"]')?.addEventListener('click', () => renameMenuCategory(cat));
     row.querySelector('[data-a="delete"]')?.addEventListener('click', () => deleteMenuCategory(cat));
     wrap.appendChild(row);
