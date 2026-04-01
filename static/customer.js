@@ -283,6 +283,7 @@ function renderExistingOrders() {
   const list = document.getElementById('existing-order-list');
   const totalNode = document.getElementById('existing-order-total');
   const timeNode = document.getElementById('existing-order-time');
+  const summaryNode = document.getElementById('existing-order-summary');
   const table = currentTables.find((t) => Number(t.id) === Number(lockedTableId));
   const items = table?.items || [];
   list.innerHTML = '';
@@ -291,6 +292,7 @@ function renderExistingOrders() {
     list.innerHTML = '<div class="empty">ยังไม่มีรายการที่ส่งเข้าร้าน</div>';
     totalNode.textContent = 'ยอดรวมปัจจุบัน 0.00 บาท';
     timeNode.textContent = 'ยังไม่มีเวลาออร์เดอร์';
+    if (summaryNode) summaryNode.textContent = '(0 รายการ)';
     return;
   }
 
@@ -309,13 +311,14 @@ function renderExistingOrders() {
     row.className = 'list-item';
     const hasAddon = (Array.isArray(item.addons) && item.addons.length) || Boolean(item.addon);
     const qty = Math.max(1, Number(item.qty || 1));
-    row.innerHTML = `${item.name}${qty > 1 ? `x${qty}` : ''}${hasAddon ? ' <span class="addon-flag">➕</span>' : ''} · ${money(item.price)} บาท ${item.addon ? `· ${item.addon}` : ''} ${item.note ? `· ${item.note}` : ''}`;
+    row.innerHTML = `${item.name}${qty > 1 ? ` x${qty}` : ''}${hasAddon ? ' <span class="addon-flag">➕</span>' : ''} · ${money(item.price)} บาท ${item.addon ? `· ${item.addon}` : ''} ${item.note ? `· ${item.note}` : ''}`;
     list.appendChild(row);
   });
 
   const total = items.reduce((sum, item) => sum + (Number(item.price || 0) * Math.max(1, Number(item.qty || 1))), 0);
   totalNode.textContent = `ยอดรวมปัจจุบัน ${money(total)} บาท`;
   timeNode.textContent = `อัปเดตล่าสุด ${new Date().toLocaleTimeString('th-TH', { hour12: false })}`;
+  if (summaryNode) summaryNode.textContent = `(${Array.from(itemMap.values()).length} รายการ)`;
 }
 
 async function loadLive() {

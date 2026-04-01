@@ -89,29 +89,32 @@
         </div>
 
         <div id="backstore-sales" class="panel-block hidden">
-          <div class="sales-dashboard-head">
-            <div class="sales-range-row">
-              <input id="sales-from" type="date" />
-              <input id="sales-to" type="date" />
+          <div class="sales-dashboard-head sales-redesign">
+            <div class="sales-topline">
+              <h3>ภาพรวมยอดขาย</h3>
               <button id="open-sales-insight" class="btn-secondary" type="button">Insight</button>
             </div>
+            <div class="sales-period-switch" role="tablist" aria-label="ช่วงเวลา">
+              <button id="sales-period-day" class="seg-btn is-active" data-sales-period="day" type="button">วัน</button>
+              <button id="sales-period-week" class="seg-btn" data-sales-period="week" type="button">สัปดาห์</button>
+              <button id="sales-period-month" class="seg-btn" data-sales-period="month" type="button">เดือน</button>
+            </div>
+            <div id="sales-comparison" class="sales-comparison-card"></div>
             <div id="sales-overview" class="sales-overview-grid premium-kpi"></div>
             <div id="sales-chart" class="sales-chart"></div>
           </div>
-          <div class="sales-body-grid">
-            <section class="sales-panel">
-              <div class="subtabs">
-                <button class="subtab is-active" data-sales-tab="history">🧾 ประวัติการขาย</button>
-                <button class="subtab" data-sales-tab="best">🔥 รายการขายดี</button>
-              </div>
-              <div id="sales-tab-history" class="sales-tab-panel">
-                <div id="sales-list" class="sales-history-list"></div>
-              </div>
-              <div id="sales-tab-best" class="sales-tab-panel hidden">
-                <div id="sales-best-list" class="order-list"></div>
-              </div>
-            </section>
-          </div>
+          <section class="sales-panel">
+            <div class="subtabs">
+              <button class="subtab is-active" data-sales-tab="history">🧾 ประวัติการขาย</button>
+              <button class="subtab" data-sales-tab="best">🔥 เมนูขายดี</button>
+            </div>
+            <div id="sales-tab-history" class="sales-tab-panel">
+              <div id="sales-list" class="sales-history-list"></div>
+            </div>
+            <div id="sales-tab-best" class="sales-tab-panel hidden">
+              <div id="sales-best-list" class="order-list"></div>
+            </div>
+          </section>
         </div>
       </section>
 
@@ -176,6 +179,14 @@
               <a id="table-qr-link" class="muted" target="_blank" rel="noopener noreferrer"></a>
             </div>
           </section>
+        </div>
+        <div id="system-display" class="panel-block system-panel">
+          <h3>โหมดจอแสดงผลลูกค้า</h3>
+          <p class="muted">แยกโหมดจอแสดงผลออกจากหน้าเช็คบิลโดยตรง</p>
+          <div class="manage-row two-col">
+            <select id="customer-display-table-select"></select>
+            <button id="open-customer-display-mode" class="btn-soft" type="button">🖥️ เปิดจอแสดงผล</button>
+          </div>
         </div>
 
         <div id="system-security" class="panel-block system-panel">
@@ -321,9 +332,6 @@
       <div class="bill-foot"><strong>รวม <span id="bill-total">0</span> บาท</strong></div>
       <div id="bill-payment-qr-wrap" class="bill-payment-qr hidden">
         <img id="bill-payment-qr-image" class="qr-preview" alt="Payment QR" />
-      </div>
-      <div class="bill-display-tools">
-        <button id="bill-open-customer-display" class="btn-soft" type="button">🖥️ หน้าจอลูกค้า</button>
       </div>
       <div class="manage-row two-col bill-action-row modal-fixed-footer">
         <button id="bill-pay-cash" class="btn-primary">💵 เงินสด</button>
