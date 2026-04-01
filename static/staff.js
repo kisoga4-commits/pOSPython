@@ -121,7 +121,8 @@ function updateAuthUI() {
   }
 }
 
-function tableCard(table, orders = [], actions = []) {
+function tableCard(table, orders = [], actions = [], options = {}) {
+  const showQty = options.showQty !== false;
   const meta = getStatusMeta(table.status);
   const unit = serviceMode === 'queue' ? 'คิว' : 'โต๊ะ';
   const card = document.createElement('div');
@@ -159,7 +160,8 @@ function tableCard(table, orders = [], actions = []) {
     stackItems(orders).slice(0, 4).forEach((item) => {
       const hasAddon = Array.isArray(item.addons) ? item.addons.length > 0 : Boolean(item.addon);
       const row = document.createElement('small');
-      row.innerHTML = `• ${item.name} x${Math.max(1, Number(item.qty || 1))}${hasAddon ? '<span class="addon-flag">➕ Add-on</span>' : ''}`;
+      const qty = Math.max(1, Number(item.qty || 1));
+      row.innerHTML = `• ${item.name}${showQty && qty > 1 ? ` x${qty}` : ''}${hasAddon ? '<span class="addon-flag">➕</span>' : ''}`;
       orderSummary.appendChild(row);
     });
     card.appendChild(orderSummary);
@@ -218,7 +220,11 @@ function renderCheckoutTab() {
     const tableItems = state.orders
       .filter((order) => order.target === 'table' && order.target_id === table.id && order.status !== 'cancelled')
       .flatMap((order) => order.items || []);
-    list.appendChild(tableCard(table, tableItems, [{
+    const expandedItems = tableItems.flatMap((item) => {
+      const qty = Math.max(1, Number(item.qty || 1));
+      return Array.from({ length: qty }, () => ({ ...item, qty: 1 }));
+    });
+    list.appendChild(tableCard(table, expandedItems, [{
       label: '💵 ปิดบิลเงินสด',
       className: 'btn-secondary',
       onClick: async () => {
@@ -240,7 +246,7 @@ function renderCheckoutTab() {
         });
         await loadLive();
       },
-    }]));
+    }], { showQty: false }));
   });
 }
 

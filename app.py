@@ -10,7 +10,7 @@ from flask import Flask, abort, jsonify, render_template, request
 
 from db import ensure_db_exists, load_db, reset_tables, save_db
 
-from security import get_local_ip, read_json, require_license, require_server_request
+from security import get_local_ip, is_server_request, read_json, require_license, require_server_request
 
 
 log = logging.getLogger("werkzeug")
@@ -40,7 +40,7 @@ def local_now() -> str:
 
 @app.route("/")
 def index():
-    scanner_mode = request.args.get("mode") == "scanner"
+    scanner_mode = request.args.get("mode") == "scanner" or not is_server_request()
     local_ip = get_local_ip()
     port = request.environ.get("SERVER_PORT", "5000")
     local_base_url = f"{request.scheme}://{local_ip}:{port}"
@@ -150,6 +150,7 @@ def api_activate():
 
 
 @app.route("/api/data", methods=["GET"])
+@require_server_request
 def api_data():
     return jsonify(load_db())
 
@@ -536,6 +537,7 @@ def api_table_checkout_request():
 
 
 @app.route("/api/settings", methods=["POST"])
+@require_server_request
 def api_settings():
     payload = read_json()
     db = load_db()
