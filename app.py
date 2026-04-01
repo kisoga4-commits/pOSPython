@@ -11,7 +11,7 @@ from collections import defaultdict
 
 from flask import Flask, Response, abort, jsonify, redirect, render_template, request, stream_with_context, url_for
 
-from db import ensure_db_exists, load_db, reset_tables, save_db
+from db import TABLE_SUFFIX_LENGTH, ensure_db_exists, load_db, reset_tables, save_db
 
 from security import (
     get_local_ip,
@@ -77,6 +77,35 @@ def _safe_parse_int(value, default: int = 0) -> int:
         return default
 
 
+def parse_table_token(raw_value: str | None) -> tuple[int, str] | None:
+    token = str(raw_value or "").strip()
+    if len(token) <= TABLE_SUFFIX_LENGTH:
+        return None
+    suffix = token[-TABLE_SUFFIX_LENGTH:]
+    table_id_part = token[:-TABLE_SUFFIX_LENGTH]
+    if not table_id_part.isdigit() or not suffix.isalnum():
+        return None
+    table_id = int(table_id_part)
+    if table_id < 1:
+        return None
+    return table_id, suffix
+
+
+def build_table_token(table: dict) -> str:
+    return f"{int(table.get('id', 0))}{str(table.get('suffix', ''))}"
+
+
+def resolve_table_from_token(db: dict, raw_value: str | None) -> dict | None:
+    parsed = parse_table_token(raw_value)
+    if parsed is None:
+        return None
+    table_id, suffix = parsed
+    for table in db.get("tables", []):
+        if int(table.get("id", 0)) == table_id and str(table.get("suffix", "")) == suffix:
+            return table
+    return None
+
+
 @app.route("/")
 def index():
     scanner_mode = request.args.get("mode") == "scanner" or not is_server_request()
@@ -111,18 +140,19 @@ def manifest():
 
 @app.route("/customer")
 def customer_page():
-    table_id = request.args.get("table", type=int)
-    if table_id is None or table_id < 1:
-        abort(400, description="missing_or_invalid_table")
     db = load_db()
-    if not any(table.get("id") == table_id for table in db.get("tables", [])):
-        abort(404, description="table_not_found")
+    table_token = str(request.args.get("t", "")).strip()
+    table = resolve_table_from_token(db, table_token)
+    if table is None:
+        abort(403, description="invalid_table_token")
+    table_id = int(table.get("id"))
     local_ip = get_local_ip()
     port = request.environ.get("SERVER_PORT", "5000")
     local_base_url = f"{request.scheme}://{local_ip}:{port}"
     return render_template(
         "customer.html",
         table_id=table_id,
+        table_token=build_table_token(table),
         asset_version=ASSET_VERSION,
         local_base_url=local_base_url,
     )
@@ -131,7 +161,8 @@ def customer_page():
 @app.route("/scan/customer/<int:table_id>")
 def customer_scan_page(table_id: int):
     db = load_db()
-    if not any(table.get("id") == table_id for table in db.get("tables", [])):
+    table = next((row for row in db.get("tables", []) if row.get("id") == table_id), None)
+    if table is None:
         abort(404, description="table_not_found")
     local_ip = get_local_ip()
     port = request.environ.get("SERVER_PORT", "5000")
@@ -139,6 +170,7 @@ def customer_scan_page(table_id: int):
     return render_template(
         "customer.html",
         table_id=table_id,
+        table_token=build_table_token(table),
         asset_version=ASSET_VERSION,
         local_base_url=local_base_url,
     )
@@ -147,7 +179,8 @@ def customer_scan_page(table_id: int):
 @app.route("/table/<int:table_id>")
 def customer_table_page(table_id: int):
     db = load_db()
-    if not any(table.get("id") == table_id for table in db.get("tables", [])):
+    table = next((row for row in db.get("tables", []) if row.get("id") == table_id), None)
+    if table is None:
         abort(404, description="table_not_found")
     local_ip = get_local_ip()
     port = request.environ.get("SERVER_PORT", "5000")
@@ -155,6 +188,7 @@ def customer_table_page(table_id: int):
     return render_template(
         "customer.html",
         table_id=table_id,
+        table_token=build_table_token(table),
         asset_version=ASSET_VERSION,
         local_base_url=local_base_url,
     )
@@ -219,12 +253,15 @@ def api_order():
     payload = read_json()
     try:
         return jsonify(_create_order(payload))
+    except PermissionError as exc:
+        return jsonify({"error": str(exc)}), 403
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
 
 
 def _create_order(payload: dict) -> dict:
     target = str(payload.get("target", "table"))
+    source = payload.get("source", "customer")
     target_id = payload.get("target_id")
     cart = payload.get("cart", [])
     if not isinstance(cart, list):
@@ -237,10 +274,15 @@ def _create_order(payload: dict) -> dict:
     if target == "table":
         if not isinstance(target_id, int):
             raise ValueError("invalid table target_id")
-        if not any(table.get("id") == target_id for table in db.get("tables", [])):
+        matched_table = next((table for table in db.get("tables", []) if table.get("id") == target_id), None)
+        if matched_table is None:
             raise ValueError("table not found")
+        if source == "customer":
+            incoming_table_token = str(payload.get("table_token", "")).strip()
+            expected_table_token = build_table_token(matched_table)
+            if incoming_table_token != expected_table_token:
+                raise PermissionError("invalid_table_token")
     order_id = f"ORD-{int(datetime.now().timestamp())}-{len(db['orders']) + 1}"
-    source = payload.get("source", "customer")
     initial_status = "request_pending" if source == "customer" else "accepted"
     normalized_cart = _normalize_cart_items(cart, db.get("menu", []))
     if not normalized_cart:
@@ -1039,9 +1081,14 @@ def api_staff_live():
 def api_customer_live():
     since = _safe_parse_int(request.args.get("since", "0"), default=0)
     table_id = request.args.get("table_id", type=int)
+    table_token = str(request.args.get("table_token", "")).strip()
     db = load_db()
     if table_id is not None and not any(table.get("id") == table_id for table in db.get("tables", [])):
         return jsonify({"error": "table_not_found"}), 404
+    if table_id is not None:
+        table = resolve_table_from_token(db, table_token)
+        if table is None or int(table.get("id", 0)) != table_id:
+            return jsonify({"error": "invalid_table_token"}), 403
     if db["meta"]["version"] <= since:
         return jsonify({"changed": False, "version": db["meta"]["version"]})
     tables = db["tables"]
