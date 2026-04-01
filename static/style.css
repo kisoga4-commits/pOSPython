@@ -146,6 +146,8 @@ input,select{width:100%;padding:10px;border-radius:10px;border:1px solid var(--l
 .mobile-content{display:grid;gap:10px;margin-top:10px}
 .mobile-panel{padding:12px}
 .badge{margin-top:10px;display:inline-flex;padding:6px 10px;border-radius:999px;font-size:.82rem;font-weight:600}
+.customer-status-head{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;align-items:center}
+.order-ack-indicator{margin-top:10px}
 .mobile-menu-list{display:grid;gap:10px;margin-top:8px}
 .menu-mobile-card{display:grid;grid-template-columns:72px 1fr;gap:10px;align-items:center;border:1px solid var(--line);border-radius:16px;padding:8px;background:#fff;cursor:pointer}
 .menu-thumb{width:72px;height:72px;border-radius:12px;background:linear-gradient(120deg,#ede9fe,#cffafe);display:grid;place-items:center;color:#6b7280;font-size:.75rem}
@@ -244,6 +246,15 @@ input,select{width:100%;padding:10px;border-radius:10px;border:1px solid var(--l
 .table-picker.horizontal-picker{display:flex}
 
 .menu-config-row{grid-template-columns:1fr}
+
+/* staff layout balance */
+.staff-mobile .order-list{
+  grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  align-items:start;
+}
+.staff-mobile .mobile-table-card{
+  height:100%;
+}
 
 /* 2026 responsive split layout refresh */
 .desktop-shell{font-size:17px}

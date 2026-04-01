@@ -420,6 +420,38 @@ function updateTableStatus(tables = []) {
   }
 }
 
+function updateOrderAckIndicator(orders = []) {
+  const indicator = document.getElementById('order-ack-indicator');
+  if (!indicator) return;
+  const tableOrders = orders
+    .filter((order) => order.target === 'table' && Number(order.target_id) === Number(lockedTableId) && order.source === 'customer')
+    .sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')));
+  const latest = tableOrders[0];
+  if (!latest) {
+    indicator.className = 'badge order-ack-indicator hidden';
+    indicator.textContent = '';
+    return;
+  }
+  indicator.className = 'badge order-ack-indicator';
+  if (latest.status === 'accepted') {
+    indicator.classList.add('status-accepted_order');
+    indicator.textContent = '✅ ร้านรับออร์เดอร์แล้ว';
+    return;
+  }
+  if (latest.status === 'request_pending') {
+    indicator.classList.add('status-pending_order');
+    indicator.textContent = '🕒 รอร้านยืนยัน';
+    return;
+  }
+  if (latest.status === 'cancelled') {
+    indicator.classList.add('status-checkout_requested');
+    indicator.textContent = '❌ คำขอถูกปฏิเสธ';
+    return;
+  }
+  indicator.className = 'badge order-ack-indicator hidden';
+  indicator.textContent = '';
+}
+
 function renderExistingOrders() {
   const list = document.getElementById('existing-order-list');
   const totalNode = document.getElementById('existing-order-total');
@@ -500,6 +532,7 @@ async function loadLive() {
     await window.posDB.saveMenu(menu);
     setLockedTableUI();
     updateTableStatus(data.tables || []);
+    updateOrderAckIndicator(data.orders || []);
     renderMenu();
   } catch (error) {
     const cachedMenu = await window.posDB.loadMenu();
