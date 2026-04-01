@@ -1596,7 +1596,7 @@ function bind() {
   qs('table-zoom-in')?.addEventListener('click', () => { tableZoom = Math.min(140, tableZoom + 10); applyTableZoom(); });
   qs('table-zoom-out')?.addEventListener('click', () => { tableZoom = Math.max(85, tableZoom - 10); applyTableZoom(); });
   qs('open-staff-qr-modal')?.addEventListener('click', () => {
-    const url = `${resolveRuntimeHost()}/authorize-staff`;
+    const url = `${resolveRuntimeHost()}/scan/staff`;
     openQRModal('Staff-Access', url, buildQrImageUrl(url));
   });
   qs('table-qr-select')?.addEventListener('change', (event) => {

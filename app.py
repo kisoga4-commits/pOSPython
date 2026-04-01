@@ -13,7 +13,16 @@ from flask import redirect, url_for
 
 from db import ensure_db_exists, load_db, reset_tables, save_db
 
-from security import get_local_ip, is_server_request, read_json, require_license, require_server_request
+from security import (
+    get_local_ip,
+    get_staff_host,
+    is_admin_host_request,
+    is_server_request,
+    read_json,
+    require_admin_host,
+    require_license,
+    require_server_request,
+)
 
 
 log = logging.getLogger("werkzeug")
@@ -50,6 +59,8 @@ def _safe_parse_iso_datetime(value: str):
 
 @app.route("/")
 def index():
+    if not is_admin_host_request():
+        return redirect(url_for("staff_scan_page"))
     scanner_mode = request.args.get("mode") == "scanner" or not is_server_request()
     kiosk_mode = request.args.get("kiosk") == "1"
     local_ip = get_local_ip()
@@ -74,6 +85,8 @@ def api_system_network():
         "base_url": f"{request.scheme}://{local_ip}:{port}",
         "request_ip": request.remote_addr,
         "is_host_request": is_server_request(),
+        "is_admin_host": is_admin_host_request(),
+        "staff_host": get_staff_host(),
     })
 
 
@@ -169,7 +182,14 @@ def authorize_staff_page():
     local_ip = get_local_ip()
     port = request.environ.get("SERVER_PORT", "5000")
     local_base_url = f"{request.scheme}://{local_ip}:{port}"
-    return render_template("authorize_staff.html", asset_version=ASSET_VERSION, local_base_url=local_base_url)
+    staff_host = get_staff_host()
+    staff_base_url = f"{request.scheme}://{staff_host}" if staff_host else local_base_url
+    return render_template(
+        "authorize_staff.html",
+        asset_version=ASSET_VERSION,
+        local_base_url=local_base_url,
+        staff_base_url=staff_base_url,
+    )
 
 
 @app.route("/api/license", methods=["GET"])
@@ -775,7 +795,7 @@ def api_table_checkout_request():
 
 
 @app.route("/api/settings", methods=["POST"])
-@require_server_request
+@require_admin_host
 def api_settings():
     payload = read_json()
     db = load_db()
@@ -800,14 +820,14 @@ def api_settings():
 
 
 @app.route("/api/backup", methods=["GET"])
-@require_server_request
+@require_admin_host
 @require_license
 def api_backup():
     return jsonify(load_db())
 
 
 @app.route("/api/restore", methods=["POST"])
-@require_server_request
+@require_admin_host
 @require_license
 def api_restore():
     payload = read_json()
@@ -926,7 +946,7 @@ def api_sales_best_sellers():
 
 
 @app.route("/api/sales/history", methods=["DELETE"])
-@require_server_request
+@require_admin_host
 @require_license
 def api_sales_history_delete():
     payload = read_json() or {}

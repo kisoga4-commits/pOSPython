@@ -5,6 +5,8 @@ from functools import wraps
 from flask import request
 
 LICENSE_DISABLED = os.environ.get("POS_DISABLE_LICENSE", "1") != "0"
+POS_ADMIN_HOST = (os.environ.get("POS_ADMIN_HOST") or "").strip().lower()
+POS_STAFF_HOST = (os.environ.get("POS_STAFF_HOST") or "").strip().lower()
 
 
 def get_local_ip() -> str:
@@ -41,6 +43,21 @@ def is_server_request() -> bool:
     return remote in allowed
 
 
+def _host_without_port(host: str) -> str:
+    return (host or "").split(":", 1)[0].strip().lower()
+
+
+def is_admin_host_request() -> bool:
+    current_host = _host_without_port(request.host)
+    if POS_ADMIN_HOST:
+        return current_host == POS_ADMIN_HOST
+    return is_server_request()
+
+
+def get_staff_host() -> str:
+    return POS_STAFF_HOST
+
+
 def require_license(view):
     @wraps(view)
     def wrapped(*args, **kwargs):
@@ -56,6 +73,16 @@ def require_server_request(view):
     def wrapped(*args, **kwargs):
         if not is_server_request():
             return {"error": "Unauthorized"}, 403
+        return view(*args, **kwargs)
+
+    return wrapped
+
+
+def require_admin_host(view):
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        if not is_admin_host_request():
+            return {"error": "admin_host_only"}, 403
         return view(*args, **kwargs)
 
     return wrapped
