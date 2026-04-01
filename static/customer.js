@@ -20,6 +20,11 @@ let liveEventSource = null;
 const cartStorageKey = `customer_cart_table_${lockedTableId || 'unknown'}`;
 const userRole = localStorage.getItem('user_role') || '';
 
+function applyRoleThemeClass() {
+  document.body.classList.remove('theme-staff', 'theme-customer');
+  document.body.classList.add('theme-customer');
+}
+
 const TABLE_STATUS_META = {
   available: { label: 'ว่าง', className: 'status-available' },
   pending_order: { label: 'กำลังรับออร์เดอร์', className: 'status-pending_order' },
@@ -41,6 +46,8 @@ async function api(path, options = {}) {
   const res = await fetch(url, requestOptions);
   return res.json();
 }
+
+applyRoleThemeClass();
 
 function connectLiveEvents() {
   if (liveEventSource || !window.EventSource || !lockedTableId) return;

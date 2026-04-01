@@ -54,6 +54,7 @@ const scannerAllowedScreens = new Set(['customer', 'cashier']);
 const mobileAllowedScreens = new Set(['customer', 'cashier']);
 const viewportQuery = window.matchMedia('(max-width: 768px)');
 let isMobileViewport = viewportQuery.matches;
+let activeBillRefreshToken = 0;
 
 async function loadNetworkBaseUrl() {
   const network = await api('/api/system/network');
@@ -276,6 +277,12 @@ function applyTheme() {
   document.documentElement.style.setProperty('--primary', s.themeColor || '#7c3aed');
   document.documentElement.style.setProperty('--bg', s.bgColor || '#f3f4f6');
   document.documentElement.style.setProperty('--card', s.cardColor || '#ffffff');
+}
+
+function applyRoleThemeClass() {
+  const roleClass = scannerMode ? 'theme-staff' : 'theme-staff';
+  document.body.classList.remove('theme-staff', 'theme-customer');
+  document.body.classList.add(roleClass);
 }
 
 function getTableOrders(tableId) {
@@ -778,6 +785,33 @@ async function openBill(targetId) {
   qs('bill-payment-qr-image').src = paymentImage;
   qs('bill-payment-qr-wrap').classList.remove('hidden');
   qs('payment-modal').classList.remove('hidden');
+  activeBillRefreshToken += 1;
+}
+
+async function refreshActiveBillRealtime() {
+  if (!activeCashierTableId) return;
+  const modal = qs('payment-modal');
+  if (!modal || modal.classList.contains('hidden')) return;
+  const refreshToken = activeBillRefreshToken;
+  const bill = await api(`/api/bill/table/${activeCashierTableId}`);
+  if (refreshToken !== activeBillRefreshToken || bill.error) return;
+  if (!Array.isArray(bill.items) || !bill.items.length) {
+    modal.classList.add('hidden');
+    activeCashierTableId = 0;
+    localStorage.setItem(CUSTOMER_DISPLAY_ACTIVE_TABLE_KEY, '0');
+    return;
+  }
+  qs('bill-items').innerHTML = '';
+  bill.items.forEach((item) => {
+    const row = document.createElement('div');
+    row.className = 'bill-row-item';
+    row.innerHTML = `<strong>${item.name}</strong><span>฿${money(item.price)}</span>`;
+    qs('bill-items').appendChild(row);
+  });
+  qs('bill-total').textContent = money(bill.total);
+  const paymentImage = db.settings?.qrImage || buildPromptPayQrImage(db.settings?.promptPay || '', Number(bill.total || 0), Boolean(db.settings?.dynamicPromptPay));
+  qs('bill-payment-qr-image').src = paymentImage;
+  qs('bill-payment-qr-wrap').classList.remove('hidden');
 }
 
 function openCustomerDisplayWindow(tableId) {
@@ -1354,6 +1388,7 @@ async function loadData() {
   renderSystem();
   await checkSystemHealth();
   renderDeskSummary();
+  await refreshActiveBillRealtime();
   applyAdaptiveLayout();
   updateNetworkStatus(true);
 }
@@ -1421,6 +1456,7 @@ function bind() {
   qs('close-payment-modal').addEventListener('click', () => {
     localStorage.setItem(CUSTOMER_DISPLAY_ACTIVE_TABLE_KEY, '0');
     activeCashierTableId = 0;
+    activeBillRefreshToken += 1;
     qs('bill-payment-qr-wrap')?.classList.add('hidden');
     qs('payment-modal').classList.add('hidden');
   });
@@ -1469,6 +1505,7 @@ function bind() {
     if (!activeCashierTableId) return;
     await api('/api/checkout', { method: 'POST', body: JSON.stringify({ target: 'table', target_id: activeCashierTableId, payment_method: 'cash' }) });
     localStorage.setItem(CUSTOMER_DISPLAY_ACTIVE_TABLE_KEY, '0');
+    activeBillRefreshToken += 1;
     qs('payment-modal').classList.add('hidden');
     await loadData();
   });
@@ -1476,6 +1513,7 @@ function bind() {
     if (!activeCashierTableId) return;
     await api('/api/checkout', { method: 'POST', body: JSON.stringify({ target: 'table', target_id: activeCashierTableId, payment_method: 'qr' }) });
     localStorage.setItem(CUSTOMER_DISPLAY_ACTIVE_TABLE_KEY, '0');
+    activeBillRefreshToken += 1;
     qs('payment-modal').classList.add('hidden');
     await loadData();
   });
@@ -1765,6 +1803,7 @@ function blinkTableCard(tableId) {
 }
 
 (async function init() {
+  applyRoleThemeClass();
   isMobileViewport = window.innerWidth <= 768;
   applyAdaptiveLayout();
   applyRoleUI();
