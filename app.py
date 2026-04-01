@@ -209,7 +209,7 @@ def api_activate():
 
 
 @app.route("/api/data", methods=["GET"])
-@require_server_request
+@require_roles("owner", "staff")
 def api_data():
     return jsonify(load_db())
 
