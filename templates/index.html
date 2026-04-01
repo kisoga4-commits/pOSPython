@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#3b82f6" />
   <link rel="manifest" href="/manifest.webmanifest" />
-  <title>FAKDU POS Dashboard</title>
+  <title>FAKDU POS</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version }}" />
 </head>
 <body
@@ -21,7 +21,6 @@
           <div id="store-logo" class="logo-slot hero-logo">LOGO</div>
         </div>
         <div>
-          <p class="muted-light">FAKDU</p>
           <h1 id="header-store-name">FAKDU</h1>
         </div>
       </div>
@@ -52,8 +51,8 @@
       </nav>
 
       <section id="customer" class="screen section-card">
-        <div class="section-head">
-          <h2>แผนผังโต๊ะแบบ Touch POS</h2>
+        <div class="section-head compact-head">
+          <h2>Floor</h2>
           <div class="head-actions">
             <button id="table-zoom-out" class="icon-btn" type="button" aria-label="Zoom out">−</button>
             <button id="table-zoom-in" class="icon-btn" type="button" aria-label="Zoom in">+</button>

@@ -258,6 +258,147 @@ input,select{width:100%;padding:10px;border-radius:10px;border:1px solid var(--l
 .btn-call-staff:disabled{opacity:.6;cursor:not-allowed}
 .compact-header{padding:10px}
 .compact-panel{padding:10px}
+
+/* 2026 premium minimal POS refresh */
+:root{
+  --primary:#6d28d9;
+  --primary-2:#2563eb;
+  --bg:#eef1f6;
+  --card:#ffffff;
+  --line:#d8deea;
+  --text:#0f172a;
+  --muted:#64748b;
+  --shadow:0 14px 30px rgba(15,23,42,.12);
+  --shadow-soft:0 8px 18px rgba(15,23,42,.08);
+}
+body{
+  background:
+    radial-gradient(circle at 92% 2%,rgba(109,40,217,.13),transparent 30%),
+    radial-gradient(circle at 2% 98%,rgba(37,99,235,.10),transparent 38%),
+    linear-gradient(180deg,#f3f5fa,#eef1f6);
+}
+.app-shell.desktop-shell{max-width:1700px;padding:14px 16px 18px}
+.section-card,.mobile-panel,.mobile-header{
+  border-radius:18px;
+  border:1px solid #dce3f0;
+  box-shadow:0 8px 22px rgba(2,6,23,.06);
+}
+.section-card{padding:10px 12px}
+.modern-header{
+  background:linear-gradient(165deg,#ffffff,#f8fafc);
+  border-radius:20px;
+  padding:10px 12px;
+}
+.logo-slot.hero-logo{width:68px;height:68px;border-radius:18px}
+.header-icons{gap:8px}
+.icon-btn{
+  width:48px;height:48px;
+  border-radius:14px;
+  border:1px solid #dbe4f2;
+  box-shadow:none;
+  background:#f8fafc;
+  font-size:1.12rem;
+}
+.icon-btn:hover{transform:translateY(-1px);background:#fff}
+.tab-bar{
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  background:#f8fafc;
+  border:1px solid #dbe4f2;
+  border-radius:16px;
+  gap:8px;
+}
+.main-tab{
+  grid-template-columns:auto;
+  gap:2px;
+  border:1px solid #e2e8f0;
+  border-radius:14px;
+  min-height:80px;
+  padding:8px 6px;
+  box-shadow:none;
+  background:#fff;
+}
+.main-tab svg{width:28px;height:28px;stroke-width:2.1}
+.main-tab small{font-size:.67rem;color:#475569}
+.main-tab.is-active{
+  border-color:#a78bfa;
+  background:linear-gradient(160deg,#f5f3ff,#eef2ff);
+  box-shadow:inset 0 0 0 1px rgba(124,58,237,.15);
+}
+.section-head{margin-bottom:8px}
+.section-head h2,.section-head h3{font-size:1.02rem;letter-spacing:.01em}
+.compact-head h2{font-size:.92rem;text-transform:uppercase;color:#64748b}
+.staff-split-layout{gap:12px;min-height:72vh}
+.table-grid{grid-template-columns:repeat(auto-fill,minmax(calc(170px * var(--table-scale)),1fr));gap:10px}
+.table-card{
+  min-height:148px;
+  border-radius:16px;
+  padding:10px;
+  border:1px solid #d7deeb;
+  box-shadow:0 8px 18px rgba(15,23,42,.07);
+}
+.table-card small{font-size:.78rem}
+.status-chip,.status-badge{
+  font-size:.68rem;
+  padding:3px 8px;
+  letter-spacing:.02em;
+}
+.panel-block,.cashier-detail,.order-panel{
+  border-radius:14px;
+  border:1px solid #dce3f0;
+  background:#fff;
+  box-shadow:0 4px 12px rgba(15,23,42,.05);
+}
+.subtabs{gap:8px}
+.subtab{
+  min-height:42px;
+  border-radius:12px;
+  padding:8px 12px;
+  font-weight:700;
+}
+.subtab.is-active{
+  background:linear-gradient(155deg,#ede9fe,#e0e7ff);
+  border-color:#a78bfa;
+}
+input,select,.btn-soft,.btn-primary,.btn-secondary{
+  min-height:46px;
+  border-radius:12px;
+  font-size:.96rem;
+}
+input,select{
+  border:1px solid #d6deea;
+  background:#fff;
+  padding:8px 12px;
+}
+.btn-soft{
+  background:#eef2ff;
+  color:#1e293b;
+}
+.btn-primary{
+  font-weight:700;
+  background:linear-gradient(120deg,var(--primary),var(--primary-2));
+  box-shadow:0 10px 18px rgba(79,70,229,.24);
+}
+.btn-secondary{
+  font-weight:700;
+  background:#dcfce7;
+}
+.checkout-symbol-grid{grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px}
+.checkout-card{
+  min-height:170px;
+  border-radius:16px;
+  border:1px solid #dbe4f2;
+}
+.sales-chart{height:140px;padding:10px;border-radius:12px}
+.sales-row-card{padding:10px;border-radius:12px}
+.system-check-item{border-radius:10px;padding:8px}
+.mobile-header,.mobile-panel{border-radius:16px}
+.mobile-subtitle{display:none}
+.staff-bottom-nav .staff-nav-btn{
+  min-height:56px;
+  border-radius:14px;
+  border:1px solid #dbe4f2;
+  background:#fff;
+}
 .compact-grid .menu-mobile-card{grid-template-columns:72px 1fr;padding:8px;border-radius:12px}
 .compact-grid .menu-thumb{width:72px;height:72px}
 .menu-thumb img{object-fit:cover}
@@ -552,3 +693,16 @@ input,select{width:100%;padding:10px;border-radius:10px;border:1px solid var(--l
 @media (max-width:980px){
   .printer-grid{grid-template-columns:1fr}
 }
+
+/* final override: premium compact touch-first */
+.desktop-shell{max-width:min(1720px,98vw)!important;padding:12px!important}
+.desktop-shell .main-tab{min-height:82px!important;padding:8px 6px!important;border-radius:14px!important;box-shadow:none!important}
+.desktop-shell .main-tab small{font-size:.7rem!important;color:#475569!important}
+.desktop-shell .main-tab svg{width:28px!important;height:28px!important}
+.desktop-shell .table-card{min-height:148px!important;padding:10px!important;border-width:1px!important}
+.desktop-shell .section-card{padding:10px 12px!important}
+.desktop-shell .btn-soft,
+.desktop-shell .btn-primary,
+.desktop-shell .btn-secondary,
+.desktop-shell input,
+.desktop-shell select{min-height:46px!important;font-size:.96rem!important}
