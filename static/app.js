@@ -22,6 +22,7 @@ const THEME_PRESETS = [
   { id: 'ocean', label: 'Ocean', primary: '#0ea5e9', bg: '#ecfeff', card: '#ffffff' },
   { id: 'mono', label: 'Mono', primary: '#334155', bg: '#f8fafc', card: '#ffffff' },
 ];
+const DEFAULT_MENU_CATEGORIES = ['ทั่วไป', 'อาหารจานหลัก', 'ของทานเล่น', 'เครื่องดื่ม', 'ของหวาน'];
 
 const statusMap = {
   available: { label: 'ว่าง', tone: 'available', icon: '○' },
@@ -328,15 +329,24 @@ function renderOrderMenuChoices() {
 
 function getMenuCategories() {
   const categories = new Set(['ทั้งหมด']);
-  (db.menu || []).forEach((item) => categories.add(item.category || 'ทั่วไป'));
+  getMenuCategoryChoices().forEach((name) => categories.add(name));
   return [...categories];
 }
 
+function normalizeCategoryName(value, fallback = 'ทั่วไป') {
+  const cleaned = String(value || '').trim();
+  return cleaned || fallback;
+}
+
 function getMenuCategoryChoices() {
-  const presets = ['ทั่วไป', 'อาหารจานหลัก', 'ของทานเล่น', 'เครื่องดื่ม', 'ของหวาน'];
-  const categories = new Set(presets);
+  const categories = new Set(DEFAULT_MENU_CATEGORIES);
+  const customCategories = Array.isArray(db?.settings?.menuCategories) ? db.settings.menuCategories : [];
+  customCategories.forEach((name) => {
+    const clean = normalizeCategoryName(name, '');
+    if (clean) categories.add(clean);
+  });
   (db?.menu || []).forEach((item) => {
-    const name = String(item.category || '').trim();
+    const name = normalizeCategoryName(item.category, '');
     if (name) categories.add(name);
   });
   return [...categories];
@@ -355,7 +365,72 @@ function renderMenuCategoryAdmin() {
   const wrap = qs('menu-category-admin');
   if (!wrap) return;
   const categories = getMenuCategories().filter((name) => name !== 'ทั้งหมด');
-  wrap.innerHTML = `<div class="list-card"><strong>หมวดที่มีอยู่:</strong> ${categories.length ? categories.map((cat) => `<span class="sales-order-chip">${cat}</span>`).join(' ') : 'ยังไม่มีหมวด'}</div>`;
+  if (!categories.length) {
+    wrap.innerHTML = '<div class="list-card">ยังไม่มีหมวด</div>';
+    return;
+  }
+  wrap.innerHTML = '';
+  categories.forEach((cat) => {
+    const row = document.createElement('div');
+    row.className = 'list-card';
+    const isDefault = cat === 'ทั่วไป';
+    row.innerHTML = `<div class="menu-admin-meta"><strong>${cat}</strong><small>${countItemsByCategory(cat)} เมนู</small></div><div class="btn-row"><button data-a="rename" class="btn-soft" type="button">แก้ไข</button><button data-a="delete" class="btn-soft ${isDefault ? 'hidden' : ''}" type="button">ลบ</button></div>`;
+    row.querySelector('[data-a="rename"]')?.addEventListener('click', () => renameMenuCategory(cat));
+    row.querySelector('[data-a="delete"]')?.addEventListener('click', () => deleteMenuCategory(cat));
+    wrap.appendChild(row);
+  });
+}
+
+function countItemsByCategory(category) {
+  return (db?.menu || []).filter((item) => normalizeCategoryName(item.category) === category).length;
+}
+
+async function persistMenuCategories(categoryList = []) {
+  const normalized = [...new Set(categoryList.map((name) => normalizeCategoryName(name, '')).filter(Boolean))];
+  const customOnly = normalized.filter((name) => !DEFAULT_MENU_CATEGORIES.includes(name));
+  db.settings = db.settings || {};
+  db.settings.menuCategories = customOnly;
+  await api('/api/settings', { method: 'POST', body: JSON.stringify({ settings: { menuCategories: customOnly }, menu: db.menu || [] }) });
+}
+
+async function renameMenuCategory(sourceCategory) {
+  const from = normalizeCategoryName(sourceCategory);
+  const next = normalizeCategoryName(window.prompt(`เปลี่ยนชื่อหมวด "${from}" เป็น`, from), '');
+  if (!next || next === from) return;
+  const exists = getMenuCategoryChoices().some((name) => name === next);
+  if (exists) {
+    window.alert('มีหมวดนี้อยู่แล้ว');
+    return;
+  }
+  db.menu = (db.menu || []).map((item) => (normalizeCategoryName(item.category) === from ? { ...item, category: next } : item));
+  const currentCategories = getMenuCategoryChoices().filter((name) => name !== from);
+  await persistMenuCategories([...currentCategories, next]);
+  await loadData();
+}
+
+async function deleteMenuCategory(sourceCategory) {
+  const target = normalizeCategoryName(sourceCategory);
+  if (target === 'ทั่วไป') return;
+  const ok = window.confirm(`ลบหมวด "${target}" และย้ายเมนูไปหมวด "ทั่วไป" ?`);
+  if (!ok) return;
+  db.menu = (db.menu || []).map((item) => (normalizeCategoryName(item.category) === target ? { ...item, category: 'ทั่วไป' } : item));
+  const remainingCategories = getMenuCategoryChoices().filter((name) => !['ทั่วไป', target].includes(name));
+  await persistMenuCategories(remainingCategories);
+  await loadData();
+}
+
+async function addMenuCategory() {
+  const input = qs('menu-category-name');
+  if (!input) return;
+  const name = normalizeCategoryName(input.value, '');
+  if (!name) return;
+  if (getMenuCategoryChoices().includes(name)) {
+    window.alert('หมวดนี้มีอยู่แล้ว');
+    return;
+  }
+  await persistMenuCategories([...getMenuCategoryChoices(), name]);
+  input.value = '';
+  await loadData();
 }
 
 function renderOrderCategoryTabs() {
@@ -641,7 +716,7 @@ function renderCashier() {
 function renderMenu() {
   const list = qs('menu-list');
   list.innerHTML = '';
-  db.menu.forEach((item, idx) => {
+  (db.menu || []).forEach((item, idx) => {
     const row = document.createElement('div');
     row.className = 'list-card menu-admin-row';
     row.innerHTML = `<div class="menu-admin-meta"><div class="menu-thumb">${item.image ? `<img src="${item.image}" alt="${item.name}" />` : 'IMG'}</div><div><strong>${item.name}</strong><small>${money(item.price)} บาท</small></div></div><div class="btn-row"><button data-a="e" class="btn-soft">แก้ไข</button><button data-a="d" class="btn-soft">ลบ</button></div>`;
@@ -1059,6 +1134,13 @@ function bind() {
   qs('open-menu-modal')?.addEventListener('click', () => { resetMenuModal(); qs('menu-modal').classList.remove('hidden'); if (!qs('addon-rows').children.length) addAddonRow(); });
   qs('close-menu-modal')?.addEventListener('click', () => { qs('menu-modal').classList.add('hidden'); resetMenuModal(); });
   qs('add-addon-row')?.addEventListener('click', () => addAddonRow());
+  qs('add-menu-category')?.addEventListener('click', addMenuCategory);
+  qs('menu-category-name')?.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      addMenuCategory();
+    }
+  });
 
   qs('menu-image-file').addEventListener('change', async (event) => {
     const file = event.target.files?.[0];
