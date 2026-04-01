@@ -18,6 +18,7 @@
   <script>
     document.getElementById('authorize-staff-btn').addEventListener('click', () => {
       document.getElementById('authorize-note').textContent = 'กำลังพาไปหน้าโหมดพนักงาน...';
+      localStorage.setItem('user_role', 'staff');
       setTimeout(() => {
         window.location.href = '/scan/staff';
       }, 350);
