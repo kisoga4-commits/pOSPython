@@ -1,14 +1,12 @@
-const CACHE_NAME = 'fakdu-pos-shell-v5';
+const CACHE_NAME = 'fakdu-pos-shell-v6';
 const OFFLINE_ASSETS = [
   '/',
-  '/staff',
   '/manifest.webmanifest',
   '/static/style.css',
   '/static/app.js',
   '/static/customer.js',
   '/static/db.js',
   '/static/sync.js',
-  '/static/staff.js',
   '/static/sounds/new_order.mp3',
   '/static/sounds/checkout.mp3',
   '/static/sounds/warning.mp3',
@@ -27,7 +25,7 @@ function isCacheableStatic(request) {
   if (!isHttpRequest(request)) return false;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return false;
-  return url.pathname.startsWith('/static/') || url.pathname === '/' || url.pathname === '/staff' || url.pathname === '/manifest.webmanifest';
+  return url.pathname.startsWith('/static/') || url.pathname === '/' || url.pathname === '/manifest.webmanifest';
 }
 
 self.addEventListener('install', (event) => {

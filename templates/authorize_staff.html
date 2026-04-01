@@ -18,9 +18,9 @@
   <script>
     document.getElementById('authorize-staff-btn').addEventListener('click', () => {
       localStorage.setItem('user_role', 'staff');
-      document.getElementById('authorize-note').textContent = 'อุปกรณ์นี้ถูกตั้งค่าเป็น Staff แล้ว กำลังพาไปหน้า Dashboard...';
+      document.getElementById('authorize-note').textContent = 'อุปกรณ์นี้ถูกตั้งค่าเป็น Staff แล้ว กำลังพาไปหน้าโหมดสแกน...';
       setTimeout(() => {
-        window.location.href = '/staff';
+        window.location.href = '/?mode=scanner';
       }, 350);
     });
   </script>

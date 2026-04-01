@@ -133,7 +133,7 @@ def customer_table_page(table_id: int):
 
 @app.route("/staff")
 def staff_page():
-    return render_template("staff.html", asset_version=ASSET_VERSION)
+    return redirect(url_for("index", mode="scanner"))
 
 
 @app.route("/customer-display")
