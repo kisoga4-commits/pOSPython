@@ -591,6 +591,24 @@ input,select{
   font-size:.92rem;
 }
 
+.staff-authorize-page{
+  min-height:100vh;
+  display:grid;
+  align-items:center;
+}
+.staff-authorize-card{
+  display:grid;
+  gap:12px;
+  text-align:center;
+}
+.staff-authorize-btn{
+  width:100%;
+  min-height:56px;
+  font-size:1.05rem;
+  font-weight:700;
+  border-radius:14px;
+}
+
 @media (max-width: 1024px){
   .desktop-shell{
     max-width:100%;
