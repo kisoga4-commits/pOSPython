@@ -5,6 +5,7 @@ let currentSettings = {};
 let currentTables = [];
 let activeItemDraft = null;
 let toastTimer = null;
+let isInlineCartOpen = false;
 const params = new URLSearchParams(window.location.search);
 const lockedTableId = Number(params.get('table') || document.body.dataset.tableId || 0);
 let masterBaseUrl = document.body.dataset.localBaseUrl || `${window.location.protocol}//${window.location.host}`;
@@ -168,7 +169,22 @@ function buildAddonText(item) {
 function renderMenu() {
   const list = document.getElementById('menu-list');
   list.innerHTML = '';
-  menu.forEach((item) => {
+  const table = currentTables.find((entry) => Number(entry.id) === Number(lockedTableId));
+  const existingItems = Array.isArray(table?.items) ? table.items : [];
+  const orderedItemIds = new Set(existingItems.map((item) => Number(item.item_id || item.id)).filter((id) => Number.isFinite(id) && id > 0));
+  const orderedItemNames = new Set(existingItems.map((item) => String(item.name || '').trim()).filter(Boolean));
+  const availableMenu = menu.filter((item) => {
+    const itemId = Number(item.item_id || item.id || 0);
+    if (Number.isFinite(itemId) && itemId > 0 && orderedItemIds.has(itemId)) return false;
+    return !orderedItemNames.has(String(item.name || '').trim());
+  });
+
+  if (!availableMenu.length) {
+    list.innerHTML = '<div class="empty">เมนูที่ยังไม่สั่งหมดแล้ว 🎉</div>';
+    return;
+  }
+
+  availableMenu.forEach((item) => {
     const card = document.createElement('button');
     card.className = 'menu-mobile-card menu-tap-card';
     card.type = 'button';
@@ -224,12 +240,17 @@ function updateCartItemQty(index, diff) {
 
 function renderCart() {
   const list = document.getElementById('cart-list');
+  const inlineList = document.getElementById('inline-cart-panel');
+  const toggleBtn = document.getElementById('toggle-current-cart');
   const totalNode = document.getElementById('cart-total');
   list.innerHTML = '';
+  if (inlineList) inlineList.innerHTML = '';
 
   if (!cart.length) {
     list.innerHTML = '<div class="empty">ยังไม่มีรายการ</div>';
+    if (inlineList) inlineList.innerHTML = '<div class="empty">ยังไม่มีรายการในตะกร้า</div>';
     totalNode.textContent = 'รวม 0.00 บาท';
+    if (toggleBtn) toggleBtn.textContent = isInlineCartOpen ? '▼ ตะกร้าปัจจุบัน (ซ่อน)' : '▶ ตะกร้าปัจจุบัน (เปิด)';
     updateFloatingCart();
     return;
   }
@@ -253,9 +274,23 @@ function renderCart() {
     row.querySelector('[data-action="minus"]').addEventListener('click', () => updateCartItemQty(idx, -1));
     row.querySelector('[data-action="plus"]').addEventListener('click', () => updateCartItemQty(idx, 1));
     list.appendChild(row);
+
+    if (inlineList) {
+      const inlineRow = document.createElement('div');
+      inlineRow.className = 'list-item';
+      inlineRow.innerHTML = `<strong>${item.name}</strong> <span>x${item.qty}</span>`;
+      inlineList.appendChild(inlineRow);
+    }
   });
   const total = calculateCartTotal(cart);
   totalNode.textContent = `รวม ${money(total)} บาท`;
+  if (inlineList) {
+    const inlineTotal = document.createElement('div');
+    inlineTotal.className = 'order-total';
+    inlineTotal.textContent = `รวม ${money(total)} บาท`;
+    inlineList.appendChild(inlineTotal);
+  }
+  if (toggleBtn) toggleBtn.textContent = isInlineCartOpen ? '▼ ตะกร้าปัจจุบัน (ซ่อน)' : '▶ ตะกร้าปัจจุบัน (เปิด)';
   updateFloatingCart();
 }
 
@@ -376,6 +411,11 @@ function setLockedTableUI() {
 function bind() {
   document.getElementById('floating-cart-btn').addEventListener('click', () => {
     document.getElementById('cart-modal').classList.remove('hidden');
+  });
+  document.getElementById('toggle-current-cart')?.addEventListener('click', () => {
+    isInlineCartOpen = !isInlineCartOpen;
+    document.getElementById('inline-cart-panel')?.classList.toggle('hidden', !isInlineCartOpen);
+    renderCart();
   });
   document.getElementById('close-cart-modal').addEventListener('click', () => {
     document.getElementById('cart-modal').classList.add('hidden');

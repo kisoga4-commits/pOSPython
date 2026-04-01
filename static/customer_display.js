@@ -113,6 +113,13 @@ function renderBill(bill) {
   qs('customer-facing-qr-image').src = qrImage;
 }
 
+function clearDisplaySelection() {
+  tableId = 0;
+  localStorage.setItem(ACTIVE_TABLE_KEY, '0');
+  updateTableHeader();
+  renderBill({ items: [], total: 0 });
+}
+
 async function refreshBill() {
   if (!tableId) {
     updateTableHeader();
@@ -132,7 +139,9 @@ function bindAutoTableSync() {
     if (next > 0) {
       tableId = next;
       refreshBill();
+      return;
     }
+    clearDisplaySelection();
   });
 }
 

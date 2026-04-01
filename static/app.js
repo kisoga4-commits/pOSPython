@@ -269,9 +269,10 @@ function renderTables() {
     const card = document.createElement('button');
     card.type = 'button';
     card.className = `table-card ${meta.tone}`;
+    const stackedItems = summarizeItems(items);
     card.innerHTML = items.length
       ? `<div class="table-head-row"><strong>${unitLabel()} ${table.id}</strong><span class="status-chip ${meta.tone}">${meta.icon}</span></div>
-         <small>${items.slice(-4).map((i) => `${i.name} • ${money(i.price)}`).join('<br>')}</small>
+         <small>${stackedItems.slice(-4).map((i) => `${i.image ? '<img src="' + i.image + '" alt="' + i.name + '" class="table-item-thumb" /> ' : ''}${i.name}${Number(i.qty || 1) > 1 ? ` x${Number(i.qty || 1)}` : ''} • ${money(i.price)}`).join('<br>')}</small>
          <div class="table-total">รวม ${money(total)} บาท</div>`
       : `<div class="table-head-row"><strong>${unitLabel()} ${table.id}</strong><span class="status-chip available">○</span></div>
          <small></small>`;
@@ -560,7 +561,6 @@ function renderCashier() {
       <strong>รวม ${money(total)} บาท</strong>`;
     row.addEventListener('click', () => {
       localStorage.setItem(CUSTOMER_DISPLAY_ACTIVE_TABLE_KEY, String(table.id));
-      openCustomerDisplayWindow(table.id);
       openBill(table.id);
     });
     wrap.appendChild(row);
@@ -618,14 +618,14 @@ function periodRange(period, now = new Date()) {
   if (period === 'day') {
     start.setHours(0, 0, 0, 0);
     end.setHours(23, 59, 59, 999);
-    return { start, end, previousStart: new Date(start.getTime() - (24 * 60 * 60 * 1000)), previousEnd: new Date(end.getTime() - (24 * 60 * 60 * 1000)), label: 'วันนี้', compareLabel: 'เมื่อวาน' };
+    return { start, end, previousStart: new Date(start.getTime() - (24 * 60 * 60 * 1000)), previousEnd: new Date(end.getTime() - (24 * 60 * 60 * 1000)), label: 'วันนี้' };
   }
   if (period === 'week') {
     const day = start.getDay() || 7;
     start.setDate(start.getDate() - day + 1);
     start.setHours(0, 0, 0, 0);
     end.setTime(start.getTime() + (7 * 24 * 60 * 60 * 1000) - 1);
-    return { start, end, previousStart: new Date(start.getTime() - (7 * 24 * 60 * 60 * 1000)), previousEnd: new Date(end.getTime() - (7 * 24 * 60 * 60 * 1000)), label: 'สัปดาห์นี้', compareLabel: 'สัปดาห์ที่แล้ว' };
+    return { start, end, previousStart: new Date(start.getTime() - (7 * 24 * 60 * 60 * 1000)), previousEnd: new Date(end.getTime() - (7 * 24 * 60 * 60 * 1000)), label: 'สัปดาห์นี้' };
   }
   start.setDate(1);
   start.setHours(0, 0, 0, 0);
@@ -634,7 +634,7 @@ function periodRange(period, now = new Date()) {
   const previousStart = new Date(start);
   previousStart.setMonth(previousStart.getMonth() - 1);
   const previousEnd = new Date(start.getTime() - 1);
-  return { start, end, previousStart, previousEnd, label: 'เดือนนี้', compareLabel: 'เดือนที่แล้ว' };
+  return { start, end, previousStart, previousEnd, label: 'เดือนนี้' };
 }
 
 function renderSales() {
@@ -644,13 +644,8 @@ function renderSales() {
   const inPrevious = sales.filter((s) => salesDate(s) >= range.previousStart && salesDate(s) <= range.previousEnd);
   const currentTotal = inCurrent.reduce((sum, s) => sum + Number(s.total || 0), 0);
   const previousTotal = inPrevious.reduce((sum, s) => sum + Number(s.total || 0), 0);
-  const diff = currentTotal - previousTotal;
-  const percent = previousTotal > 0 ? (diff / previousTotal) * 100 : (currentTotal > 0 ? 100 : 0);
   const cash = inCurrent.filter((s) => s.payment_method === 'cash').reduce((sum, s) => sum + Number(s.total || 0), 0);
   const qr = inCurrent.filter((s) => s.payment_method === 'qr').reduce((sum, s) => sum + Number(s.total || 0), 0);
-  const sign = diff >= 0 ? '+' : '-';
-  const trendClass = diff >= 0 ? 'up' : 'down';
-  qs('sales-comparison').innerHTML = `<strong>${range.label} เทียบ ${range.compareLabel}</strong><div class="sales-compare-value ${trendClass}">${sign}฿${money(Math.abs(diff))} (${sign}${Math.abs(percent).toFixed(1)}%)</div>`;
   qs('sales-overview').innerHTML = `<div class="list-card sales-kpi total"><strong>ยอดรวม</strong><div>฿${money(currentTotal)}</div></div><div class="list-card sales-kpi"><strong>เงินสด</strong><div>฿${money(cash)}</div></div><div class="list-card sales-kpi"><strong>QR</strong><div>฿${money(qr)}</div></div><div class="list-card sales-kpi"><strong>จำนวนบิล</strong><div>${inCurrent.length}</div></div>`;
   const chart = qs('sales-chart');
   const bucket = {};
@@ -921,7 +916,7 @@ function bind() {
       const modalContent = qs('sales-period-modal-content');
       if (modal && modalTitle && modalContent) {
         modalTitle.textContent = `ยอดขาย${btn.textContent.trim()}`;
-        modalContent.innerHTML = `${qs('sales-comparison')?.innerHTML || ''}${qs('sales-overview')?.outerHTML || ''}${qs('sales-chart')?.outerHTML || ''}`;
+        modalContent.innerHTML = `${qs('sales-overview')?.outerHTML || ''}${qs('sales-chart')?.outerHTML || ''}`;
         modal.classList.remove('hidden');
       }
     });
@@ -938,6 +933,7 @@ function bind() {
   qs('bill-pay-cash').addEventListener('click', async () => {
     if (!activeCashierTableId) return;
     await api('/api/checkout', { method: 'POST', body: JSON.stringify({ target: 'table', target_id: activeCashierTableId, payment_method: 'cash' }) });
+    localStorage.setItem(CUSTOMER_DISPLAY_ACTIVE_TABLE_KEY, '0');
     qs('payment-modal').classList.add('hidden');
     await loadData();
   });
@@ -945,6 +941,7 @@ function bind() {
     if (!activeCashierTableId) return;
     qs('bill-payment-qr-wrap')?.classList.remove('hidden');
     await api('/api/checkout', { method: 'POST', body: JSON.stringify({ target: 'table', target_id: activeCashierTableId, payment_method: 'qr' }) });
+    localStorage.setItem(CUSTOMER_DISPLAY_ACTIVE_TABLE_KEY, '0');
     qs('payment-modal').classList.add('hidden');
     await loadData();
   });
