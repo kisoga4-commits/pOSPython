@@ -340,6 +340,13 @@ function summarizeItems(items = []) {
   return Array.from(itemMap.values());
 }
 
+function formatClock(value) {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  return date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+}
+
 function renderExistingOrders(tableId) {
   const list = qs('order-existing-list');
   list.innerHTML = '';
@@ -453,6 +460,7 @@ async function openBill(targetId) {
   qs('bill-total').textContent = money(bill.total);
   const paymentImage = db.settings?.qrImage || buildPromptPayQrImage(db.settings?.promptPay || '', Number(bill.total || 0), Boolean(db.settings?.dynamicPromptPay));
   qs('bill-payment-qr-image').src = paymentImage;
+  qs('bill-payment-qr-wrap').classList.add('hidden');
   qs('payment-modal').classList.remove('hidden');
 }
 
@@ -516,12 +524,27 @@ function renderCashier() {
   }
   queues.forEach((table) => {
     const meta = statusMap[table.status] || statusMap.available;
+    const tableOrders = getTableOrders(table.id);
     const { items, total } = getTableSummary(table.id);
+    const groupedItems = summarizeItems(items);
+    const orderTimes = tableOrders
+      .map((order) => new Date(order.created_at || order.updated_at || 0).getTime())
+      .filter((stamp) => Number.isFinite(stamp) && stamp > 0)
+      .sort((a, b) => b - a);
+    const hasExtraOrder = tableOrders.length > 1;
     const row = document.createElement('button');
     row.className = `list-card checkout-card ${meta.tone}`;
     row.innerHTML = `<strong class="checkout-title">${meta.icon} ${unitLabel()} ${table.id}</strong>
       <small>${table.status === 'available' ? '' : meta.label}</small>
-      <div class="checkout-items">${items.length ? items.slice(-5).map((i) => `• ${i.name} (${money(i.price)})`).join('<br>') : ''}</div>
+      <div class="checkout-meta-row">
+        <span class="pill">🕒 ${formatClock(orderTimes[0])}</span>
+        ${hasExtraOrder ? '<span class="pill">➕ สั่งเพิ่ม</span>' : ''}
+      </div>
+      <div class="checkout-items">${groupedItems.length ? groupedItems.slice(-5).map((i) => {
+    const qty = Math.max(1, Number(i.qty || 1));
+    const thumb = i.image ? `<img src="${i.image}" alt="${i.name}" class="checkout-item-thumb" />` : '<span class="checkout-item-thumb fallback">🍽️</span>';
+    return `<div class="checkout-item-row">${thumb}<span>${i.name}${qty > 1 ? ` x${qty}` : ''}</span></div>`;
+  }).join('') : ''}</div>
       <strong>รวม ${money(total)} บาท</strong>`;
     row.addEventListener('click', () => openBill(table.id));
     wrap.appendChild(row);
@@ -595,9 +618,13 @@ function renderSales() {
   const body = qs('sales-list');
   body.innerHTML = '';
   sales.slice().reverse().forEach((sale) => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${new Date(sale.paid_at || Date.now()).toLocaleString('th-TH')}</td><td>${sale.target_id}</td><td>${sale.payment_method}</td><td>฿${money(sale.total)}</td>`;
-    body.appendChild(tr);
+    const isCash = sale.payment_method === 'cash';
+    const card = document.createElement('article');
+    card.className = 'list-card sales-row-card';
+    card.innerHTML = `<div class="sales-row-head"><strong>${unitLabel()} ${sale.target_id}</strong><strong>฿${money(sale.total)}</strong></div>
+      <small>🕒 ${new Date(sale.paid_at || Date.now()).toLocaleString('th-TH')}</small>
+      <div class="sales-row-foot"><span class="sales-pay-icon">${isCash ? '💵' : '📱'}</span><small>${isCash ? 'เงินสด' : 'โอน'}</small></div>`;
+    body.appendChild(card);
   });
 }
 
@@ -618,7 +645,7 @@ async function renderBestSellers() {
   items.forEach((item, index) => {
     const row = document.createElement('div');
     row.className = 'list-card';
-    row.innerHTML = `<strong>#${index + 1} ${item.name}</strong><small>ขายแล้ว ${item.qty} รายการ</small>`;
+    row.innerHTML = `<strong>${index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '🔥'} ${item.name}</strong><small>x${item.qty}</small>`;
     bestWrap.appendChild(row);
   });
 }
@@ -801,6 +828,10 @@ function bind() {
     document.querySelectorAll('[data-backstore-tab]').forEach((s) => s.classList.toggle('is-active', s === btn));
     ['menu', 'sales'].forEach((name) => qs(`backstore-${name}`).classList.toggle('hidden', name !== btn.dataset.backstoreTab));
   }));
+  document.querySelectorAll('[data-sales-tab]').forEach((btn) => btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-sales-tab]').forEach((s) => s.classList.toggle('is-active', s === btn));
+    ['history', 'best'].forEach((name) => qs(`sales-tab-${name}`)?.classList.toggle('hidden', name !== btn.dataset.salesTab));
+  }));
 
   qs('close-qr-modal').addEventListener('click', () => qs('qr-modal').classList.add('hidden'));
   qs('close-forgot-admin-modal').addEventListener('click', () => qs('forgot-admin-modal').classList.add('hidden'));
@@ -825,7 +856,10 @@ function bind() {
     activeOrderItemDraft = null;
     qs('order-item-detail-modal').classList.add('hidden');
   });
-  qs('close-payment-modal').addEventListener('click', () => qs('payment-modal').classList.add('hidden'));
+  qs('close-payment-modal').addEventListener('click', () => {
+    qs('bill-payment-qr-wrap')?.classList.add('hidden');
+    qs('payment-modal').classList.add('hidden');
+  });
   qs('open-receipt-preview')?.addEventListener('click', () => qs('receipt-preview-modal').classList.remove('hidden'));
   qs('close-receipt-preview')?.addEventListener('click', () => qs('receipt-preview-modal').classList.add('hidden'));
   qs('sales-from')?.addEventListener('change', renderSales);
@@ -843,6 +877,7 @@ function bind() {
   });
   qs('bill-pay-qr').addEventListener('click', async () => {
     if (!activeCashierTableId) return;
+    qs('bill-payment-qr-wrap')?.classList.remove('hidden');
     await api('/api/checkout', { method: 'POST', body: JSON.stringify({ target: 'table', target_id: activeCashierTableId, payment_method: 'qr' }) });
     qs('payment-modal').classList.add('hidden');
     await loadData();
@@ -850,6 +885,11 @@ function bind() {
   qs('bill-open-customer-display')?.addEventListener('click', () => {
     if (!activeCashierTableId) return;
     openCustomerDisplayWindow(activeCashierTableId);
+  });
+  qs('open-customer-display-from-header')?.addEventListener('click', () => {
+    const tableId = activeCashierTableId || selectedTableId;
+    if (!tableId) return;
+    openCustomerDisplayWindow(tableId);
   });
 
   qs('update-table-count').addEventListener('click', async () => {
