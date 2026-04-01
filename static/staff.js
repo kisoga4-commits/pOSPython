@@ -71,10 +71,19 @@ function stackItems(items = []) {
 
 function applyRoleRestrictions() {
   const allowedTabsForStaff = new Set(['customer', 'checkout']);
-  document.querySelectorAll('[data-staff-tab]').forEach((tabButton) => {
+  const tabButtons = [...document.querySelectorAll('[data-staff-tab]')];
+  tabButtons.forEach((tabButton) => {
     const visible = authState?.role !== 'staff' || allowedTabsForStaff.has(tabButton.dataset.staffTab);
     tabButton.classList.toggle('hidden', !visible);
   });
+
+  if (authState?.role === 'staff') {
+    const activeVisible = tabButtons.find((button) => button.classList.contains('is-active') && !button.classList.contains('hidden'));
+    if (!activeVisible) {
+      const defaultBtn = tabButtons.find((button) => button.dataset.staffTab === 'customer' && !button.classList.contains('hidden'));
+      if (defaultBtn) defaultBtn.click();
+    }
+  }
 }
 
 function loadAuthState() {
@@ -177,6 +186,7 @@ function renderCustomerTab() {
         label: 'รับออร์เดอร์',
         className: 'btn-primary',
         onClick: async () => {
+          playCallStaffSound();
           await api('/api/table/accept', {
             method: 'POST',
             body: JSON.stringify({ table_id: table.id }),
@@ -208,6 +218,7 @@ function renderCheckoutTab() {
       label: '💵 ปิดบิลเงินสด',
       className: 'btn-secondary',
       onClick: async () => {
+        playCallStaffSound();
         await api('/api/checkout', {
           method: 'POST',
           body: JSON.stringify({ target: 'table', target_id: table.id, payment_method: 'cash' }),
@@ -218,6 +229,7 @@ function renderCheckoutTab() {
       label: '📱 ปิดบิล QR',
       className: 'btn-secondary',
       onClick: async () => {
+        playCallStaffSound();
         await api('/api/checkout', {
           method: 'POST',
           body: JSON.stringify({ target: 'table', target_id: table.id, payment_method: 'qr' }),
@@ -259,7 +271,6 @@ async function loadLive() {
   checkoutNow.forEach((tableId) => {
     if (!lastCheckoutIds.has(tableId)) blinkTableCard(tableId);
   });
-  if (hasNewCheckout) playCallStaffSound();
   lastPendingIds = pendingNow;
   lastCheckoutIds = checkoutNow;
 

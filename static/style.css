@@ -155,7 +155,8 @@ input,select{width:100%;padding:10px;border-radius:10px;border:1px solid var(--l
 .cart-modal-card{max-width:520px}
 .cart-modal-card #cart-list,
 .cart-modal-card .order-list{padding-bottom:76px}
-.modal-fixed-footer{position:sticky;bottom:0;left:0;right:0;background:#fff;padding:10px 0 calc(env(safe-area-inset-bottom, 0px) + 6px);z-index:3}
+.modal-fixed-footer{position:sticky;bottom:0;left:0;right:0;background:#fff;padding:10px 0 calc(env(safe-area-inset-bottom, 0px) + 6px);z-index:3;box-shadow:0 -8px 18px rgba(15,23,42,.06)}
+@supports (-webkit-touch-callout: none){.modal-card{overflow:auto;-webkit-overflow-scrolling:touch}.modal-fixed-footer{position:-webkit-sticky;position:sticky;bottom:0}}
 .modal-fixed-footer .btn-primary{width:100%;min-height:50px}
 .cart-item-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center}
 .cart-item-main{display:grid;gap:4px}
