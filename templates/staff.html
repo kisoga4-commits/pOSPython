@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>FAKDU Staff Panel</title>
+  <title>FAKDU Staff</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version }}" />
 </head>
 <body>
@@ -17,15 +17,14 @@
         </div>
         <div class="brand-copy">
           <small class="mobile-subtitle">พนักงาน</small>
-          <small class="mobile-subtitle">โหมดมือถือ กดง่าย ใช้งานไว</small>
         </div>
       </div>
       <button id="staff-logout-btn" class="btn-soft logout-btn hidden" type="button">🚪 Remove Staff Role</button>
     </header>
 
     <section id="staff-login-screen" class="mobile-panel staff-login-screen">
-      <h3>ยังไม่ได้ยืนยันอุปกรณ์พนักงาน</h3>
-      <p>กรุณาเข้าเส้นทางลับ <strong>/authorize-staff</strong> จากเครื่องนี้ เพื่อเปิดโหมด Staff Device</p>
+      <h3>ยังไม่พร้อมใช้งาน</h3>
+      <p>ยืนยันผ่าน <strong>/authorize-staff</strong></p>
     </section>
 
     <section id="staff-app-screen" class="mobile-content staff-mobile hidden">
