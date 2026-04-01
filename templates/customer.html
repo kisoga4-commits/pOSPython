@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWix+LLJAJ9/2PKZ5QiAj6Ta86w+fsb2TkR4j8Y+5q9I5yY9h6+QcmGeXjr6UIKqg3Q8AA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <title>FAKDU โต๊ะลูกค้า</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version }}" />
 </head>
@@ -37,6 +38,9 @@
         <h3>เมนู</h3>
         <div class="btn-row">
           <button id="toggle-current-cart" class="btn-soft" type="button">🧺 ▸</button>
+          <button id="call-staff-btn" class="btn-soft btn-call-staff-mini menu-bell-btn" type="button" aria-label="เรียกพนักงาน">
+            <i class="fa-solid fa-bell-concierge"></i>
+          </button>
         </div>
         <div id="inline-cart-panel" class="order-list hidden"></div>
         <div id="customer-category-tabs" class="menu-category-tabs"></div>
