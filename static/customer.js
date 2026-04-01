@@ -714,7 +714,11 @@ function bind() {
     return;
   }
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/static/sw.js').catch(() => {});
+    const assetVersion = document.body.dataset.assetVersion || 'dev';
+    navigator.serviceWorker
+      .register(`/static/sw.js?v=${encodeURIComponent(assetVersion)}`)
+      .then((registration) => registration.update())
+      .catch(() => {});
   }
   bind();
   loadCartFromSession();

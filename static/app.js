@@ -43,7 +43,11 @@ const scannerMode = document.body.dataset.scannerMode === '1';
 const ADMIN_SESSION_KEY = 'admin_logged_in';
 const adminAllowedScreens = new Set(['customer', 'cashier', 'backstore', 'system']);
 const nonAdminAllowedScreens = new Set(['customer', 'cashier']);
-let isAdminLoggedIn = localStorage.getItem(ADMIN_SESSION_KEY) === '1';
+let isAdminLoggedIn = sessionStorage.getItem(ADMIN_SESSION_KEY) === '1';
+if (!isAdminLoggedIn && localStorage.getItem(ADMIN_SESSION_KEY) === '1') {
+  // Migrate legacy persistent login to tab-session login for better safety.
+  localStorage.removeItem(ADMIN_SESSION_KEY);
+}
 const tableParam = Number(new URLSearchParams(window.location.search).get('table') || 0);
 const scannerAllowedScreens = new Set(['customer', 'cashier']);
 
@@ -210,7 +214,7 @@ async function handleAdminLogin() {
     return;
   }
   isAdminLoggedIn = true;
-  localStorage.setItem(ADMIN_SESSION_KEY, '1');
+  sessionStorage.setItem(ADMIN_SESSION_KEY, '1');
   closeAdminLoginModal();
   applyRoleUI();
   showScreen('system');
@@ -218,6 +222,7 @@ async function handleAdminLogin() {
 
 function handleAdminLogout() {
   isAdminLoggedIn = false;
+  sessionStorage.removeItem(ADMIN_SESSION_KEY);
   localStorage.removeItem(ADMIN_SESSION_KEY);
   applyRoleUI();
   showScreen('customer');
