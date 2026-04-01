@@ -121,6 +121,7 @@ function updateAuthUI() {
 
 function tableCard(table, orders = [], actions = [], options = {}) {
   const showQty = options.showQty !== false;
+  const total = Number(options.total || 0);
   const meta = getStatusMeta(table.status);
   const unit = serviceMode === 'queue' ? 'คิว' : 'โต๊ะ';
   const card = document.createElement('div');
@@ -182,6 +183,12 @@ function tableCard(table, orders = [], actions = [], options = {}) {
       orderSummary.appendChild(row);
     });
     card.appendChild(orderSummary);
+  }
+  if (total > 0) {
+    const totalEl = document.createElement('div');
+    totalEl.className = 'bill-total-strong';
+    totalEl.textContent = `รวม ${total.toLocaleString('th-TH')} บาท`;
+    card.appendChild(totalEl);
   }
   return card;
 }
@@ -248,7 +255,7 @@ function renderCustomerTab() {
       });
     });
     const tableItems = tableOrders.flatMap((order) => order.items || []);
-    list.appendChild(tableCard(table, tableItems, actions));
+    list.appendChild(tableCard(table, tableItems, actions, { total: tableTotal }));
   });
 }
 
@@ -273,6 +280,7 @@ function renderCheckoutTab() {
       const qty = Math.max(1, Number(item.qty || 1));
       return Array.from({ length: qty }, () => ({ ...item, qty: 1 }));
     });
+    const tableTotal = tableItems.reduce((sum, item) => sum + (Number(item.price || 0) * Math.max(1, Number(item.qty || 1))), 0);
     const actions = [{
       label: '💵 ปิดบิลเงินสด',
       className: 'btn-secondary',
@@ -309,7 +317,7 @@ function renderCheckoutTab() {
         },
       });
     }
-    list.appendChild(tableCard(table, expandedItems, actions, { showQty: false }));
+    list.appendChild(tableCard(table, expandedItems, actions, { showQty: false, total: tableTotal }));
   });
 }
 
