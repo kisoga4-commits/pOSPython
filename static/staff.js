@@ -6,7 +6,6 @@ let serviceMode = 'table';
 const blinkTimers = new Map();
 const USER_ROLE_KEY = 'user_role';
 let authState = null;
-let liveEventsSource = null;
 
 const TABLE_STATUS_META = {
   available: { label: 'ว่าง', className: 'status-available' },
@@ -339,22 +338,6 @@ async function loadLive() {
   renderCheckoutTab();
 }
 
-function startLiveEvents() {
-  if (!authState) return;
-  if (liveEventsSource) liveEventsSource.close();
-  liveEventsSource = new EventSource('/api/events');
-  liveEventsSource.onmessage = () => {
-    loadLive();
-  };
-  liveEventsSource.onerror = () => {
-    if (liveEventsSource) {
-      liveEventsSource.close();
-      liveEventsSource = null;
-    }
-    setTimeout(startLiveEvents, 1500);
-  };
-}
-
 function blinkTableCard(tableId) {
   const card = document.querySelector(`.table-card[data-table-id="${tableId}"]`);
   if (!card) return;
@@ -379,6 +362,5 @@ function blinkTableCard(tableId) {
   window.addEventListener('online', updateAuthUI);
   window.addEventListener('offline', updateAuthUI);
   if (authState) loadLive();
-  if (authState) startLiveEvents();
   setInterval(loadLive, 3000);
 })();

@@ -9,8 +9,6 @@ let isInlineCartOpen = false;
 let activeCategory = 'ทั้งหมด';
 let submitState = 'idle';
 let lastSubmittedOrderId = '';
-let activeTableSessionId = '';
-let liveEventsSource = null;
 const params = new URLSearchParams(window.location.search);
 const lockedTableId = Number(params.get('table') || document.body.dataset.tableId || 0);
 let masterBaseUrl = document.body.dataset.localBaseUrl || `${window.location.protocol}//${window.location.host}`;
@@ -397,7 +395,6 @@ function updateTableStatus(tables = []) {
   if (!lockedTableId) return;
   const table = tables.find((item) => Number(item.id) === Number(lockedTableId));
   if (!table) return;
-  activeTableSessionId = String(table.session_id || '');
   const unit = currentSettings.serviceMode === 'queue' ? 'คิว' : 'โต๊ะ';
 
   const statusForDisplay = table.call_staff_status === 'requested' ? 'checkout_requested' : table.status;
@@ -512,21 +509,6 @@ async function loadLive() {
   }
 }
 
-function startLiveEvents() {
-  if (liveEventsSource) liveEventsSource.close();
-  liveEventsSource = new EventSource(`${masterBaseUrl}/api/events`);
-  liveEventsSource.onmessage = () => {
-    loadLive();
-  };
-  liveEventsSource.onerror = () => {
-    if (liveEventsSource) {
-      liveEventsSource.close();
-      liveEventsSource = null;
-    }
-    setTimeout(startLiveEvents, 1500);
-  };
-}
-
 async function validateCartAgainstTableStatus() {
   if (!lockedTableId) return;
   try {
@@ -627,7 +609,6 @@ function bind() {
       client_order_id: `mobile-${lockedTableId}-${Date.now()}`,
       target: 'table',
       target_id: lockedTableId,
-      session_id: activeTableSessionId,
       cart: payloadCart,
       total_price: calculateCartTotal(cart),
       source: 'customer',
@@ -705,6 +686,5 @@ function bind() {
   renderCart();
   window.posSync.startSync(masterBaseUrl);
   validateCartAgainstTableStatus().then(() => loadLive()).then(setLockedTableUI);
-  startLiveEvents();
   setInterval(loadLive, 3000);
 })();
