@@ -16,9 +16,10 @@ const TABLE_STATUS_META = {
 };
 
 async function api(path, options = {}) {
+  const optionHeaders = options.headers || {};
   const res = await fetch(path, {
-    headers: { 'Content-Type': 'application/json' },
     ...options,
+    headers: { 'Content-Type': 'application/json', 'X-POS-Role': 'staff', ...optionHeaders },
   });
   return res.json();
 }

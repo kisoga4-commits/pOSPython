@@ -12,7 +12,14 @@ from flask import Flask, abort, jsonify, redirect, render_template, request, url
 
 from db import ensure_db_exists, load_db, reset_tables, save_db
 
-from security import get_local_ip, is_server_request, read_json, require_license, require_server_request
+from security import (
+    get_local_ip,
+    is_server_request,
+    read_json,
+    require_license,
+    require_roles,
+    require_server_request,
+)
 
 
 log = logging.getLogger("werkzeug")
@@ -430,6 +437,7 @@ def api_sync_pending_orders():
 
 
 @app.route("/api/checkout", methods=["POST"])
+@require_roles("owner", "staff")
 def api_checkout():
     payload = read_json()
     target = str(payload.get("target", "table"))
@@ -519,6 +527,7 @@ def api_bill(target: str, target_id: int):
 
 @app.route("/api/order/item", methods=["PATCH", "DELETE"])
 @require_license
+@require_roles("owner")
 def api_order_item():
     payload = read_json()
     order_id = payload.get("order_id")
@@ -573,6 +582,7 @@ def api_order_item():
 
 @app.route("/api/menu/upload-image", methods=["POST"])
 @require_license
+@require_roles("owner")
 def api_menu_upload_image():
     if importlib.util.find_spec("PIL") is None:
         return jsonify({"error": "missing_dependency_pillow"}), 503
@@ -604,6 +614,7 @@ def api_menu_upload_image():
 
 @app.route("/api/table/accept", methods=["POST"])
 @require_license
+@require_roles("owner", "staff")
 def api_table_accept():
     payload = read_json()
     order_id = payload.get("order_id")
@@ -655,6 +666,7 @@ def api_table_accept():
 
 @app.route("/api/table/reject", methods=["POST"])
 @require_license
+@require_roles("owner", "staff")
 def api_table_reject():
     payload = read_json()
     order_id = payload.get("order_id")
@@ -707,6 +719,7 @@ def api_table_reject():
 
 @app.route("/api/table/call-staff", methods=["POST"])
 @require_license
+@require_roles("customer")
 def api_table_call_staff():
     payload = read_json()
     table_id = payload.get("table_id")
@@ -726,6 +739,7 @@ def api_table_call_staff():
 
 @app.route("/api/table/call-staff/ack", methods=["POST"])
 @require_license
+@require_roles("owner", "staff")
 def api_table_call_staff_ack():
     payload = read_json()
     table_id = payload.get("table_id")
@@ -746,6 +760,7 @@ def api_table_call_staff_ack():
 
 @app.route("/api/table/checkout-request", methods=["POST"])
 @require_license
+@require_roles("customer")
 def api_table_checkout_request():
     payload = read_json()
     table_id = payload.get("table_id")
@@ -772,6 +787,7 @@ def api_table_checkout_request():
 
 @app.route("/api/settings", methods=["POST"])
 @require_server_request
+@require_roles("owner")
 def api_settings():
     payload = read_json()
     db = load_db()
@@ -798,6 +814,7 @@ def api_settings():
 @app.route("/api/backup", methods=["GET"])
 @require_server_request
 @require_license
+@require_roles("owner")
 def api_backup():
     return jsonify(load_db())
 
@@ -805,6 +822,7 @@ def api_backup():
 @app.route("/api/restore", methods=["POST"])
 @require_server_request
 @require_license
+@require_roles("owner")
 def api_restore():
     payload = read_json()
     if not isinstance(payload, dict):
@@ -824,6 +842,7 @@ def api_kitchen_orders():
 
 @app.route("/api/order/status", methods=["POST"])
 @require_license
+@require_roles("owner")
 def api_order_status():
     payload = read_json()
     order_id = payload.get("order_id")
@@ -924,6 +943,7 @@ def api_sales_best_sellers():
 @app.route("/api/sales/history", methods=["DELETE"])
 @require_server_request
 @require_license
+@require_roles("owner")
 def api_sales_history_delete():
     payload = read_json() or {}
     db = load_db()
