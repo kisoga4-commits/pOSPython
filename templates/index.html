@@ -60,8 +60,36 @@
             <button id="table-zoom-in" class="icon-btn" type="button" aria-label="Zoom in">+</button>
           </div>
         </div>
-        <div class="staff-main-pane full-width-pane">
-          <div id="table-grid" class="table-grid clean-table-grid"></div>
+        <div class="ops-legend">
+          <span class="status-chip available">○ ว่าง</span>
+          <span class="status-chip pending">🔔 รอรับออร์เดอร์</span>
+          <span class="status-chip accepted">✅ กำลังทาน</span>
+          <span class="status-chip checkout">🧾 รอเช็คบิล</span>
+        </div>
+        <div class="ops-layout">
+          <div class="staff-main-pane full-width-pane">
+            <div id="table-grid" class="table-grid clean-table-grid"></div>
+          </div>
+          <aside class="ops-side-panel">
+            <section class="ops-card">
+              <h3>ดูโต๊ะ</h3>
+              <p class="muted">เลือกการ์ดโต๊ะเพื่อเปิดรายละเอียดและดูสถานะล่าสุด</p>
+              <div id="desk-selected-table" class="ops-highlight">ยังไม่ได้เลือกโต๊ะ</div>
+              <div id="desk-selected-status" class="muted">เลือกโต๊ะเพื่อดูสรุปคำสั่งซื้อ</div>
+            </section>
+            <section class="ops-card">
+              <h3>รับออร์เดอร์</h3>
+              <div id="desk-selected-items" class="order-list compact-order-list"></div>
+              <div id="desk-selected-total" class="table-total">รวม 0 บาท</div>
+              <button id="desk-accept-order" class="btn-primary" type="button" disabled>✅ ไม่มีคำขอค้าง</button>
+              <button id="desk-open-order-modal" class="btn-soft" type="button">🧾 เปิดหน้ารับออร์เดอร์</button>
+            </section>
+            <section class="ops-card">
+              <h3>เช็คบิล</h3>
+              <p class="muted">โต๊ะที่ร้องขอเช็คบิลจะแสดงในเมนูเช็คบิลทันที</p>
+              <button class="btn-secondary quick-screen-link" data-screen="cashier" type="button">💵 ไปหน้าเช็คบิล</button>
+            </section>
+          </aside>
         </div>
       </section>
 
@@ -437,6 +465,8 @@
 
   <audio id="new-order-sound" src="{{ url_for('static', filename='sounds/new_order.mp3') }}"></audio>
   <audio id="checkout-request-sound" src="{{ url_for('static', filename='sounds/checkout.mp3') }}"></audio>
+  <audio id="scan-customer-sound" src="{{ url_for('static', filename='sounds/new_order.mp3') }}"></audio>
+  <audio id="scan-staff-sound" src="{{ url_for('static', filename='sounds/warning.mp3') }}"></audio>
   <script src="{{ url_for('static', filename='app.js') }}?v={{ asset_version }}"></script>
 </body>
 </html>

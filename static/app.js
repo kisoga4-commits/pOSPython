@@ -95,6 +95,11 @@ function playUISound() {
   o.stop(ctx.currentTime + 0.05);
 }
 
+function playScanSound(kind = 'customer') {
+  const soundId = kind === 'staff' ? 'scan-staff-sound' : 'scan-customer-sound';
+  playAlert(soundId);
+}
+
 async function api(path, options = {}) {
   const optionHeaders = options.headers || {};
   const res = await fetch(path, {
@@ -380,12 +385,12 @@ function renderTables() {
     if (table.call_staff_status === 'requested') card.classList.add('status-checkout_requested');
     const stackedItems = summarizeItems(previewItems);
     card.innerHTML = previewItems.length
-      ? `<div class="table-head-row"><strong>${unitLabel()} ${table.id}</strong><span class="status-chip ${meta.tone}">${meta.icon}</span></div>
+      ? `<div class="table-head-row"><strong>${unitLabel()} ${table.id}</strong><span class="status-chip ${meta.tone}">${meta.icon} ${meta.label}</span></div>
          <small>${stackedItems.slice(-4).map((i) => `${i.image ? '<img src=\"' + i.image + '\" alt=\"' + i.name + '\" class=\"table-item-thumb\" /> ' : ''}${i.name}${Number(i.qty || 1) > 1 ? ` x${Number(i.qty || 1)}` : ''} • ${money(i.price)}`).join('<br>')}</small>
          ${pendingRequests.length > 0 ? '<div class="dot-notify">🔔 มีคำขอรอยืนยัน</div>' : ''}
          ${showAdditionalOrder ? '<div class="dot-notify notify-additional">🆕 มีการสั่งเพิ่ม</div>' : ''}
          <div class="table-total">รวม ${money((items.length ? total : pendingItems.reduce((sum, item) => sum + (Number(item.price || 0) * Math.max(1, Number(item.qty || 1))), 0)))} บาท</div>`
-      : `<div class="table-head-row"><strong>${unitLabel()} ${table.id}</strong><span class="status-chip available">○</span></div>
+      : `<div class="table-head-row"><strong>${unitLabel()} ${table.id}</strong><span class="status-chip available">○ ${statusMap.available.label}</span></div>
          <small>${pendingRequests.length > 0 ? '🔔 รอยืนยันคำขอ' : ''}</small>`;
     card.addEventListener('click', () => selectTable(table.id));
     grid.appendChild(card);
@@ -1659,9 +1664,11 @@ function bind() {
   qs('table-zoom-out')?.addEventListener('click', () => { tableZoom = Math.max(85, tableZoom - 10); applyTableZoom(); });
   qs('open-staff-qr-modal')?.addEventListener('click', () => {
     const url = `${resolveRuntimeHost()}/scan/staff`;
+    playScanSound('staff');
     openQRModal('Staff-Access', url, buildQrImageUrl(url));
   });
   qs('table-qr-select')?.addEventListener('change', (event) => {
+    if (event.target.value) playScanSound('customer');
     renderSelectedTableQR(event.target.value);
   });
   qs('recheck-system')?.addEventListener('click', checkSystemHealth);

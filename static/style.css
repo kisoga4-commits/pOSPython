@@ -735,6 +735,13 @@ input,select{
 .zoom-bar{display:grid;grid-template-columns:24px 1fr 24px;align-items:center;gap:8px;margin:10px 0}
 .zoom-bar input{padding:0}
 .full-width-pane{width:100%}
+.ops-legend{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 10px}
+.ops-layout{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(320px,.85fr);gap:12px;align-items:start}
+.ops-side-panel{display:grid;gap:10px;position:sticky;top:12px}
+.ops-card{border:1px solid var(--line);border-radius:14px;background:#fff;padding:12px;display:grid;gap:8px}
+.ops-highlight{border:1px solid #ddd6fe;background:#f5f3ff;color:#4c1d95;border-radius:10px;padding:10px;font-weight:700}
+.compact-order-list{max-height:180px;overflow:auto}
+.quick-screen-link{width:100%}
 .addon-check-list{display:grid;gap:8px}
 .addon-check-item{display:flex;align-items:center;gap:8px}
 .addon-check-item input{width:auto}
@@ -743,6 +750,8 @@ input,select{
 .desktop-shell .tab-bar{grid-template-columns:repeat(4,minmax(0,1fr))}
 .staff-split-layout{grid-template-columns:1fr}
 .staff-cart-pane{position:relative;top:auto}
+.ops-layout{grid-template-columns:1fr}
+.ops-side-panel{position:relative;top:auto}
 
 
 .toggle-row{display:flex;align-items:center;gap:12px;margin-bottom:12px;font-weight:600}
