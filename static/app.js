@@ -44,6 +44,8 @@ const kioskMode = document.body.dataset.kioskMode === '1';
 const tableParam = Number(new URLSearchParams(window.location.search).get('table') || 0);
 const scannerAllowedScreens = new Set(['customer', 'cashier']);
 const hostOnlyScreens = new Set(['backstore', 'system']);
+const adminOnlyScreens = new Set(['backstore', 'system']);
+let isAdminSession = false;
 
 async function loadNetworkBaseUrl() {
   const network = await api('/api/system/network');
@@ -174,6 +176,9 @@ async function checkSystemHealth() {
 }
 
 function showScreen(id) {
+  if (adminOnlyScreens.has(id) && !isAdminSession) {
+    id = 'customer';
+  }
   if (scannerMode && !scannerAllowedScreens.has(id)) return;
   if (scannerMode && hostOnlyScreens.has(id)) return;
   document.querySelectorAll('.screen').forEach((s) => s.classList.add('hidden'));
@@ -191,6 +196,28 @@ function applyRoleUI() {
   }
 
   if (tabBar) tabBar.classList.remove('hidden');
+  document.querySelectorAll('[data-screen]').forEach((button) => {
+    const screenId = button.dataset.screen;
+    if (!screenId) return;
+    const isAdminOnly = adminOnlyScreens.has(screenId);
+    button.classList.toggle('hidden', isAdminOnly && !isAdminSession);
+  });
+  const adminAuthBtn = qs('admin-auth-btn');
+  if (adminAuthBtn) {
+    adminAuthBtn.textContent = isAdminSession ? '🔓' : '🔐';
+    adminAuthBtn.title = isAdminSession ? 'Admin Logout' : 'Admin Login';
+    adminAuthBtn.setAttribute('aria-label', adminAuthBtn.title);
+  }
+  const activeTab = document.querySelector('[data-screen].is-active')?.dataset.screen;
+  if (activeTab && adminOnlyScreens.has(activeTab) && !isAdminSession) {
+    showScreen('customer');
+  }
+}
+
+async function refreshAdminSession() {
+  const info = await api('/api/admin/session');
+  isAdminSession = Boolean(info?.is_admin);
+  applyRoleUI();
 }
 
 function applyScannerModeUI() {
@@ -1320,6 +1347,7 @@ function bind() {
 
   qs('close-qr-modal').addEventListener('click', () => qs('qr-modal').classList.add('hidden'));
   qs('close-forgot-admin-modal').addEventListener('click', () => qs('forgot-admin-modal').classList.add('hidden'));
+  qs('close-admin-login-modal')?.addEventListener('click', () => qs('admin-login-modal')?.classList.add('hidden'));
   qs('close-table-order-modal').addEventListener('click', () => qs('table-order-modal').classList.add('hidden'));
   qs('close-order-item-detail-modal')?.addEventListener('click', () => {
     activeOrderItemDraft = null;
@@ -1575,7 +1603,19 @@ function bind() {
       alert('ข้อมูลยืนยันไม่ถูกต้อง หรือยังไม่ได้กรอกรหัสใหม่');
       return;
     }
-    await api('/api/settings', { method: 'POST', body: JSON.stringify({ settings: { adminPin: newPin } }) });
+    const resetResult = await api('/api/admin/reset-pin', {
+      method: 'POST',
+      body: JSON.stringify({
+        phone: qs('forgot-phone').value.trim(),
+        color: qs('forgot-color').value,
+        celebrity: qs('forgot-celebrity').value,
+        new_pin: newPin,
+      }),
+    });
+    if (resetResult.error) {
+      alert('รีเซ็ตรหัสไม่สำเร็จ');
+      return;
+    }
     qs('forgot-admin-modal').classList.add('hidden');
     alert('รีเซ็ตรหัส Admin สำเร็จ');
     await loadData();
@@ -1598,6 +1638,29 @@ function bind() {
   qs('open-staff-qr-modal')?.addEventListener('click', () => {
     const url = `${resolveRuntimeHost()}/scan/staff`;
     openQRModal('Staff-Access', url, buildQrImageUrl(url));
+  });
+  qs('admin-auth-btn')?.addEventListener('click', async () => {
+    if (isAdminSession) {
+      await api('/api/admin/logout', { method: 'POST' });
+      isAdminSession = false;
+      applyRoleUI();
+      showScreen('customer');
+      return;
+    }
+    qs('admin-login-pin').value = '';
+    qs('admin-login-modal')?.classList.remove('hidden');
+  });
+  qs('admin-login-submit')?.addEventListener('click', async () => {
+    const pin = qs('admin-login-pin').value.trim();
+    if (!pin) return;
+    const result = await api('/api/admin/login', { method: 'POST', body: JSON.stringify({ pin }) });
+    if (result.error) {
+      alert('รหัส Admin ไม่ถูกต้อง');
+      return;
+    }
+    isAdminSession = true;
+    qs('admin-login-modal')?.classList.add('hidden');
+    applyRoleUI();
   });
   qs('table-qr-select')?.addEventListener('change', (event) => {
     renderSelectedTableQR(event.target.value);
@@ -1689,9 +1752,9 @@ function blinkTableCard(tableId) {
     launchFullscreen();
     window.addEventListener('click', launchFullscreen, { once: true });
   }
-  applyRoleUI();
   applyScannerModeUI();
   bind();
+  await refreshAdminSession();
   await loadNetworkBaseUrl();
   await loadData();
   if (scannerMode) showScreen('customer');
