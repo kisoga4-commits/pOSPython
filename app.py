@@ -17,7 +17,7 @@ log = logging.getLogger("werkzeug")
 log.setLevel(logging.ERROR)
 
 app = Flask(__name__)
-ASSET_VERSION = "20260331-offline-lan-sync"
+ASSET_VERSION = "20260401-offline-lan-sync-v2"
 
 
 def bootstrap() -> None:
