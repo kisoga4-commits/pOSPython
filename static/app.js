@@ -32,6 +32,8 @@ const unitLabel = () => (db?.settings?.serviceMode === 'queue' ? 'คิว' : '
 const qrApiBase = 'https://api.qrserver.com/v1/create-qr-code/';
 let networkBaseUrl = document.body.dataset.localBaseUrl || '';
 const scannerMode = document.body.dataset.scannerMode === '1';
+const role = localStorage.getItem('user_role') || '';
+const tableParam = Number(new URLSearchParams(window.location.search).get('table') || 0);
 const scannerAllowedScreens = new Set(['customer', 'cashier']);
 
 async function loadNetworkBaseUrl() {
@@ -140,6 +142,29 @@ function showScreen(id) {
   document.querySelectorAll('[data-screen]').forEach((b) => b.classList.toggle('is-active', b.dataset.screen === id));
 }
 
+
+function applyRoleUI() {
+  const tabBar = document.querySelector('.tab-bar');
+  const tabButtons = [...document.querySelectorAll('[data-screen]')];
+
+  if (role === 'staff') {
+    tabButtons.forEach((button) => {
+      const allowed = new Set(['customer', 'cashier']);
+      const visible = allowed.has(button.dataset.screen);
+      button.classList.toggle('hidden', !visible);
+      button.setAttribute('aria-hidden', visible ? 'false' : 'true');
+    });
+    return;
+  }
+
+  if (tableParam > 0) {
+    window.location.replace(`/customer?table=${encodeURIComponent(tableParam)}`);
+    return;
+  }
+
+  if (tabBar) tabBar.classList.remove('hidden');
+}
+
 function applyScannerModeUI() {
   if (!scannerMode) return;
   document.querySelectorAll('[data-screen]').forEach((btn) => {
@@ -162,7 +187,7 @@ function applyTheme() {
 }
 
 function getTableOrders(tableId) {
-  return db.orders.filter((o) => o.target === 'table' && o.target_id === tableId && !['cancelled', 'served'].includes(o.status));
+  return db.orders.filter((o) => o.target === 'table' && o.target_id === tableId && !['cancelled', 'completed'].includes(o.status));
 }
 
 function getTableSummary(tableId) {
@@ -369,10 +394,10 @@ function renderDeskSummary() {
     });
   }
   totalNode.textContent = `รวม ${money(total)} บาท`;
-  const hasCustomerNewOrder = getTableOrders(selectedTableId).some((o) => o.source === 'customer' && o.status === 'new');
+  const hasCustomerNewOrder = getTableOrders(selectedTableId).some((o) => o.source === 'customer' && o.status === 'pending');
   if (acceptBtn) {
     acceptBtn.disabled = !hasCustomerNewOrder || total <= 0;
-    acceptBtn.textContent = hasCustomerNewOrder ? '🟠 ออเดอร์ใหม่ / Accept' : '✅ รับออเดอร์แล้ว';
+    acceptBtn.textContent = hasCustomerNewOrder ? '✅ ยืนยันรับออร์เดอร์ (Accept Order)' : '✅ รับออเดอร์แล้ว';
   }
 }
 
@@ -1010,10 +1035,12 @@ async function poll() {
 }
 
 (async function init() {
+  applyRoleUI();
   applyScannerModeUI();
   bind();
   await loadNetworkBaseUrl();
   await loadData();
-  if (scannerMode) showScreen('customer');
-  setInterval(poll, 1200);
+  if (scannerMode || role === 'staff') showScreen('customer');
+  if (role === 'staff' && tableParam > 0) selectTable(tableParam);
+  setInterval(poll, 3000);
 })();
