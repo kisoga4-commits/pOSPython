@@ -5,12 +5,10 @@ import importlib.util
 import re
 import json
 import hashlib
-import threading
-import queue
 from datetime import datetime
 from collections import defaultdict
 
-from flask import Flask, Response, abort, jsonify, render_template, request
+from flask import Flask, abort, jsonify, render_template, request
 
 from db import ensure_db_exists, load_db, reset_tables, save_db
 
@@ -22,11 +20,6 @@ log.setLevel(logging.ERROR)
 
 app = Flask(__name__)
 ASSET_VERSION = "20260401-offline-lan-sync-v2"
-ORDER_STATE_PENDING = "PENDING"
-ORDER_STATE_CONFIRMED = "CONFIRMED"
-ORDER_STATE_BILLED = "BILLED"
-_event_subscribers = set()
-_event_subscribers_lock = threading.Lock()
 
 
 def bootstrap() -> None:
@@ -45,35 +38,6 @@ def run_server() -> None:
 
 def local_now() -> str:
     return datetime.now().isoformat()
-
-
-def save_db_and_broadcast(db: dict, event_type: str = "db_updated", table_id: int | None = None) -> dict:
-    saved = save_db(db)
-    notify_clients({
-        "event": event_type,
-        "table_id": table_id,
-        "version": saved.get("meta", {}).get("version", 0),
-        "updated_at": saved.get("meta", {}).get("updated_at"),
-    })
-    return saved
-
-
-def notify_clients(payload: dict) -> None:
-    with _event_subscribers_lock:
-        stale = []
-        for subscriber in list(_event_subscribers):
-            try:
-                subscriber.put_nowait(payload)
-            except Exception:
-                stale.append(subscriber)
-        for subscriber in stale:
-            _event_subscribers.discard(subscriber)
-
-
-def _next_table_session_id(previous_session_id: str, table_id: int) -> str:
-    match = re.match(rf"^T{table_id}-S(\d+)$", str(previous_session_id or ""))
-    current_seq = int(match.group(1)) if match else 1
-    return f"T{table_id}-S{current_seq + 1}"
 
 
 def _safe_parse_iso_datetime(value: str):
@@ -244,19 +208,6 @@ def _create_order(payload: dict) -> dict:
         raise ValueError("cart is empty")
 
     db = load_db()
-    session_id = str(payload.get("session_id") or "").strip()
-    if target == "table" and isinstance(target_id, int):
-        table = next((t for t in db.get("tables", []) if t.get("id") == target_id), None)
-        if table is None:
-            raise ValueError("table_not_found")
-        if table.get("status") == "closed":
-            raise ValueError("table_closed")
-        active_session_id = str(table.get("session_id") or "")
-        if source == "customer":
-            if not session_id:
-                raise ValueError("missing_session_id")
-            if active_session_id and session_id != active_session_id:
-                raise ValueError("session_expired")
     order_id = f"ORD-{int(datetime.now().timestamp())}-{len(db['orders']) + 1}"
     source = payload.get("source", "customer")
     initial_status = "request_pending" if source == "customer" else "accepted"
@@ -306,7 +257,6 @@ def _create_order(payload: dict) -> dict:
         "note": payload.get("note", ""),
         "client_order_id": payload.get("client_order_id"),
         "request_fingerprint": request_fingerprint,
-        "order_state": ORDER_STATE_PENDING if initial_status == "request_pending" else ORDER_STATE_CONFIRMED,
     }
     db["orders"].append(new_order)
 
@@ -320,7 +270,7 @@ def _create_order(payload: dict) -> dict:
                     table["items"].extend(normalized_cart)
                 break
 
-    db = save_db_and_broadcast(db, event_type="order_created", table_id=target_id if isinstance(target_id, int) else None)
+    db = save_db(db)
     return {"status": "success", "order": new_order, "version": db["meta"]["version"]}
 
 
@@ -485,7 +435,6 @@ def api_checkout():
     for order in db["orders"]:
         if order["target"] == target and order["target_id"] == target_id and order["status"] == "accepted":
             order["status"] = "completed"
-            order["order_state"] = ORDER_STATE_BILLED
             order["updated_at"] = local_now()
             pending_items.extend(order["items"])
 
@@ -508,12 +457,11 @@ def api_checkout():
         for table in db["tables"]:
             if table["id"] == target_id:
                 table["status"] = "available"
-                table["session_id"] = _next_table_session_id(table.get("session_id", ""), target_id)
                 table["items"] = []
                 table["call_staff_status"] = "idle"
                 break
 
-    db = save_db_and_broadcast(db, event_type="checkout_completed", table_id=target_id if isinstance(target_id, int) else None)
+    db = save_db(db)
     return jsonify({"status": "success", "sale_record": sale_record, "version": db["meta"]["version"]})
 
 
@@ -540,21 +488,11 @@ def api_bill(target: str, target_id: int):
                 "qty": max(1, int(item.get("qty", 1) or 1)),
                 "addon": item.get("addon", ""),
             })
-    subtotal = sum(i["price"] * i["qty"] for i in items)
-    vat_pct = float(db.get("settings", {}).get("vatPct", 0) or 0)
-    service_charge_pct = float(db.get("settings", {}).get("serviceChargePct", 0) or 0)
-    discount = 0.0
-    tax = subtotal * (vat_pct / 100.0)
-    service_charge = subtotal * (service_charge_pct / 100.0)
-    total = subtotal + tax + service_charge - discount
+    total = sum(i["price"] * i["qty"] for i in items)
     return jsonify({
         "target": target,
         "target_id": target_id,
         "items": items,
-        "subtotal": subtotal,
-        "tax": tax,
-        "service_charge": service_charge,
-        "discount": discount,
         "total": total,
         "opened_at": first_created,
         "version": db["meta"]["version"],
@@ -609,11 +547,7 @@ def api_order_item():
                     table["items"] = merged_items
                     break
 
-        db = save_db_and_broadcast(
-            db,
-            event_type="order_item_updated",
-            table_id=order.get("target_id") if order.get("target") == "table" else None,
-        )
+        db = save_db(db)
         return jsonify({"status": "success", "version": db["meta"]["version"]})
 
     return jsonify({"error": "order not found"}), 404
@@ -672,7 +606,6 @@ def api_table_accept():
             return jsonify({"error": "invalid_target"}), 400
         table_id = order["target_id"]
         order["status"] = "accepted"
-        order["order_state"] = ORDER_STATE_CONFIRMED
         order["updated_at"] = local_now()
         touched_order = order
         break
@@ -698,7 +631,7 @@ def api_table_accept():
             table["last_order_event_at"] = local_now()
             break
 
-    db = save_db_and_broadcast(db, event_type="order_confirmed", table_id=table_id)
+    db = save_db(db)
     return jsonify({"status": "success", "order_id": order_id, "version": db["meta"]["version"]})
 
 
@@ -750,7 +683,7 @@ def api_table_reject():
             table["last_order_event_at"] = local_now()
             break
 
-    db = save_db_and_broadcast(db, event_type="order_rejected", table_id=table_id if isinstance(table_id, int) else None)
+    db = save_db(db)
     return jsonify({"status": "success", "order_id": order_id, "version": db["meta"]["version"]})
 
 
@@ -768,7 +701,7 @@ def api_table_call_staff():
             table["call_staff_status"] = "requested"
             table["call_staff_requested_at"] = local_now()
             table["call_staff_ack_at"] = ""
-            db = save_db_and_broadcast(db, event_type="call_staff_requested", table_id=table_id)
+            db = save_db(db)
             return jsonify({"status": "success", "version": db["meta"]["version"]})
     return jsonify({"error": "table not found"}), 404
 
@@ -788,7 +721,7 @@ def api_table_call_staff_ack():
                 return jsonify({"status": "already_acknowledged", "version": db["meta"]["version"]})
             table["call_staff_status"] = "acknowledged"
             table["call_staff_ack_at"] = local_now()
-            db = save_db_and_broadcast(db, event_type="call_staff_ack", table_id=table_id)
+            db = save_db(db)
             return jsonify({"status": "success", "version": db["meta"]["version"]})
     return jsonify({"error": "table not found"}), 404
 
@@ -814,7 +747,7 @@ def api_table_checkout_request():
                 table["status"] = "checkout_requested"
             else:
                 _refresh_table_state(db, table_id)
-            db = save_db_and_broadcast(db, event_type="checkout_requested", table_id=table_id)
+            db = save_db(db)
             return jsonify({"status": "success", "version": db["meta"]["version"]})
     return jsonify({"error": "table not found"}), 404
 
@@ -840,7 +773,7 @@ def api_settings():
     if "settings" in payload and isinstance(payload["settings"], dict):
         db["settings"] = {**db.get("settings", {}), **payload["settings"]}
 
-    db = save_db_and_broadcast(db, event_type="settings_updated")
+    db = save_db(db)
     return jsonify({"status": "success", "version": db["meta"]["version"]})
 
 
@@ -858,7 +791,7 @@ def api_restore():
     payload = read_json()
     if not isinstance(payload, dict):
         return jsonify({"error": "invalid payload"}), 400
-    db = save_db_and_broadcast(payload, event_type="restore_completed")
+    db = save_db(payload)
     return jsonify({"status": "success", "version": db["meta"]["version"]})
 
 
@@ -884,14 +817,8 @@ def api_order_status():
     for order in db["orders"]:
         if order["id"] == order_id:
             order["status"] = status
-            if status == "request_pending":
-                order["order_state"] = ORDER_STATE_PENDING
-            elif status == "accepted":
-                order["order_state"] = ORDER_STATE_CONFIRMED
-            elif status == "completed":
-                order["order_state"] = ORDER_STATE_BILLED
             order["updated_at"] = local_now()
-            db = save_db_and_broadcast(db, event_type="order_status_updated")
+            db = save_db(db)
             return jsonify({"status": "success", "version": db["meta"]["version"]})
     return jsonify({"error": "order not found"}), 404
 
@@ -922,29 +849,6 @@ def api_staff_live():
         "settings": db["settings"],
         "version": db["meta"]["version"],
     })
-
-
-@app.route("/api/events", methods=["GET"])
-@require_license
-def api_events():
-    def generate():
-        subscriber = queue.Queue(maxsize=50)
-        with _event_subscribers_lock:
-            _event_subscribers.add(subscriber)
-        try:
-            initial = load_db()
-            yield f"data: {json.dumps({'event': 'connected', 'version': initial['meta']['version']}, ensure_ascii=False)}\n\n"
-            while True:
-                try:
-                    message = subscriber.get(timeout=20)
-                    yield f"data: {json.dumps(message, ensure_ascii=False)}\n\n"
-                except queue.Empty:
-                    yield "event: ping\ndata: {}\n\n"
-        finally:
-            with _event_subscribers_lock:
-                _event_subscribers.discard(subscriber)
-
-    return Response(generate(), mimetype="text/event-stream")
 
 
 @app.route("/api/customer/live", methods=["GET"])
