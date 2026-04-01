@@ -149,11 +149,13 @@ def _create_order(payload: dict) -> dict:
     order_id = f"ORD-{int(datetime.now().timestamp())}-{len(db['orders']) + 1}"
     source = payload.get("source", "customer")
     initial_status = "new" if source == "customer" else "preparing"
+    normalized_cart = _normalize_cart_items(cart)
+
     new_order = {
         "id": order_id,
         "target": target,
         "target_id": target_id,
-        "items": cart,
+        "items": normalized_cart,
         "status": initial_status,
         "created_at": utc_now(),
         "updated_at": utc_now(),
@@ -169,11 +171,51 @@ def _create_order(payload: dict) -> dict:
                     table["status"] = "pending_order"
                 else:
                     table["status"] = "accepted_order"
-                table["items"].extend(cart)
+                table["items"].extend(normalized_cart)
                 break
 
     db = save_db(db)
     return {"status": "success", "order": new_order, "version": db["meta"]["version"]}
+
+
+def _normalize_cart_items(raw_cart: list) -> list:
+    normalized = []
+    for item in raw_cart:
+        if not isinstance(item, dict):
+            continue
+        try:
+            qty = max(1, int(item.get("qty", 1) or 1))
+        except (TypeError, ValueError):
+            qty = 1
+        base = {
+            "id": item.get("id"),
+            "name": str(item.get("name", "")).strip() or "Unknown Item",
+            "price": float(item.get("price", 0) or 0),
+            "note": str(item.get("note", "")).strip(),
+            "addon": str(item.get("addon", "")).strip(),
+        }
+        addons = item.get("addons", [])
+        if isinstance(addons, list):
+            packed_addons = []
+            for addon in addons:
+                if isinstance(addon, dict):
+                    addon_name = str(addon.get("name", "")).strip()
+                    if not addon_name:
+                        continue
+                    packed_addons.append({
+                        "name": addon_name,
+                        "price": float(addon.get("price", 0) or 0),
+                    })
+                elif isinstance(addon, str) and addon.strip():
+                    packed_addons.append({"name": addon.strip(), "price": 0.0})
+            if packed_addons:
+                base["addons"] = packed_addons
+                if not base["addon"]:
+                    base["addon"] = ", ".join(addon["name"] for addon in packed_addons)
+
+        for _ in range(qty):
+            normalized.append({**base, "qty": 1})
+    return normalized
 
 
 @app.route("/api/ping", methods=["GET"])

@@ -3,10 +3,11 @@ let lastPendingIds = new Set();
 let lastCheckoutIds = new Set();
 let state = { tables: [], orders: [] };
 let serviceMode = 'table';
+const blinkTimers = new Map();
 
 const TABLE_STATUS_META = {
   available: { label: 'ว่าง', className: 'status-available' },
-  pending_order: { label: 'ออร์เดอร์ค้าง/ลูกค้าสั่งเอง', className: 'status-pending_order' },
+  pending_order: { label: 'กำลังสั่ง', className: 'status-pending_order' },
   accepted_order: { label: 'มีลูกค้า', className: 'status-accepted_order' },
   checkout_requested: { label: 'รอเช็คบิล', className: 'status-checkout_requested' },
   closed: { label: 'ปิดบิล', className: 'status-closed' },
@@ -43,6 +44,7 @@ function tableCard(table, actions = []) {
   const unit = serviceMode === 'queue' ? 'คิว' : 'โต๊ะ';
   const card = document.createElement('div');
   card.className = `mobile-table-card table-card ${meta.className}`;
+  card.dataset.tableId = String(table.id);
   card.innerHTML = `
     <div class="mobile-table-head">
       <strong>${unit} ${table.id}</strong>
@@ -165,12 +167,27 @@ async function loadLive() {
   const hasNewCheckout = [...checkoutNow].some((id) => !lastCheckoutIds.has(id));
   if (hasNewPending) playNewOrderSound();
   if (hasNewCheckout) playCheckoutSound();
+  checkoutNow.forEach((tableId) => {
+    if (!lastCheckoutIds.has(tableId)) blinkTableCard(tableId);
+  });
   lastPendingIds = pendingNow;
   lastCheckoutIds = checkoutNow;
 
   version = data.version || version;
   renderCustomerTab();
   renderCheckoutTab();
+}
+
+function blinkTableCard(tableId) {
+  const card = document.querySelector(`.table-card[data-table-id="${tableId}"]`);
+  if (!card) return;
+  card.classList.add('blink-red');
+  clearTimeout(blinkTimers.get(tableId));
+  const timeoutId = setTimeout(() => {
+    card.classList.remove('blink-red');
+    blinkTimers.delete(tableId);
+  }, 5000);
+  blinkTimers.set(tableId, timeoutId);
 }
 
 (function init() {
