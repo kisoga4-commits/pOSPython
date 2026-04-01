@@ -874,3 +874,146 @@ main{display:grid;gap:10px}
 @media (max-width:860px){
   .sales-modal-grid{grid-template-columns:1fr}
 }
+
+/* mobile UX compaction without changing desktop behavior */
+@media (max-width: 768px){
+  .app-shell.desktop-shell{
+    padding:10px 10px 84px !important;
+    font-size:14px;
+  }
+
+  .modern-header{
+    padding:8px 10px;
+    border-radius:14px;
+    gap:8px;
+  }
+  .brand-left{gap:8px}
+  .logo-slot.hero-logo{
+    width:44px;
+    height:44px;
+    border-radius:12px;
+  }
+  #header-store-name{font-size:1.05rem}
+  .header-icons{gap:6px}
+  .header-icons .icon-btn,
+  .header-icons .btn-soft{
+    min-height:36px;
+    height:36px;
+    font-size:.82rem;
+    padding:0 8px;
+    border-radius:10px;
+  }
+
+  .tab-bar{
+    gap:6px;
+    padding:6px;
+  }
+  .desktop-shell .tab-bar{
+    position:fixed;
+    left:0;
+    right:0;
+    bottom:0;
+    z-index:45;
+    border-radius:14px 14px 0 0;
+    border-left:none;
+    border-right:none;
+    border-bottom:none;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    box-shadow:0 -8px 20px rgba(2,6,23,.12);
+    background:#ffffff;
+  }
+  .main-tab,
+  .desktop-shell .main-tab{
+    min-height:44px !important;
+    padding:4px 4px !important;
+    border-radius:10px !important;
+    gap:2px;
+  }
+  .main-tab svg,
+  .desktop-shell .main-tab svg{width:20px;height:20px}
+  .main-tab small,
+  .desktop-shell .main-tab small{font-size:.62rem !important;line-height:1.1}
+
+  .section-card{padding:8px}
+  .section-head h2{font-size:.95rem}
+
+  .table-grid,
+  .desktop-shell .table-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:8px;
+  }
+  .table-card,
+  .desktop-shell .table-card{
+    min-height:112px;
+    padding:8px;
+    border-radius:12px;
+  }
+  .table-head-row{margin-bottom:6px}
+  .table-head-row strong{font-size:.95rem}
+  .status-chip,.status-badge{font-size:.62rem;padding:2px 6px}
+  .clean-table-grid .table-card small,
+  .table-card small{font-size:.68rem;min-height:auto;line-height:1.3}
+  .table-total{font-size:.82rem;margin-top:6px}
+
+  #table-zoom-in,
+  #table-zoom-out,
+  .zoom-bar{display:none !important}
+
+  .btn-soft,.btn-primary,.btn-secondary,
+  button,
+  .staff-nav-btn,
+  .cart-qty-btn,
+  .btn-call-staff,
+  .btn-call-staff-mini,
+  .floating-cart-btn{
+    min-height:44px;
+  }
+
+  .mobile-shell,
+  .staff-shell,
+  .delivery-app-shell,
+  .customer-app .delivery-app-shell{
+    padding:8px;
+    max-width:100%;
+  }
+  .mobile-header,
+  .delivery-header,
+  .compact-header,
+  .customer-app .mobile-header,
+  .staff-shell .mobile-header{
+    padding:8px;
+    border-radius:12px;
+  }
+  .mobile-subtitle{font-size:.72rem}
+  .logo-name{font-size:.72rem}
+  .staff-shell .logo-slot,
+  .customer-app .menu-thumb,
+  .menu-thumb{
+    width:64px;
+    height:64px;
+  }
+
+  .mobile-panel,
+  .compact-panel,
+  .customer-app .mobile-panel,
+  .staff-shell .mobile-panel{
+    padding:8px;
+    border-radius:12px;
+  }
+  .mobile-menu-list,
+  .delivery-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:8px;
+  }
+  .menu-mobile-card,
+  .compact-grid .menu-mobile-card,
+  .customer-app .menu-mobile-card{
+    grid-template-columns:1fr;
+    min-height:0;
+    gap:6px;
+    padding:8px;
+    border-radius:12px;
+  }
+  .menu-mobile-meta,
+  .menu-mobile-card small{font-size:.72rem}
+}
