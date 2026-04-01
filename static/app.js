@@ -1576,7 +1576,7 @@ function bind() {
   qs('table-zoom-in')?.addEventListener('click', () => { tableZoom = Math.min(140, tableZoom + 10); applyTableZoom(); });
   qs('table-zoom-out')?.addEventListener('click', () => { tableZoom = Math.max(85, tableZoom - 10); applyTableZoom(); });
   qs('open-staff-qr-modal')?.addEventListener('click', () => {
-    const url = `${resolveRuntimeHost()}/scan/staff`;
+    const url = `${resolveRuntimeHost()}/authorize-staff`;
     openQRModal('Staff-Access', url, buildQrImageUrl(url));
   });
   qs('table-qr-select')?.addEventListener('change', (event) => {
@@ -1661,6 +1661,10 @@ function blinkTableCard(tableId) {
 }
 
 (async function init() {
+  if (role === 'staff' && !scannerMode) {
+    window.location.replace('/staff');
+    return;
+  }
   applyRoleUI();
   applyScannerModeUI();
   bind();
