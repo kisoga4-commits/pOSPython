@@ -1,14 +1,15 @@
-const CACHE_NAME = 'fakdu-pos-shell-v5';
+const SW_VERSION = new URL(self.location.href).searchParams.get('v') || 'dev';
+const CACHE_NAME = `fakdu-pos-shell-${SW_VERSION}`;
 const OFFLINE_ASSETS = [
   '/',
   '/staff',
   '/manifest.webmanifest',
-  '/static/style.css',
-  '/static/app.js',
-  '/static/customer.js',
-  '/static/db.js',
-  '/static/sync.js',
-  '/static/staff.js',
+  `/static/style.css?v=${encodeURIComponent(SW_VERSION)}`,
+  `/static/app.js?v=${encodeURIComponent(SW_VERSION)}`,
+  `/static/customer.js?v=${encodeURIComponent(SW_VERSION)}`,
+  `/static/db.js?v=${encodeURIComponent(SW_VERSION)}`,
+  `/static/sync.js?v=${encodeURIComponent(SW_VERSION)}`,
+  `/static/staff.js?v=${encodeURIComponent(SW_VERSION)}`,
   '/static/sounds/new_order.mp3',
   '/static/sounds/checkout.mp3',
   '/static/sounds/warning.mp3',
