@@ -35,6 +35,7 @@ def default_db() -> dict:
             {
                 "id": i,
                 "status": "available",
+                "session_id": f"T{i}-S1",
                 "items": [],
                 "call_staff_status": "idle",
                 "call_staff_requested_at": "",
@@ -104,19 +105,21 @@ def _normalize_db(data: dict) -> dict:
     merged = deepcopy(base)
     merged.update(data or {})
     merged["settings"] = {**base["settings"], **(data or {}).get("settings", {})}
-    merged["tables"] = [
-        {
+    normalized_tables = []
+    for idx, table in enumerate(merged.get("tables", []), start=1):
+        table_id = table.get("id", idx)
+        normalized_tables.append({
             **table,
             "status": normalize_table_status(table.get("status", "available")),
+            "session_id": str(table.get("session_id") or f"T{table_id}-S1"),
             "items": table.get("items", []),
             "call_staff_status": table.get("call_staff_status", "idle"),
             "call_staff_requested_at": table.get("call_staff_requested_at", ""),
             "call_staff_ack_at": table.get("call_staff_ack_at", ""),
             "last_order_event": table.get("last_order_event", ""),
             "last_order_event_at": table.get("last_order_event_at", ""),
-        }
-        for table in merged.get("tables", [])
-    ]
+        })
+    merged["tables"] = normalized_tables
     merged["menu"] = [
         {**item, "image": item.get("image", "")}
         for item in merged.get("menu", [])
@@ -170,6 +173,7 @@ def reset_tables(data: dict) -> dict:
         {
             "id": i,
             "status": "available",
+            "session_id": f"T{i}-S1",
             "items": [],
             "call_staff_status": "idle",
             "call_staff_requested_at": "",
