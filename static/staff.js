@@ -5,7 +5,6 @@ let state = { tables: [], orders: [] };
 let serviceMode = 'table';
 const blinkTimers = new Map();
 const USER_ROLE_KEY = 'user_role';
-let authState = null;
 
 const TABLE_STATUS_META = {
   available: { label: 'ว่าง', className: 'status-available' },
@@ -73,50 +72,11 @@ function stackItems(items = []) {
   return [...itemMap.values()];
 }
 
-function applyRoleRestrictions() {
-  const allowedTabsForStaff = new Set(['customer', 'checkout']);
-  const tabButtons = [...document.querySelectorAll('[data-staff-tab]')];
-  tabButtons.forEach((tabButton) => {
-    const visible = authState?.role !== 'staff' || allowedTabsForStaff.has(tabButton.dataset.staffTab);
-    tabButton.classList.toggle('hidden', !visible);
-  });
-
-  if (authState?.role === 'staff') {
-    const activeVisible = tabButtons.find((button) => button.classList.contains('is-active') && !button.classList.contains('hidden'));
-    if (!activeVisible) {
-      const defaultBtn = tabButtons.find((button) => button.dataset.staffTab === 'customer' && !button.classList.contains('hidden'));
-      if (defaultBtn) defaultBtn.click();
-    }
-  }
-}
-
-function loadAuthState() {
-  const role = localStorage.getItem(USER_ROLE_KEY);
-  if (role === 'staff') return { role: 'staff' };
-  return null;
-}
-
 function updateAuthUI() {
-  const loginScreen = document.getElementById('staff-login-screen');
-  const appScreen = document.getElementById('staff-app-screen');
-  const nav = document.getElementById('staff-bottom-nav');
-  const logoutBtn = document.getElementById('staff-logout-btn');
   const dot = document.getElementById('staff-online-dot');
   const online = navigator.onLine;
   dot.classList.toggle('online', online);
   dot.classList.toggle('offline', !online);
-  if (authState?.role === 'staff') {
-    loginScreen.classList.add('hidden');
-    appScreen.classList.remove('hidden');
-    nav.classList.remove('hidden');
-    logoutBtn.classList.remove('hidden');
-    applyRoleRestrictions();
-  } else {
-    loginScreen.classList.remove('hidden');
-    appScreen.classList.add('hidden');
-    nav.classList.add('hidden');
-    logoutBtn.classList.add('hidden');
-  }
 }
 
 function tableCard(table, orders = [], actions = [], options = {}) {
@@ -333,7 +293,6 @@ function bindTabs() {
 }
 
 async function loadLive() {
-  if (!authState) return;
   const data = await api(`/api/staff/live?since=${version}`);
   if (!data.changed) return;
 
@@ -376,16 +335,11 @@ function blinkTableCard(tableId) {
 }
 
 (function init() {
-  authState = loadAuthState();
+  localStorage.setItem(USER_ROLE_KEY, 'staff');
   updateAuthUI();
   bindTabs();
-  document.getElementById('staff-logout-btn').addEventListener('click', () => {
-    localStorage.removeItem(USER_ROLE_KEY);
-    authState = null;
-    updateAuthUI();
-  });
   window.addEventListener('online', updateAuthUI);
   window.addEventListener('offline', updateAuthUI);
-  if (authState) loadLive();
+  loadLive();
   setInterval(loadLive, 3000);
 })();
