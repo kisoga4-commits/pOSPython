@@ -26,30 +26,38 @@
         </div>
       </div>
       <div class="header-icons">
-        <button id="admin-login-btn" class="btn-soft icon-only-btn" type="button" aria-label="Admin login"><i class="fa-solid fa-user-shield"></i></button>
-        <button id="admin-logout-btn" class="btn-soft icon-only-btn hidden" type="button" aria-label="Admin logout"><i class="fa-solid fa-right-from-bracket"></i></button>
-        <button id="open-customer-display-from-header" class="icon-btn" type="button" aria-label="Open customer display"><i class="fa-solid fa-display"></i></button>
-        <button id="open-staff-qr-modal" class="icon-btn" type="button" aria-label="Staff access QR"><i class="fa-solid fa-qrcode"></i></button>
+        <button id="admin-login-btn" class="btn-soft icon-text-btn header-action-btn" type="button" aria-label="Admin login">
+          <i class="fa-solid fa-key"></i><span class="nav-btn-label">ล็อกอิน</span>
+        </button>
+        <button id="admin-logout-btn" class="btn-soft icon-text-btn header-action-btn hidden" type="button" aria-label="Admin logout">
+          <i class="fa-solid fa-right-from-bracket"></i><span class="nav-btn-label">ล็อกเอาต์</span>
+        </button>
+        <button id="open-customer-display-from-header" class="icon-text-btn header-action-btn" type="button" aria-label="Open customer display">
+          <i class="fa-solid fa-desktop"></i><span class="nav-btn-label">แยกจอ</span>
+        </button>
+        <button id="open-staff-qr-modal" class="icon-text-btn header-action-btn" type="button" aria-label="Staff access QR">
+          <i class="fa-solid fa-mobile-screen-button"></i><span class="nav-btn-label">สแกนพนักงาน</span>
+        </button>
       </div>
     </header>
 
     <main>
       <nav class="section-card tab-bar desktop-only icon-nav" aria-label="main navigation">
         <button class="main-tab is-active icon-text-btn" data-screen="customer" aria-label="ลูกค้า">
-          <i class="fa-solid fa-house"></i>
-          <span class="nav-btn-label">Home</span>
+          <i class="fa-solid fa-utensils"></i>
+          <span class="nav-btn-label">โหมดโต๊ะลูกค้า</span>
         </button>
         <button class="main-tab icon-text-btn" data-screen="cashier" aria-label="เช็คบิล">
-          <i class="fa-solid fa-receipt"></i>
-          <span class="nav-btn-label">Bill</span>
+          <i class="fa-solid fa-cash-register"></i>
+          <span class="nav-btn-label">โหมดแคชเชียร์</span>
         </button>
         <button class="main-tab icon-text-btn" data-screen="backstore" aria-label="หลังร้าน">
           <i class="fa-solid fa-boxes-stacked"></i>
-          <span class="nav-btn-label">Menu</span>
+          <span class="nav-btn-label">โหมดจัดการเมนู</span>
         </button>
         <button class="main-tab icon-text-btn" data-screen="system" aria-label="ระบบ">
-          <i class="fa-solid fa-gear"></i>
-          <span class="nav-btn-label">System</span>
+          <i class="fa-solid fa-screwdriver-wrench"></i>
+          <span class="nav-btn-label">โหมดตั้งค่าระบบ</span>
         </button>
       </nav>
 
@@ -91,6 +99,25 @@
         </div>
 
         <div id="backstore-menu" class="panel-block">
+          <div class="quick-links-grid">
+            <button id="go-scan-customer" class="quick-link-btn" type="button">
+              <i class="fa-solid fa-qrcode"></i>
+              <span><strong>สแกนลูกค้า</strong><small>เปิดหน้า QR สำหรับโต๊ะลูกค้า</small></span>
+            </button>
+            <button id="go-scan-staff" class="quick-link-btn" type="button">
+              <i class="fa-solid fa-mobile-screen-button"></i>
+              <span><strong>สแกนพนักงาน</strong><small>ไปหน้าอนุมัติการเข้าใช้</small></span>
+            </button>
+            <button id="go-customer-display" class="quick-link-btn" type="button">
+              <i class="fa-solid fa-desktop"></i>
+              <span><strong>จอแยกหน้าลูกค้า</strong><small>เปิดหน้าจอแสดงยอดและ QR</small></span>
+            </button>
+            <button id="go-customer-bell" class="quick-link-btn warning" type="button">
+              <i class="fa-solid fa-bell-concierge"></i>
+              <span><strong>ปุ่มเรียกพนักงาน</strong><small>ทดสอบเสียงกระดิ่งจากฝั่งลูกค้า</small></span>
+            </button>
+          </div>
+
           <div class="manage-row menu-config-row">
             <select id="service-mode"><option value="table">โต๊ะ</option><option value="queue">คิว</option></select>
             <input id="table-count" type="number" min="1" placeholder="จำนวนโต๊ะ" />

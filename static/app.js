@@ -1726,6 +1726,25 @@ function bind() {
     const url = `${resolveRuntimeHost()}/scan/staff`;
     openQRModal('Staff-Access', url, buildQrImageUrl(url));
   });
+  qs('go-scan-customer')?.addEventListener('click', () => {
+    const firstTableId = Number((db?.tables || [])[0]?.id || 1);
+    window.open(`${resolveRuntimeHost()}/scan/customer/${firstTableId}`, '_blank', 'noopener');
+  });
+  qs('go-scan-staff')?.addEventListener('click', () => {
+    window.open(`${resolveRuntimeHost()}/authorize-staff`, '_blank', 'noopener');
+  });
+  qs('go-customer-display')?.addEventListener('click', () => {
+    const firstTableId = Number((db?.tables || [])[0]?.id || 0);
+    const url = firstTableId > 0
+      ? `${resolveRuntimeHost()}/customer-display?table=${encodeURIComponent(firstTableId)}`
+      : `${resolveRuntimeHost()}/customer-display`;
+    window.open(url, '_blank', 'noopener');
+  });
+  qs('go-customer-bell')?.addEventListener('click', () => {
+    const firstTableId = Number((db?.tables || [])[0]?.id || 1);
+    window.open(`${resolveRuntimeHost()}/scan/customer/${firstTableId}`, '_blank', 'noopener');
+    alert('เปิดหน้าลูกค้าแล้ว: ใช้ปุ่ม 🔔 เรียกพนักงานเพื่อทดสอบเสียงกระดิ่ง');
+  });
   qs('table-qr-select')?.addEventListener('change', (event) => {
     renderSelectedTableQR(event.target.value);
   });
