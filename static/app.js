@@ -41,7 +41,6 @@ const qrApiBase = 'https://api.qrserver.com/v1/create-qr-code/';
 let networkBaseUrl = document.body.dataset.localBaseUrl || '';
 const scannerMode = document.body.dataset.scannerMode === '1';
 const kioskMode = document.body.dataset.kioskMode === '1';
-const role = localStorage.getItem('user_role') || '';
 const tableParam = Number(new URLSearchParams(window.location.search).get('table') || 0);
 const scannerAllowedScreens = new Set(['customer', 'cashier']);
 const hostOnlyScreens = new Set(['backstore', 'system']);
@@ -176,7 +175,7 @@ async function checkSystemHealth() {
 
 function showScreen(id) {
   if (scannerMode && !scannerAllowedScreens.has(id)) return;
-  if ((role === 'staff' || scannerMode) && hostOnlyScreens.has(id)) return;
+  if (scannerMode && hostOnlyScreens.has(id)) return;
   document.querySelectorAll('.screen').forEach((s) => s.classList.add('hidden'));
   qs(id).classList.remove('hidden');
   document.querySelectorAll('[data-screen]').forEach((b) => b.classList.toggle('is-active', b.dataset.screen === id));
@@ -185,17 +184,6 @@ function showScreen(id) {
 
 function applyRoleUI() {
   const tabBar = document.querySelector('.tab-bar');
-  const tabButtons = [...document.querySelectorAll('[data-screen]')];
-
-  if (role === 'staff') {
-    tabButtons.forEach((button) => {
-      const allowed = new Set(['customer', 'cashier']);
-      const visible = allowed.has(button.dataset.screen);
-      button.classList.toggle('hidden', !visible);
-      button.setAttribute('aria-hidden', visible ? 'false' : 'true');
-    });
-    return;
-  }
 
   if (tableParam > 0) {
     window.location.replace(`/customer?table=${encodeURIComponent(tableParam)}`);
@@ -1706,7 +1694,6 @@ function blinkTableCard(tableId) {
   bind();
   await loadNetworkBaseUrl();
   await loadData();
-  if (scannerMode || role === 'staff') showScreen('customer');
-  if (role === 'staff' && tableParam > 0) selectTable(tableParam);
+  if (scannerMode) showScreen('customer');
   setInterval(poll, 3000);
 })();
