@@ -25,9 +25,9 @@ const THEME_PRESETS = [
 
 const statusMap = {
   available: { label: 'ว่าง', tone: 'available', icon: '○' },
-  pending_order: { label: 'กำลังสั่ง', tone: 'pending', icon: '🔔' },
-  accepted_order: { label: 'รับออร์เดอร์แล้ว', tone: 'accepted', icon: '✅' },
-  checkout_requested: { label: 'รอเช็คบิล', tone: 'checkout', icon: '🧾' },
+  pending_order: { label: 'กำลังรับออร์เดอร์', tone: 'pending', icon: '🔔' },
+  accepted_order: { label: 'มีลูกค้า', tone: 'accepted', icon: '✅' },
+  checkout_requested: { label: 'เรียกเช็คบิล', tone: 'checkout', icon: '🧾' },
 };
 
 const qs = (id) => document.getElementById(id);
@@ -262,21 +262,29 @@ function addItemToOrderCart(item, options = {}) {
     orderCart.push(candidate);
   }
   renderOrderCart();
+  playUISound();
 }
 
 function renderTables() {
   const grid = qs('table-grid');
   grid.innerHTML = '';
   db.tables.forEach((table) => {
-    const meta = statusMap[table.status] || statusMap.available;
+    const tableOrders = db.orders.filter((order) => order.target === 'table' && order.target_id === table.id);
+    const pendingRequests = tableOrders.filter((order) => order.source === 'customer' && order.status === 'request_pending');
+    const hasAcceptedBefore = tableOrders.some((order) => order.status === 'accepted' || order.status === 'completed');
+    const showAdditionalOrder = pendingRequests.length > 0 && hasAcceptedBefore;
+    const displayStatus = table.call_staff_status === 'requested' ? 'checkout_requested' : table.status;
+    const meta = statusMap[displayStatus] || statusMap.available;
     const { items, total } = getTableSummary(table.id);
     const card = document.createElement('button');
     card.type = 'button';
     card.className = `table-card ${meta.tone}`;
+    if (table.call_staff_status === 'requested') card.classList.add('status-checkout_requested');
     const stackedItems = summarizeItems(items);
     card.innerHTML = items.length
       ? `<div class="table-head-row"><strong>${unitLabel()} ${table.id}</strong><span class="status-chip ${meta.tone}">${meta.icon}</span></div>
          <small>${stackedItems.slice(-4).map((i) => `${i.image ? '<img src="' + i.image + '" alt="' + i.name + '" class="table-item-thumb" /> ' : ''}${i.name}${Number(i.qty || 1) > 1 ? ` x${Number(i.qty || 1)}` : ''} • ${money(i.price)}`).join('<br>')}</small>
+         ${showAdditionalOrder ? '<div class="dot-notify notify-additional">🆕 มีการสั่งเพิ่ม</div>' : ''}
          <div class="table-total">รวม ${money(total)} บาท</div>`
       : `<div class="table-head-row"><strong>${unitLabel()} ${table.id}</strong><span class="status-chip available">○</span></div>
          <small></small>`;

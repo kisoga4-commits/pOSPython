@@ -17,9 +17,9 @@ const userRole = localStorage.getItem('user_role') || '';
 
 const TABLE_STATUS_META = {
   available: { label: 'ว่าง', className: 'status-available' },
-  pending_order: { label: 'กำลังสั่ง', className: 'status-pending_order' },
+  pending_order: { label: 'กำลังรับออร์เดอร์', className: 'status-pending_order' },
   accepted_order: { label: 'มีลูกค้า', className: 'status-accepted_order' },
-  checkout_requested: { label: 'รอเช็คบิล', className: 'status-checkout_requested' },
+  checkout_requested: { label: 'เรียกเช็คบิล', className: 'status-checkout_requested' },
   closed: { label: 'ปิดบิล', className: 'status-closed' },
 };
 const VISUAL_MENU_LABELS = [
@@ -373,7 +373,8 @@ function updateTableStatus(tables = []) {
   if (!table) return;
   const unit = currentSettings.serviceMode === 'queue' ? 'คิว' : 'โต๊ะ';
 
-  const meta = getStatusMeta(table.status);
+  const statusForDisplay = table.call_staff_status === 'requested' ? 'checkout_requested' : table.status;
+  const meta = getStatusMeta(statusForDisplay);
   const note = document.getElementById('table-mode-note');
   const badge = document.getElementById('table-badge');
   badge.className = `badge ${meta.className}`;
@@ -381,6 +382,9 @@ function updateTableStatus(tables = []) {
   note.textContent = table.status === 'pending_order'
     ? 'ส่งออร์เดอร์แล้ว · รอพนักงานกดรับ'
     : (table.status === 'accepted_order' ? 'พนักงานรับออร์เดอร์แล้ว · กำลังเตรียมอาหาร' : `สถานะล่าสุด: ${meta.label}`);
+  if (table.call_staff_status === 'requested') {
+    note.textContent = 'ร้านรับรู้การเรียกพนักงานแล้ว · กรุณารอสักครู่';
+  }
   if (table.last_order_event === 'rejected') {
     note.textContent = 'พนักงานปฏิเสธคำขอล่าสุด กรุณาส่งใหม่อีกครั้ง';
   }
