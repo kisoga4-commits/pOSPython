@@ -2,7 +2,7 @@ import os
 import socket
 from functools import wraps
 
-from flask import request
+from flask import request, session
 
 LICENSE_DISABLED = os.environ.get("POS_DISABLE_LICENSE", "1") != "0"
 POS_ADMIN_HOST = (os.environ.get("POS_ADMIN_HOST") or "").strip().lower()
@@ -83,6 +83,8 @@ def require_admin_host(view):
     def wrapped(*args, **kwargs):
         if not is_admin_host_request():
             return {"error": "admin_host_only"}, 403
+        if not session.get("admin_authenticated"):
+            return {"error": "admin_login_required"}, 403
         return view(*args, **kwargs)
 
     return wrapped

@@ -27,6 +27,7 @@
       </div>
       {% if not scanner_mode %}
         <div class="header-icons">
+          <button id="admin-auth-btn" class="icon-btn" type="button" aria-label="Admin login">🔐</button>
           <button id="open-customer-display-from-header" class="icon-btn" type="button" aria-label="Open customer display">🖥️</button>
           <button id="open-staff-qr-modal" class="icon-btn" type="button" aria-label="Staff access QR">👤</button>
         </div>
@@ -380,6 +381,16 @@
         <select id="forgot-celebrity"></select>
         <input id="new-admin-pin" placeholder="รหัส Admin ใหม่" />
         <button id="reset-admin-pin" class="btn-primary" type="button">ยืนยันรีเซ็ตรหัส</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="admin-login-modal" class="modal hidden">
+    <div class="modal-card compact">
+      <div class="section-head"><h3>Admin Login</h3><button id="close-admin-login-modal" class="btn-soft btn-close-x">✖</button></div>
+      <div class="order-list">
+        <input id="admin-login-pin" type="password" placeholder="กรอกรหัส Admin" />
+        <button id="admin-login-submit" class="btn-primary" type="button">เข้าสู่ระบบ</button>
       </div>
     </div>
   </div>

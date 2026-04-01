@@ -5,10 +5,12 @@ import importlib.util
 import re
 import json
 import hashlib
+import os
 from datetime import datetime
+from datetime import timedelta
 from collections import defaultdict
 
-from flask import Flask, abort, jsonify, render_template, request
+from flask import Flask, abort, jsonify, render_template, request, session
 from flask import redirect, url_for
 
 from db import ensure_db_exists, load_db, reset_tables, save_db
@@ -29,6 +31,8 @@ log = logging.getLogger("werkzeug")
 log.setLevel(logging.ERROR)
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("POS_SECRET_KEY", "pos-dev-secret-key")
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=365)
 ASSET_VERSION = "20260401-offline-lan-sync-v2"
 
 
@@ -200,6 +204,53 @@ def api_license_status():
 @app.route("/api/activate", methods=["POST"])
 def api_activate():
     return jsonify({"status": "success", "message": "license_disabled"})
+
+
+@app.route("/api/admin/session", methods=["GET"])
+def api_admin_session():
+    return jsonify({"is_admin": bool(session.get("admin_authenticated"))})
+
+
+@app.route("/api/admin/login", methods=["POST"])
+def api_admin_login():
+    payload = read_json()
+    entered_pin = str(payload.get("pin", "")).strip()
+    db = load_db()
+    current_pin = str(db.get("settings", {}).get("adminPin", "admin")).strip()
+    if not entered_pin or entered_pin != current_pin:
+        return jsonify({"error": "invalid_admin_pin"}), 401
+    session["admin_authenticated"] = True
+    session.permanent = True
+    return jsonify({"status": "success", "is_admin": True})
+
+
+@app.route("/api/admin/logout", methods=["POST"])
+def api_admin_logout():
+    session.pop("admin_authenticated", None)
+    return jsonify({"status": "success", "is_admin": False})
+
+
+@app.route("/api/admin/reset-pin", methods=["POST"])
+def api_admin_reset_pin():
+    payload = read_json()
+    db = load_db()
+    settings = db.get("settings", {})
+    phone = str(payload.get("phone", "")).strip()
+    color = str(payload.get("color", "")).strip()
+    celebrity = str(payload.get("celebrity", "")).strip()
+    new_pin = str(payload.get("new_pin", "")).strip()
+    if not phone or not color or not celebrity or not new_pin:
+        return jsonify({"error": "invalid_recovery_payload"}), 400
+    if (
+        phone != str(settings.get("adminRecoveryPhone", "")).strip()
+        or color != str(settings.get("adminRecoveryColor", "")).strip()
+        or celebrity != str(settings.get("adminRecoveryCelebrity", "")).strip()
+    ):
+        return jsonify({"error": "recovery_mismatch"}), 403
+    settings["adminPin"] = new_pin
+    db["settings"] = settings
+    db = save_db(db)
+    return jsonify({"status": "success", "version": db["meta"]["version"]})
 
 
 
