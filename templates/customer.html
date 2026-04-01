@@ -65,8 +65,7 @@
         <button id="close-item-detail-modal" class="btn-soft" type="button">ปิด</button>
       </div>
       <div class="order-list">
-        <label>ตัวเลือกเพิ่มเติม<select id="item-addon-select"></select></label>
-        <label>หมายเหตุ<input id="item-note-input" type="text" maxlength="120" placeholder="เช่น ไม่ใส่ผักชี" /></label>
+        <div id="item-addon-checkboxes" class="addon-check-list"></div>
       </div>
       <div class="btn-row">
         <button id="item-detail-add-btn" class="btn-primary" type="button">เพิ่มลงตะกร้า</button>
@@ -75,6 +74,7 @@
   </div>
 
   <div id="cart-toast" class="cart-toast hidden" role="status" aria-live="polite">เพิ่มลงตะกร้าแล้ว</div>
+  <audio id="customer-confirm-sound" src="{{ url_for('static', filename='sounds/warning.mp3') }}"></audio>
 
   <script src="{{ url_for('static', filename='db.js') }}?v={{ asset_version }}"></script>
   <script src="{{ url_for('static', filename='sync.js') }}?v={{ asset_version }}"></script>

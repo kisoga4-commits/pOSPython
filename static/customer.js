@@ -48,7 +48,7 @@ function cartIdentity(item) {
 
 function addToCart(item, options = {}) {
   const addon = String(options.addon || '').trim();
-  const note = String(options.note || '').trim();
+  const note = '';
   const qty = Math.max(1, Number(options.qty || 1));
   const candidate = { ...item, addon, note, qty };
   const key = cartIdentity(candidate);
@@ -126,15 +126,14 @@ function renderMenu() {
 function openItemDetailModal(item, addonOptions) {
   activeItemDraft = item;
   document.getElementById('item-detail-title').textContent = item.name;
-  const addonSelect = document.getElementById('item-addon-select');
-  addonSelect.innerHTML = '<option value="">ไม่เพิ่ม</option>';
+  const addonWrap = document.getElementById('item-addon-checkboxes');
+  addonWrap.innerHTML = '';
   addonOptions.forEach((option) => {
-    const node = document.createElement('option');
-    node.value = option;
-    node.textContent = option;
-    addonSelect.appendChild(node);
+    const row = document.createElement('label');
+    row.className = 'addon-check-item';
+    row.innerHTML = `<input type="checkbox" value="${option}" /> <span>${option}</span>`;
+    addonWrap.appendChild(row);
   });
-  document.getElementById('item-note-input').value = '';
   document.getElementById('item-detail-modal').classList.remove('hidden');
 }
 
@@ -290,9 +289,9 @@ function bind() {
   });
   document.getElementById('item-detail-add-btn').addEventListener('click', () => {
     if (!activeItemDraft) return;
-    const addon = document.getElementById('item-addon-select').value;
-    const note = document.getElementById('item-note-input').value;
-    addToCart(activeItemDraft, { addon, note, qty: 1 });
+    const checked = [...document.querySelectorAll('#item-addon-checkboxes input[type="checkbox"]:checked')].map((node) => node.value.trim()).filter(Boolean);
+    const addon = checked.join(', ');
+    addToCart(activeItemDraft, { addon, qty: 1 });
     closeItemDetailModal();
   });
 
@@ -346,6 +345,12 @@ function bind() {
       body: JSON.stringify({ table_id: lockedTableId }),
     });
     document.getElementById('message').textContent = res.status === 'success' ? 'ส่งสัญญาณเรียกพนักงานแล้ว' : (res.error || 'ทำรายการไม่สำเร็จ');
+    const sound = document.getElementById('customer-confirm-sound');
+    if (sound) {
+      sound.currentTime = 0;
+      sound.volume = 0.4;
+      sound.play().catch(() => {});
+    }
     await loadLive();
   });
 }

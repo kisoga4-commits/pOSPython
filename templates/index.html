@@ -19,7 +19,7 @@
         </div>
       </div>
       <div class="header-icons">
-        <span class="status-badge status-online">ออนไลน์</span>
+        <span id="network-status-dot" class="network-dot online" title="Online"></span>
       </div>
     </header>
 
@@ -46,12 +46,11 @@
       <section id="customer" class="screen section-card">
         <div class="section-head">
           <h2>แผนผังโต๊ะ</h2>
-          <span class="pill">Staff/Desktop Layout</span>
-        </div>
-        <div class="zoom-bar" aria-label="zoom tables">
-          <span>➖</span>
-          <input id="table-zoom" type="range" min="85" max="140" value="100" />
-          <span>➕</span>
+          <div class="head-actions">
+            <button id="table-zoom-out" class="icon-btn" type="button" aria-label="Zoom out">−</button>
+            <button id="table-zoom-in" class="icon-btn" type="button" aria-label="Zoom in">+</button>
+            <span class="pill">Staff/Desktop Layout</span>
+          </div>
         </div>
         <div class="staff-main-pane full-width-pane">
           <div id="table-grid" class="table-grid clean-table-grid"></div>
@@ -154,7 +153,10 @@
         </div>
 
         <div id="system-qr" class="panel-block system-panel">
-          <h3>QR ระบบ</h3>
+          <div class="section-head">
+            <h3>QR ระบบ</h3>
+            <button id="open-staff-qr-modal" class="icon-btn" type="button" aria-label="Staff access QR">📱</button>
+          </div>
           <section class="qr-section">
             <h3>QR สำหรับพนักงาน (Staff Access QR)</h3>
             <p class="muted">สแกนเพื่อเข้าสู่ระบบหลังบ้าน (Staff PC/Tablet)</p>
@@ -305,7 +307,7 @@
         <input id="menu-price" type="number" min="1" placeholder="ราคา" />
         <input id="menu-image-file" type="file" accept="image/*" />
       </div>
-      <img id="menu-image-preview" class="menu-image-preview" alt="preview" />
+      <img id="menu-image-preview" class="menu-image-preview hidden" alt="preview" />
       <div class="section-head" style="margin-top:8px"><strong>Add-ons</strong><button id="add-addon-row" class="btn-soft" type="button">+ Row</button></div>
       <div id="addon-rows" class="order-list"></div>
       <button id="save-menu" class="btn-primary big-save" type="button">บันทึกเมนู</button>
