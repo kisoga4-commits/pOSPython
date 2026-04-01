@@ -456,6 +456,12 @@ async function openBill(targetId) {
   qs('payment-modal').classList.remove('hidden');
 }
 
+function openCustomerDisplayWindow(tableId) {
+  if (!tableId) return;
+  const popup = window.open(`/customer-display?table=${encodeURIComponent(tableId)}`, 'customer-bill-display');
+  if (popup) popup.focus();
+}
+
 function sanitizePromptPay(raw) {
   return String(raw || '').replace(/\D/g, '');
 }
@@ -840,6 +846,10 @@ function bind() {
     await api('/api/checkout', { method: 'POST', body: JSON.stringify({ target: 'table', target_id: activeCashierTableId, payment_method: 'qr' }) });
     qs('payment-modal').classList.add('hidden');
     await loadData();
+  });
+  qs('bill-open-customer-display')?.addEventListener('click', () => {
+    if (!activeCashierTableId) return;
+    openCustomerDisplayWindow(activeCashierTableId);
   });
 
   qs('update-table-count').addEventListener('click', async () => {

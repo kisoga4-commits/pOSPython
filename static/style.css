@@ -479,6 +479,16 @@ input,select{width:100%;padding:10px;border-radius:10px;border:1px solid var(--l
 .bill-foot{font-size:1.15rem;color:#4c1d95;text-align:right;margin-top:12px}
 .bill-payment-qr{display:grid;place-items:center;padding:8px 0 12px}
 .bill-action-row button{min-height:56px;font-size:1rem}
+.bill-display-tools{display:flex;justify-content:center;margin-bottom:6px}
+.customer-facing-body{margin:0;background:#0f172a;color:#e2e8f0;min-height:100vh}
+.customer-facing-wrap{max-width:960px;margin:0 auto;padding:18px;display:grid;gap:14px}
+.customer-facing-header{display:grid;gap:4px}
+.customer-facing-header h1{margin:0;font-size:2rem;color:#f8fafc}
+.customer-facing-items{display:grid;gap:10px}
+.customer-facing-items .bill-row-item{background:rgba(255,255,255,.06);color:#f8fafc}
+.customer-facing-foot{display:grid;grid-template-columns:1.2fr .8fr;gap:16px;align-items:center}
+.customer-facing-total{font-size:1.8rem;font-weight:700}
+.customer-facing-qr .qr-preview{max-width:280px;border:2px solid rgba(148,163,184,.4);background:#fff}
 
 .theme-preset-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin:10px 0 12px}
 .theme-preset{border:1px solid #dbeafe;border-radius:12px;padding:10px 12px;background:#fff;display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600}
