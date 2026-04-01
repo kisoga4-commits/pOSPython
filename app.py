@@ -418,10 +418,15 @@ def api_sync_pending_orders():
 
     accepted = []
     for order_payload in pending_orders:
+        if not isinstance(order_payload, dict):
+            continue
+        normalized_payload = {**order_payload}
+        normalized_payload["source"] = "customer"
         try:
-            result = _create_order(order_payload)
+            result = _create_order(normalized_payload)
             accepted.append({
-                "client_order_id": order_payload.get("client_order_id"),
+                "client_order_id": normalized_payload.get("client_order_id"),
+                "pending_id": normalized_payload.get("id"),
                 "server_order_id": result["order"]["id"],
             })
         except Exception:
