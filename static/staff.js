@@ -4,8 +4,6 @@ let lastCheckoutIds = new Set();
 let state = { tables: [], orders: [] };
 let serviceMode = 'table';
 const blinkTimers = new Map();
-const AUTH_KEY = 'staff_session_unlocked';
-let isUnlocked = localStorage.getItem(AUTH_KEY) === '1';
 
 const TABLE_STATUS_META = {
   available: { label: 'ว่าง', className: 'status-available' },
@@ -21,26 +19,6 @@ async function api(path, options = {}) {
     ...options,
   });
   return res.json();
-}
-
-function setStaffLocked(locked) {
-  document.querySelector('.mobile-content')?.classList.toggle('hidden', locked);
-  document.querySelector('.staff-bottom-nav')?.classList.toggle('hidden', locked);
-}
-
-async function unlockStaff() {
-  const config = await api('/api/data');
-  const adminPin = config?.settings?.adminPin || 'admin';
-  const pin = window.prompt('กรอกรหัสพนักงาน');
-  if (pin === null) return;
-  if (pin.trim() === String(adminPin)) {
-    isUnlocked = true;
-    localStorage.setItem(AUTH_KEY, '1');
-    setStaffLocked(false);
-    await loadLive();
-    return;
-  }
-  alert('รหัสไม่ถูกต้อง');
 }
 
 function getStatusMeta(status) {
@@ -173,14 +151,7 @@ function bindTabs() {
   });
 }
 
-function applyInitialMode() {
-  const initialMode = document.body.dataset.initialMode || 'customer';
-  const targetBtn = document.querySelector(`[data-staff-tab="${initialMode}"]`);
-  if (targetBtn) targetBtn.click();
-}
-
 async function loadLive() {
-  if (!isUnlocked) return;
   const data = await api(`/api/staff/live?since=${version}`);
   if (!data.changed) return;
 
@@ -221,14 +192,6 @@ function blinkTableCard(tableId) {
 
 (function init() {
   bindTabs();
-  applyInitialMode();
-  document.getElementById('staff-login-btn')?.addEventListener('click', unlockStaff);
-  document.getElementById('staff-logout-btn')?.addEventListener('click', () => {
-    isUnlocked = false;
-    localStorage.removeItem(AUTH_KEY);
-    setStaffLocked(true);
-  });
-  setStaffLocked(!isUnlocked);
-  if (isUnlocked) loadLive();
+  loadLive();
   setInterval(loadLive, 2000);
 })();

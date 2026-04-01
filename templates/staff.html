@@ -6,7 +6,7 @@
   <title>FAKDU Staff Panel</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version }}" />
 </head>
-<body data-initial-mode="{{ initial_mode or 'customer' }}">
+<body>
   <main class="mobile-shell staff-shell">
     <header class="mobile-header">
       <div class="brand-zone">
@@ -15,10 +15,6 @@
           <small class="on-dark">FAKDU Staff</small>
           <h1 class="mobile-title">พนักงาน</h1>
         </div>
-      </div>
-      <div class="staff-auth-actions">
-        <button id="staff-login-btn" class="btn-soft" type="button">Login</button>
-        <button id="staff-logout-btn" class="btn-soft" type="button">Logout</button>
       </div>
     </header>
 
