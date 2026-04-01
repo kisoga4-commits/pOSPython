@@ -688,10 +688,12 @@ async function openBill(targetId) {
   bill.items.forEach((item) => {
     const row = document.createElement('div');
     row.className = 'bill-row-item';
-    row.innerHTML = `<strong>${item.name}</strong><span>฿${money(item.price)}</span>`;
+    const qty = Math.max(1, Number(item.qty || 1));
+    row.innerHTML = `<strong>${item.name}${qty > 1 ? ` x${qty}` : ''}</strong><span>฿${money(item.price * qty)}</span>`;
     qs('bill-items').appendChild(row);
   });
   qs('bill-total').textContent = money(bill.total);
+  qs('bill-total')?.classList.add('bill-total-strong');
   const paymentImage = db.settings?.qrImage || buildPromptPayQrImage(db.settings?.promptPay || '', Number(bill.total || 0), Boolean(db.settings?.dynamicPromptPay));
   qs('bill-payment-qr-image').src = paymentImage;
   qs('bill-payment-qr-wrap').classList.remove('hidden');
@@ -1416,6 +1418,21 @@ function bind() {
     menuImagePreviewData = compressed.image || menuImagePreviewData;
     qs('menu-image-preview').src = menuImagePreviewData;
     qs('menu-image-preview').classList.remove('hidden');
+  });
+
+  qs('qr-image')?.addEventListener('change', async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const qrImage = await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.readAsDataURL(file);
+    });
+    db.settings = db.settings || {};
+    db.settings.qrImage = qrImage;
+    const qrPreview = qs('bill-payment-qr-image');
+    if (qrPreview && qrImage) qrPreview.src = qrImage;
+    await api('/api/settings', { method: 'POST', body: JSON.stringify({ settings: { qrImage } }) });
   });
 
   qs('save-menu').addEventListener('click', async () => {

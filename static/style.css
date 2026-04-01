@@ -284,6 +284,8 @@ input,select{width:100%;padding:10px;border-radius:10px;border:1px solid var(--l
 .floating-cart-btn > div{display:grid;text-align:left}
 .btn-call-staff{margin-top:12px;width:100%;min-height:56px;border:none;border-radius:14px;background:linear-gradient(100deg,#0ea5e9,#2563eb);color:#fff;font-size:1.08rem;font-weight:700;cursor:pointer;box-shadow:0 10px 22px rgba(37,99,235,.28)}
 .btn-call-staff:disabled{opacity:.6;cursor:not-allowed}
+.btn-call-staff-mini{position:fixed;right:14px;bottom:92px;width:52px;height:52px;border:none;border-radius:999px;background:linear-gradient(120deg,#0ea5e9,#1d4ed8);color:#fff;font-size:1.3rem;box-shadow:0 14px 24px rgba(29,78,216,.35);z-index:41;cursor:pointer}
+.btn-call-staff-mini:disabled{opacity:.62;cursor:not-allowed}
 .compact-header{padding:10px}
 .compact-panel{padding:10px}
 
@@ -647,11 +649,13 @@ input,select{
 .table-order-summary{margin-top:8px;display:grid;gap:4px}
 .addon-flag{display:inline-flex;background:#fde68a;color:#92400e;border-radius:999px;padding:2px 6px;font-size:.72rem;font-weight:700;margin-left:6px}
 .dot-notify.notify-additional{background:#dcfce7;color:#166534;border:1px solid #86efac}
+.dot-notify.notify-additional strong{color:#065f46}
 
 .bill-modal-card{max-width:620px}
 .bill-items-clean{max-height:220px;overflow:auto;padding:8px;border-radius:14px;background:#f8fafc;border:1px solid #e5e7eb}
 .bill-row-item{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-radius:12px;background:#fff;box-shadow:0 8px 20px rgba(15,23,42,.06)}
 .bill-foot{font-size:1.15rem;color:#4c1d95;text-align:right;margin-top:12px}
+.bill-total-strong{font-size:1.45rem;color:#b91c1c;background:#fff1f2;border:1px solid #fecdd3;padding:8px 12px;border-radius:12px;display:inline-block}
 .bill-payment-qr{display:grid;place-items:center;padding:8px 0 12px}
 .bill-action-row button{min-height:56px;font-size:1rem}
 .bill-display-tools{display:flex;justify-content:center;margin-bottom:6px}
