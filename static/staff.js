@@ -8,6 +8,10 @@ const USER_ROLE_KEY = 'user_role';
 let authState = null;
 let liveEventSource = null;
 
+if (document.body?.dataset.autoStaff === '1') {
+  localStorage.setItem(USER_ROLE_KEY, 'staff');
+}
+
 const TABLE_STATUS_META = {
   available: { label: 'ว่าง', className: 'status-available' },
   pending_order: { label: 'กำลังรับออร์เดอร์', className: 'status-pending_order' },
