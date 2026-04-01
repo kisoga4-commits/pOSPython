@@ -45,19 +45,19 @@
       <nav class="section-card tab-bar desktop-only icon-nav" aria-label="main navigation">
         <button class="main-tab is-active icon-text-btn" data-screen="customer" aria-label="ลูกค้า">
           <i class="fa-solid fa-utensils"></i>
-          <span class="nav-btn-label">ลูกค้า</span>
+          
         </button>
         <button class="main-tab icon-text-btn" data-screen="cashier" aria-label="เช็คบิล">
           <i class="fa-solid fa-cash-register"></i>
-          <span class="nav-btn-label">แคชเชียร์</span>
+          
         </button>
         <button class="main-tab icon-text-btn" data-screen="backstore" aria-label="หลังร้าน">
           <i class="fa-solid fa-boxes-stacked"></i>
-          <span class="nav-btn-label">หลังร้าน</span>
+          
         </button>
         <button class="main-tab icon-text-btn" data-screen="system" aria-label="ระบบ">
           <i class="fa-solid fa-screwdriver-wrench"></i>
-          <span class="nav-btn-label">ระบบ</span>
+          
         </button>
       </nav>
 
@@ -319,8 +319,8 @@
       <button id="mobile-open-order-modal" class="btn-primary" type="button">จัดการออเดอร์</button>
     </header>
     <nav class="mobile-bottom-nav mobile-only" aria-label="Mobile navigation">
-      <button class="mobile-tab icon-text-btn is-active" data-screen="customer" type="button" aria-label="ลูกค้า"><i class="fa-solid fa-utensils"></i><span>ลูกค้า</span></button>
-      <button class="mobile-tab icon-text-btn" data-screen="cashier" type="button" aria-label="แคชเชียร์"><i class="fa-solid fa-cash-register"></i><span>แคชเชียร์</span></button>
+      <button class="mobile-tab icon-text-btn is-active" data-screen="customer" type="button" aria-label="ลูกค้า"><i class="fa-solid fa-utensils"></i></button>
+      <button class="mobile-tab icon-text-btn" data-screen="cashier" type="button" aria-label="แคชเชียร์"><i class="fa-solid fa-cash-register"></i></button>
     </nav>
   </div>
   <div id="receipt-preview-modal" class="modal hidden">
@@ -371,7 +371,7 @@
         <section class="order-panel">
           <h4>Menu Selection</h4>
           <div id="order-menu-category-tabs" class="menu-category-tabs"></div>
-          <div id="order-menu-grid" class="menu-choice-grid"></div>
+          <div id="order-menu-grid" class="menu-choice-grid menu-selection-tabs" role="tablist" aria-label="Menu Selection"></div>
         </section>
         <section class="order-panel">
           <h4>ตะกร้าปัจจุบัน</h4>

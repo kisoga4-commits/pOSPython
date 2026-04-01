@@ -5,11 +5,13 @@ let orderCart = [];
 let activeCashierTableId = null;
 let menuImagePreviewData = '';
 let uiSoundEnabled = localStorage.getItem('uiSoundEnabled') !== '0';
-let tableZoom = 100;
+const TABLE_ZOOM_KEY = 'table_zoom_percent';
+let tableZoom = Math.min(130, Math.max(80, Number(localStorage.getItem(TABLE_ZOOM_KEY) || 100)));
 let editingMenuId = null;
 let lastPendingTableIds = new Set();
 let lastCheckoutRequestIds = new Set();
 let activeOrderItemDraft = null;
+let activeOrderMenuItemId = null;
 let acceptRequestInFlight = false;
 const requestActionInFlight = new Set();
 let salesPeriod = 'day';
@@ -432,10 +434,15 @@ function renderOrderMenuChoices() {
   grid.innerHTML = '';
   const filteredMenu = (db.menu || []).filter((item) => activeMenuCategory === 'ทั้งหมด' || (item.category || 'ทั่วไป') === activeMenuCategory);
   filteredMenu.forEach((item) => {
-    const btn = document.createElement('article');
-    btn.className = 'menu-choice visual large-thumb';
-    btn.innerHTML = `<div class="menu-choice-thumb">${item.image ? `<img src="${item.image}" alt="${item.name}" />` : 'Image'}</div><strong>${item.name}</strong><small>฿${money(item.price)}</small>`;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `menu-selection-tab ${activeOrderMenuItemId === item.id ? 'is-active' : ''}`;
+    btn.setAttribute('role', 'tab');
+    btn.setAttribute('aria-selected', activeOrderMenuItemId === item.id ? 'true' : 'false');
+    btn.innerHTML = `${item.image ? `<img src="${item.image}" alt="${item.name}" class="menu-selection-tab-thumb" />` : '<span class="menu-selection-tab-icon">🍽️</span>'}<span class="menu-selection-tab-label">${item.name}</span><small>฿${money(item.price)}</small>`;
     btn.addEventListener('click', () => {
+      activeOrderMenuItemId = item.id;
+      renderOrderMenuChoices();
       const addonOptions = normalizeAddonOptions(item);
       if (!addonOptions.length) {
         addItemToOrderCart(item, { addons: [], qty: 1, note: '' });
@@ -759,6 +766,7 @@ function renderDeskSummary() {
 
 function selectTable(tableId) {
   selectedTableId = tableId;
+  activeOrderMenuItemId = null;
   orderCart = [];
   const table = db.tables.find((t) => t.id === tableId);
   const meta = statusMap[table?.status] || statusMap.available;
@@ -1719,9 +1727,13 @@ function bind() {
       qs('ui-sound-label').textContent = uiSoundEnabled ? '🔊' : '🔇';
     });
   }
-  const applyTableZoom = () => document.documentElement.style.setProperty('--table-scale', tableZoom / 100);
-  qs('table-zoom-in')?.addEventListener('click', () => { tableZoom = Math.min(140, tableZoom + 10); applyTableZoom(); });
-  qs('table-zoom-out')?.addEventListener('click', () => { tableZoom = Math.max(85, tableZoom - 10); applyTableZoom(); });
+  const applyTableZoom = () => {
+    document.documentElement.style.setProperty('--table-scale', tableZoom / 100);
+    localStorage.setItem(TABLE_ZOOM_KEY, String(tableZoom));
+  };
+  applyTableZoom();
+  qs('table-zoom-in')?.addEventListener('click', () => { tableZoom = Math.min(130, tableZoom + 5); applyTableZoom(); });
+  qs('table-zoom-out')?.addEventListener('click', () => { tableZoom = Math.max(80, tableZoom - 5); applyTableZoom(); });
   qs('open-staff-qr-modal')?.addEventListener('click', () => {
     const url = `${resolveRuntimeHost()}/scan/staff`;
     openQRModal('Staff-Access', url, buildQrImageUrl(url));
