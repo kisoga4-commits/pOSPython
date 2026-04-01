@@ -187,11 +187,9 @@ def customer_display_page():
 
 @app.route("/scan/staff")
 def staff_scan_page():
-    return render_template(
-        "staff.html",
-        asset_version=ASSET_VERSION,
-        auto_staff=True,
-    )
+    # ใช้หน้า scanner ของเครื่องแม่โดยตรง เพื่อให้ workflow พนักงาน
+    # (โหมดลูกค้า/แคชเชียร์) ทำงานเหมือนเครื่องแม่ทุกจุด
+    return redirect(url_for("index", mode="scanner"))
 
 
 @app.route("/authorize-staff")
