@@ -9,8 +9,8 @@
 <body class="customer-facing-body" data-table-id="{{ table_id }}">
   <main class="customer-facing-wrap">
     <header class="customer-facing-header">
-      <h1>เช็คบิล โต๊ะ <span id="customer-facing-table">{{ table_id }}</span></h1>
-      <small>หน้าจอลูกค้า (Customer View)</small>
+      <h1>เช็คบิล โต๊ะ <span id="customer-facing-table">{{ table_id or '-' }}</span></h1>
+      <small id="customer-facing-mode-note">หน้าจอลูกค้า (Customer View)</small>
     </header>
 
     <section id="customer-facing-items" class="customer-facing-items"></section>

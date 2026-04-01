@@ -11,6 +11,7 @@ let lastPendingTableIds = new Set();
 let lastCheckoutRequestIds = new Set();
 let activeOrderItemDraft = null;
 let salesPeriod = 'day';
+const CUSTOMER_DISPLAY_ACTIVE_TABLE_KEY = 'customer_display_active_table';
 const RECOVERY_COLORS = ['แดง', 'ส้ม', 'เหลือง', 'เขียว', 'ฟ้า', 'น้ำเงิน', 'ม่วง'];
 const CELEBRITIES = ['ณเดชน์ คูกิมิยะ', 'ญาญ่า อุรัสยา', 'ใหม่ ดาวิกา', 'มาริโอ้ เมาเร่อ', 'เบลล่า ราณี', 'ชมพู่ อารยา', 'อั้ม พัชราภา', 'แพนเค้ก เขมนิจ', 'เวียร์ ศุกลวัฒน์', 'โป๊ป ธนวรรธน์', 'เจมส์ จิรายุ', 'คิมเบอร์ลี่', 'บอย ปกรณ์', 'เต้ย จรินทร์พร', 'ใบเฟิร์น พิมพ์ชนก', 'โตโน่ ภาคิน', 'แพทริเซีย กู๊ด', 'แอฟ ทักษอร', 'นนกุล ชานน', 'กลัฟ คณาวุฒิ'];
 const THEME_PRESETS = [
@@ -348,6 +349,14 @@ function formatClock(value) {
   return date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
 }
 
+function formatElapsedMinutes(value) {
+  if (!value) return '-';
+  const stamp = new Date(value).getTime();
+  if (!Number.isFinite(stamp) || stamp <= 0) return '-';
+  const minutes = Math.max(1, Math.floor((Date.now() - stamp) / 60000));
+  return `${minutes} นาที`;
+}
+
 function renderExistingOrders(tableId) {
   const list = qs('order-existing-list');
   list.innerHTML = '';
@@ -466,8 +475,11 @@ async function openBill(targetId) {
 }
 
 function openCustomerDisplayWindow(tableId) {
-  if (!tableId) return;
-  const popup = window.open(`/customer-display?table=${encodeURIComponent(tableId)}`, 'customer-bill-display');
+  const nextTableId = Number(tableId || 0);
+  if (nextTableId > 0) {
+    localStorage.setItem(CUSTOMER_DISPLAY_ACTIVE_TABLE_KEY, String(nextTableId));
+  }
+  const popup = window.open(nextTableId > 0 ? `/customer-display?table=${encodeURIComponent(nextTableId)}` : '/customer-display', 'customer-bill-display');
   if (popup) popup.focus();
 }
 
@@ -532,14 +544,13 @@ function renderCashier() {
       .map((order) => new Date(order.created_at || order.updated_at || 0).getTime())
       .filter((stamp) => Number.isFinite(stamp) && stamp > 0)
       .sort((a, b) => b - a);
-    const hasExtraOrder = tableOrders.length > 1;
+    const openedAt = orderTimes.length ? orderTimes[orderTimes.length - 1] : 0;
     const row = document.createElement('button');
     row.className = `list-card checkout-card ${meta.tone}`;
     row.innerHTML = `<strong class="checkout-title">${meta.icon} ${unitLabel()} ${table.id}</strong>
       <small>${table.status === 'available' ? '' : meta.label}</small>
       <div class="checkout-meta-row">
-        <span class="pill">🕒 ${formatClock(orderTimes[0])}</span>
-        ${hasExtraOrder ? '<span class="pill">➕ สั่งเพิ่ม</span>' : ''}
+        <span class="pill">⏱️ ใช้โต๊ะ ${formatElapsedMinutes(openedAt)}</span>
       </div>
       <div class="checkout-items">${groupedItems.length ? groupedItems.slice(-5).map((i) => {
     const qty = Math.max(1, Number(i.qty || 1));
@@ -547,7 +558,11 @@ function renderCashier() {
     return `<div class="checkout-item-row">${thumb}<span>${i.name}${qty > 1 ? ` x${qty}` : ''}</span></div>`;
   }).join('') : ''}</div>
       <strong>รวม ${money(total)} บาท</strong>`;
-    row.addEventListener('click', () => openBill(table.id));
+    row.addEventListener('click', () => {
+      localStorage.setItem(CUSTOMER_DISPLAY_ACTIVE_TABLE_KEY, String(table.id));
+      openCustomerDisplayWindow(table.id);
+      openBill(table.id);
+    });
     wrap.appendChild(row);
   });
 }
@@ -651,10 +666,12 @@ function renderSales() {
   body.innerHTML = '';
   inCurrent.slice().sort((a, b) => salesDate(b) - salesDate(a)).forEach((sale) => {
     const isCash = sale.payment_method === 'cash';
+    const groupedItems = summarizeItems(sale.items || []).slice(0, 6);
     const card = document.createElement('article');
     card.className = 'list-card sales-row-card';
     card.innerHTML = `<div class="sales-row-head"><strong>${unitLabel()} ${sale.target_id}</strong><strong>฿${money(sale.total)}</strong></div>
       <small>🕒 ${new Date(sale.paid_at || Date.now()).toLocaleString('th-TH')}</small>
+      <div class="sales-order-items">${groupedItems.length ? groupedItems.map((item) => `<span class="sales-order-chip">${item.name}${Number(item.qty || 1) > 1 ? ` x${Number(item.qty || 1)}` : ''}</span>`).join('') : '<span class="sales-order-chip">ไม่มีรายการ</span>'}</div>
       <div class="sales-row-foot"><span class="sales-pay-icon">${isCash ? '💵' : '📱'}</span><small>${isCash ? 'เงินสด' : 'โอน'}</small></div>`;
     body.appendChild(card);
   });
@@ -704,17 +721,6 @@ function renderSystem() {
   renderThemePresets(s.themePreset || '');
   updateReceiptPreview();
   renderTableQRList();
-  const displaySelect = qs('customer-display-table-select');
-  if (displaySelect) {
-    const count = Number(db.tableCount || 0);
-    displaySelect.innerHTML = '';
-    for (let i = 1; i <= count; i += 1) {
-      const option = document.createElement('option');
-      option.value = i;
-      option.textContent = `${unitLabel()} ${i}`;
-      displaySelect.appendChild(option);
-    }
-  }
 }
 
 function renderPrinterDriverOptions(selectedDriver) {
@@ -910,7 +916,19 @@ function bind() {
       salesPeriod = btn.dataset.salesPeriod || 'day';
       document.querySelectorAll('[data-sales-period]').forEach((node) => node.classList.toggle('is-active', node === btn));
       renderSales();
+      const modal = qs('sales-period-modal');
+      const modalTitle = qs('sales-period-modal-title');
+      const modalContent = qs('sales-period-modal-content');
+      if (modal && modalTitle && modalContent) {
+        modalTitle.textContent = `ยอดขาย${btn.textContent.trim()}`;
+        modalContent.innerHTML = `${qs('sales-comparison')?.innerHTML || ''}${qs('sales-overview')?.outerHTML || ''}${qs('sales-chart')?.outerHTML || ''}`;
+        modal.classList.remove('hidden');
+      }
     });
+  });
+  qs('close-sales-period-modal')?.addEventListener('click', () => qs('sales-period-modal')?.classList.add('hidden'));
+  qs('sales-period-modal')?.addEventListener('click', (event) => {
+    if (event.target.id === 'sales-period-modal') qs('sales-period-modal').classList.add('hidden');
   });
   qs('paper-size')?.addEventListener('change', updateReceiptPreview);
   qs('store-name')?.addEventListener('input', updateReceiptPreview);
@@ -932,12 +950,6 @@ function bind() {
   });
   qs('open-customer-display-from-header')?.addEventListener('click', () => {
     const tableId = activeCashierTableId || selectedTableId;
-    if (!tableId) return;
-    openCustomerDisplayWindow(tableId);
-  });
-  qs('open-customer-display-mode')?.addEventListener('click', () => {
-    const tableId = Number(qs('customer-display-table-select')?.value || 0);
-    if (!tableId) return;
     openCustomerDisplayWindow(tableId);
   });
 

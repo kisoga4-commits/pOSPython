@@ -127,11 +127,12 @@ def staff_page():
 @app.route("/customer-display")
 def customer_display_page():
     table_id = request.args.get("table", type=int)
-    if table_id is None or table_id < 1:
-        abort(400, description="missing_or_invalid_table")
-    db = load_db()
-    if not any(table.get("id") == table_id for table in db.get("tables", [])):
-        abort(404, description="table_not_found")
+    if table_id is not None:
+        if table_id < 1:
+            abort(400, description="missing_or_invalid_table")
+        db = load_db()
+        if not any(table.get("id") == table_id for table in db.get("tables", [])):
+            abort(404, description="table_not_found")
     return render_template(
         "customer_display.html",
         table_id=table_id,

@@ -63,24 +63,48 @@ function buildPromptPayQrImage(promptPayId, amount, dynamic) {
   return buildQrImageUrl(payload);
 }
 
+function summarizeItems(items = []) {
+  const itemMap = new Map();
+  items.forEach((item) => {
+    const key = `${item.name}|${item.addon || ''}|${item.note || ''}|${Number(item.price || 0)}`;
+    if (!itemMap.has(key)) itemMap.set(key, { ...item, qty: 0 });
+    const entry = itemMap.get(key);
+    entry.qty += Math.max(1, Number(item.qty || 1));
+  });
+  return Array.from(itemMap.values());
+}
+
+const ACTIVE_TABLE_KEY = 'customer_display_active_table';
 let settings = {};
-let tableId = Number(document.body.dataset.tableId || 0);
+let tableId = Number(document.body.dataset.tableId || localStorage.getItem(ACTIVE_TABLE_KEY) || 0);
 
 async function loadSettings() {
   const data = await api('/api/data');
   settings = data.settings || {};
 }
 
+function updateTableHeader() {
+  qs('customer-facing-table').textContent = tableId > 0 ? tableId : '-';
+  const note = qs('customer-facing-mode-note');
+  if (!note) return;
+  note.textContent = tableId > 0
+    ? 'หน้าจอลูกค้า (Customer View) · อัปเดตอัตโนมัติ'
+    : 'หน้าจอลูกค้า (Customer View) · รอเลือกโต๊ะจากเครื่องหลัก';
+}
+
 function renderBill(bill) {
   const list = qs('customer-facing-items');
   list.innerHTML = '';
-  if (!bill.items?.length) {
+  const groupedItems = summarizeItems(bill.items || []);
+  if (!groupedItems.length) {
     list.innerHTML = '<div class="empty">ยังไม่มีรายการค้างชำระ</div>';
   } else {
-    bill.items.forEach((item) => {
+    groupedItems.forEach((item) => {
       const row = document.createElement('div');
       row.className = 'list-card bill-row-item';
-      row.innerHTML = `<strong>${item.name} x${item.qty}</strong><span>฿${money(item.price * item.qty)}</span>`;
+      const qty = Math.max(1, Number(item.qty || 1));
+      const thumb = item.image ? `<img src="${item.image}" alt="${item.name}" class="checkout-item-thumb" />` : '<span class="checkout-item-thumb fallback">🍽️</span>';
+      row.innerHTML = `<div style="display:flex;align-items:center;gap:8px"><span>${thumb}</span><strong>${item.name}${qty > 1 ? ` x${qty}` : ''}</strong></div><span>฿${money(item.price * qty)}</span>`;
       list.appendChild(row);
     });
   }
@@ -90,14 +114,32 @@ function renderBill(bill) {
 }
 
 async function refreshBill() {
-  if (!tableId) return;
+  if (!tableId) {
+    updateTableHeader();
+    renderBill({ items: [], total: 0 });
+    return;
+  }
   const bill = await api(`/api/bill/table/${tableId}`);
   if (bill.error) return;
+  updateTableHeader();
   renderBill(bill);
+}
+
+function bindAutoTableSync() {
+  window.addEventListener('storage', (event) => {
+    if (event.key !== ACTIVE_TABLE_KEY) return;
+    const next = Number(event.newValue || 0);
+    if (next > 0) {
+      tableId = next;
+      refreshBill();
+    }
+  });
 }
 
 async function init() {
   await loadSettings();
+  bindAutoTableSync();
+  updateTableHeader();
   await refreshBill();
   setInterval(refreshBill, 2000);
 }
