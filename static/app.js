@@ -15,6 +15,7 @@ const requestActionInFlight = new Set();
 let salesPeriod = 'day';
 let salesFilterRange = null;
 let activeMenuCategory = 'ทั้งหมด';
+let activeBackstoreMenuCategory = 'ทั้งหมด';
 const CUSTOMER_DISPLAY_ACTIVE_TABLE_KEY = 'customer_display_active_table';
 const RECOVERY_COLORS = ['แดง', 'ส้ม', 'เหลือง', 'เขียว', 'ฟ้า', 'น้ำเงิน', 'ม่วง'];
 const CELEBRITIES = ['ณเดชน์ คูกิมิยะ', 'ญาญ่า อุรัสยา', 'ใหม่ ดาวิกา', 'มาริโอ้ เมาเร่อ', 'เบลล่า ราณี', 'ชมพู่ อารยา', 'อั้ม พัชราภา', 'แพนเค้ก เขมนิจ', 'เวียร์ ศุกลวัฒน์', 'โป๊ป ธนวรรธน์', 'เจมส์ จิรายุ', 'คิมเบอร์ลี่', 'บอย ปกรณ์', 'เต้ย จรินทร์พร', 'ใบเฟิร์น พิมพ์ชนก', 'โตโน่ ภาคิน', 'แพทริเซีย กู๊ด', 'แอฟ ทักษอร', 'นนกุล ชานน', 'กลัฟ คณาวุฒิ'];
@@ -403,6 +404,7 @@ function renderMenuCategoryAdmin() {
 }
 
 function countItemsByCategory(category) {
+  if (category === 'ทั้งหมด') return (db?.menu || []).length;
   return (db?.menu || []).filter((item) => normalizeCategoryName(item.category) === category).length;
 }
 
@@ -791,15 +793,38 @@ function renderCashier() {
 function renderMenu() {
   const list = qs('menu-list');
   list.innerHTML = '';
-  (db.menu || []).forEach((item, idx) => {
+  renderBackstoreMenuCategoryTabs();
+  const filteredMenu = (db.menu || []).filter((item) => activeBackstoreMenuCategory === 'ทั้งหมด' || normalizeCategoryName(item.category) === activeBackstoreMenuCategory);
+  filteredMenu.forEach((item) => {
+    const idx = (db.menu || []).findIndex((entry) => entry.id === item.id);
     const row = document.createElement('div');
     row.className = 'list-card menu-admin-row';
-    row.innerHTML = `<div class="menu-admin-meta"><div class="menu-thumb">${item.image ? `<img src="${item.image}" alt="${item.name}" />` : 'IMG'}</div><div><strong>${item.name}</strong><small>${money(item.price)} บาท</small></div></div><div class="btn-row"><button data-a="e" class="btn-soft">แก้ไข</button><button data-a="d" class="btn-soft">ลบ</button></div>`;
+    row.innerHTML = `<div class="menu-admin-meta"><div class="menu-thumb menu-admin-thumb">${item.image ? `<img src="${item.image}" alt="${item.name}" />` : 'IMG'}</div><div class="menu-admin-copy"><strong>${item.name}</strong><small>${normalizeCategoryName(item.category)} • ${money(item.price)} บาท</small></div></div><div class="btn-row"><button data-a="e" class="btn-soft">แก้ไข</button><button data-a="d" class="btn-soft">ลบ</button></div>`;
     row.querySelector('[data-a="e"]').addEventListener('click', () => openEditMenuModal(item));
     row.querySelector('[data-a="d"]').addEventListener('click', async () => { db.menu.splice(idx, 1); await api('/api/settings', { method: 'POST', body: JSON.stringify({ menu: db.menu }) }); await loadData(); });
     list.appendChild(row);
   });
+  if (!filteredMenu.length) list.innerHTML = '<div class="empty">ไม่มีเมนูในหมวดที่เลือก</div>';
   renderMenuCategoryAdmin();
+}
+
+function renderBackstoreMenuCategoryTabs() {
+  const tabWrap = qs('menu-category-filter-tabs');
+  if (!tabWrap) return;
+  const categories = getMenuCategories();
+  if (!categories.includes(activeBackstoreMenuCategory)) activeBackstoreMenuCategory = 'ทั้งหมด';
+  tabWrap.innerHTML = '';
+  categories.forEach((category) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `subtab ${activeBackstoreMenuCategory === category ? 'is-active' : ''}`;
+    btn.textContent = `${category} (${countItemsByCategory(category)})`;
+    btn.addEventListener('click', () => {
+      activeBackstoreMenuCategory = category;
+      renderMenu();
+    });
+    tabWrap.appendChild(btn);
+  });
 }
 
 function resetMenuModal() {
@@ -861,28 +886,135 @@ function periodRange(period, now = new Date()) {
   return { start, end, previousStart, previousEnd, label: 'เดือนนี้' };
 }
 
+function toStartOfHour(value) {
+  const date = new Date(value);
+  date.setMinutes(0, 0, 0);
+  return date;
+}
+
+function formatBucketLabel(date, granularity) {
+  if (granularity === 'hour') return date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false });
+  if (granularity === 'month') return date.toLocaleDateString('th-TH', { month: 'short', year: '2-digit' });
+  return date.toLocaleDateString('th-TH', { day: '2-digit', month: 'short' });
+}
+
+function chooseChartGranularity(range) {
+  const days = Math.max(1, Math.ceil((range.end.getTime() - range.start.getTime() + 1) / (24 * 60 * 60 * 1000)));
+  if (days <= 2) return 'hour';
+  if (days <= 45) return 'day';
+  return 'month';
+}
+
+function buildSalesBuckets(range, sales, granularity) {
+  const bucketMap = new Map();
+  const cursor = new Date(range.start);
+  if (granularity === 'hour') {
+    cursor.setMinutes(0, 0, 0);
+    while (cursor <= range.end) {
+      const key = cursor.toISOString();
+      bucketMap.set(key, { key, label: formatBucketLabel(cursor, 'hour'), value: 0 });
+      cursor.setHours(cursor.getHours() + 1);
+    }
+  } else if (granularity === 'month') {
+    cursor.setDate(1);
+    cursor.setHours(0, 0, 0, 0);
+    while (cursor <= range.end) {
+      const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`;
+      bucketMap.set(key, { key, label: formatBucketLabel(cursor, 'month'), value: 0 });
+      cursor.setMonth(cursor.getMonth() + 1, 1);
+    }
+  } else {
+    cursor.setHours(0, 0, 0, 0);
+    while (cursor <= range.end) {
+      const key = cursor.toISOString().slice(0, 10);
+      bucketMap.set(key, { key, label: formatBucketLabel(cursor, 'day'), value: 0 });
+      cursor.setDate(cursor.getDate() + 1);
+    }
+  }
+  sales.forEach((sale) => {
+    const saleTime = salesDate(sale);
+    let key = '';
+    if (granularity === 'hour') key = toStartOfHour(saleTime).toISOString();
+    else if (granularity === 'month') key = `${saleTime.getFullYear()}-${String(saleTime.getMonth() + 1).padStart(2, '0')}`;
+    else key = saleTime.toISOString().slice(0, 10);
+    const point = bucketMap.get(key);
+    if (point) point.value += Number(sale.total || 0);
+  });
+  return [...bucketMap.values()];
+}
+
+function renderSalesChart(points = []) {
+  const chart = qs('sales-chart');
+  if (!chart) return;
+  if (!points.length || points.every((point) => point.value <= 0)) {
+    chart.innerHTML = '<div class="empty">ยังไม่มียอดขายในช่วงนี้ • ระบบจะแสดงกราฟทันทีเมื่อมีรายการใหม่</div>';
+    return;
+  }
+  const width = 720;
+  const height = 240;
+  const padding = { top: 20, right: 16, bottom: 42, left: 52 };
+  const plotWidth = width - padding.left - padding.right;
+  const plotHeight = height - padding.top - padding.bottom;
+  const maxValue = Math.max(1, ...points.map((point) => point.value));
+  const coords = points.map((point, index) => {
+    const ratio = points.length > 1 ? index / (points.length - 1) : 0.5;
+    const x = padding.left + (plotWidth * ratio);
+    const y = padding.top + (plotHeight - ((point.value / maxValue) * plotHeight));
+    return { ...point, x, y };
+  });
+  const linePath = coords.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`).join(' ');
+  const areaPath = `${linePath} L ${coords[coords.length - 1].x.toFixed(2)} ${(padding.top + plotHeight).toFixed(2)} L ${coords[0].x.toFixed(2)} ${(padding.top + plotHeight).toFixed(2)} Z`;
+  const yTicks = Array.from({ length: 4 }, (_, idx) => {
+    const value = maxValue * (idx / 3);
+    const y = padding.top + plotHeight - ((value / maxValue) * plotHeight);
+    return { value, y };
+  });
+  const labelStep = points.length > 10 ? Math.ceil(points.length / 6) : 1;
+  chart.innerHTML = `
+    <svg viewBox="0 0 ${width} ${height}" class="sales-chart-svg" role="img" aria-label="กราฟแนวโน้มยอดขาย">
+      <defs>
+        <linearGradient id="salesAreaGradient" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stop-color="#6366f1" stop-opacity="0.35"></stop>
+          <stop offset="100%" stop-color="#6366f1" stop-opacity="0.02"></stop>
+        </linearGradient>
+      </defs>
+      ${yTicks.map((tick) => `<line x1="${padding.left}" y1="${tick.y.toFixed(2)}" x2="${(padding.left + plotWidth).toFixed(2)}" y2="${tick.y.toFixed(2)}" class="sales-chart-grid"></line><text x="6" y="${(tick.y + 4).toFixed(2)}" class="sales-chart-y">${money(tick.value)}</text>`).join('')}
+      <path d="${areaPath}" fill="url(#salesAreaGradient)"></path>
+      <path d="${linePath}" class="sales-chart-line"></path>
+      ${coords.map((point) => `<circle cx="${point.x.toFixed(2)}" cy="${point.y.toFixed(2)}" r="3.5" class="sales-chart-dot"></circle>`).join('')}
+      ${coords.filter((_, index) => index % labelStep === 0 || index === coords.length - 1).map((point) => `<text x="${point.x.toFixed(2)}" y="${(height - 16).toFixed(2)}" text-anchor="middle" class="sales-chart-x">${point.label}</text>`).join('')}
+    </svg>
+  `;
+}
+
 function renderSales() {
   const sales = db.sales || [];
   const range = salesFilterRange || periodRange(salesPeriod, new Date());
   const inCurrent = sales.filter((s) => salesDate(s) >= range.start && salesDate(s) <= range.end);
+  const inPrevious = sales.filter((s) => salesDate(s) >= range.previousStart && salesDate(s) <= range.previousEnd);
   const currentTotal = inCurrent.reduce((sum, s) => sum + Number(s.total || 0), 0);
+  const previousTotal = inPrevious.reduce((sum, s) => sum + Number(s.total || 0), 0);
   const cash = inCurrent.filter((s) => s.payment_method === 'cash').reduce((sum, s) => sum + Number(s.total || 0), 0);
   const qr = inCurrent.filter((s) => s.payment_method === 'qr').reduce((sum, s) => sum + Number(s.total || 0), 0);
-  const salesComparison = qs('sales-comparison');
-  if (salesComparison) salesComparison.classList.add('hidden');
+  const delta = currentTotal - previousTotal;
+  const deltaPercent = previousTotal > 0 ? ((delta / previousTotal) * 100) : 0;
+  const comparisonText = previousTotal > 0
+    ? `${delta >= 0 ? 'เพิ่มขึ้น' : 'ลดลง'} ${money(Math.abs(delta))} บาท (${Math.abs(deltaPercent).toFixed(1)}%) เทียบช่วงก่อนหน้า`
+    : 'ไม่มีข้อมูลช่วงก่อนหน้าให้เทียบ';
+  const comparison = qs('sales-comparison');
+  if (comparison) {
+    comparison.className = `sales-comparison-card ${delta > 0 ? 'is-up' : delta < 0 ? 'is-down' : 'is-flat'}`;
+    comparison.innerHTML = `<strong>${range.label}</strong><span>${comparisonText}</span>`;
+  }
   qs('sales-overview').innerHTML = `<div class="list-card sales-kpi"><strong>💵 เงินสด</strong><div>฿${money(cash)}</div></div><div class="list-card sales-kpi"><strong>📱 QR</strong><div>฿${money(qr)}</div></div><div class="list-card sales-kpi total"><strong>🧾 ยอดรวม</strong><div>฿${money(currentTotal)}</div></div><div class="list-card sales-kpi"><strong>จำนวนบิล</strong><div>${inCurrent.length}</div></div>`;
-  const chart = qs('sales-chart');
-  const bucket = {};
-  inCurrent.forEach((sale) => {
-    const d = salesDate(sale);
-    const key = salesPeriod === 'month' ? `${d.getDate()}` : (salesPeriod === 'week' ? d.toLocaleDateString('th-TH', { weekday: 'short' }) : d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false }).slice(0, 2));
-    bucket[key] = (bucket[key] || 0) + Number(sale.total || 0);
-  });
-  const points = Object.entries(bucket).sort((a, b) => a[0].localeCompare(b[0], 'th'));
-  const max = Math.max(1, ...points.map(([, val]) => val));
-  chart.innerHTML = points.map(([label, val]) => `<div class="chart-col"><div class="chart-bar" style="height:${Math.max(10, (val / max) * 100)}%"></div><small>${label}</small></div>`).join('') || '<div class="empty">ยังไม่มีข้อมูลยอดขายในช่วงนี้</div>';
+  const granularity = salesFilterRange ? chooseChartGranularity(range) : (salesPeriod === 'day' ? 'hour' : salesPeriod === 'week' ? 'day' : 'day');
+  const points = buildSalesBuckets(range, inCurrent, granularity);
+  renderSalesChart(points);
   const body = qs('sales-list');
   body.innerHTML = '';
+  if (!inCurrent.length) {
+    body.innerHTML = `<div class="empty">ยังไม่มียอดขายใน${range.label} • ลองเปลี่ยนช่วงเป็น วัน/สัปดาห์/เดือน หรือเลือกวันที่ใหม่</div>`;
+  }
   inCurrent.slice().sort((a, b) => salesDate(b) - salesDate(a)).forEach((sale) => {
     const isCash = sale.payment_method === 'cash';
     const groupedItems = summarizeItems(sale.items || []).slice(0, 6);
@@ -1139,14 +1271,6 @@ function bind() {
       salesFilterRange = null;
       document.querySelectorAll('[data-sales-period]').forEach((node) => node.classList.toggle('is-active', node === btn));
       renderSales();
-      const modal = qs('sales-period-modal');
-      const modalTitle = qs('sales-period-modal-title');
-      const modalContent = qs('sales-period-modal-content');
-      if (modal && modalTitle && modalContent) {
-        modalTitle.textContent = `ยอดขาย${btn.textContent.trim()}`;
-        modalContent.innerHTML = `${qs('sales-overview')?.outerHTML || ''}${qs('sales-chart')?.outerHTML || ''}`;
-        modal.classList.remove('hidden');
-      }
     });
   });
   qs('close-sales-period-modal')?.addEventListener('click', () => qs('sales-period-modal')?.classList.add('hidden'));

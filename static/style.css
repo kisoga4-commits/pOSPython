@@ -809,3 +809,27 @@ main{display:grid;gap:10px}
 .menu-category-admin-tabs{display:grid;gap:8px}
 .menu-category-tab-card{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 .menu-category-pill{font-weight:700}
+
+/* targeted backstore fixes */
+.backstore-menu-tabs{margin-top:10px}
+.backstore-menu-tabs .subtab{padding:8px 12px;border-radius:10px}
+.menu-admin-row{padding:8px 10px;gap:10px}
+.menu-admin-thumb{width:58px;height:58px;border-radius:12px;overflow:hidden;flex:0 0 58px}
+.menu-admin-copy{display:grid;gap:2px}
+.menu-admin-copy small{color:#64748b}
+.menu-admin-row .btn-row{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.menu-admin-row .btn-soft{min-height:36px;padding:6px 9px}
+.history-danger-zone{margin-top:12px;justify-content:flex-end}
+
+.sales-comparison-card{padding:10px 12px;border-radius:12px;display:grid;gap:4px}
+.sales-comparison-card.is-up{background:#ecfdf3;border:1px solid #86efac}
+.sales-comparison-card.is-up span{color:#166534}
+.sales-comparison-card.is-down{background:#fff1f2;border:1px solid #fda4af}
+.sales-comparison-card.is-down span{color:#9f1239}
+.sales-comparison-card.is-flat{background:#f8fafc;border:1px solid #cbd5e1}
+.sales-chart{min-height:250px;align-items:stretch}
+.sales-chart-svg{width:100%;height:240px}
+.sales-chart-grid{stroke:#c7d2fe;stroke-width:1}
+.sales-chart-line{fill:none;stroke:#4f46e5;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.sales-chart-dot{fill:#4f46e5;stroke:#fff;stroke-width:1.5}
+.sales-chart-x,.sales-chart-y{font-size:11px;fill:#64748b}

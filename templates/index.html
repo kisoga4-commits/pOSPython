@@ -79,17 +79,18 @@
           <div class="manage-row menu-config-row">
             <select id="service-mode"><option value="table">โต๊ะ</option><option value="queue">คิว</option></select>
             <input id="table-count" type="number" min="1" placeholder="จำนวนโต๊ะ" />
-            <button id="update-table-count" class="btn-primary">อัปเดตโต๊ะ</button>
+            <button id="update-table-count" class="btn-primary">อัปเดต</button>
           </div>
 
           <div class="menu-form single-row">
-            <button id="open-menu-modal" class="btn-primary" type="button">+ Add Menu</button>
+            <button id="open-menu-modal" class="btn-primary" type="button">+ เพิ่มเมนู</button>
           </div>
           <div class="manage-row menu-config-row">
             <input id="menu-category-name" type="text" placeholder="เพิ่มหมวดเมนูใหม่" />
             <button id="add-menu-category" class="btn-soft" type="button">+ เพิ่มหมวด</button>
           </div>
           <div id="menu-category-admin" class="order-list"></div>
+          <div id="menu-category-filter-tabs" class="menu-category-tabs backstore-menu-tabs"></div>
           <div id="menu-list"></div>
         </div>
 
@@ -109,6 +110,7 @@
               <input id="sales-range-to" type="date" />
               <button id="sales-range-apply" class="btn-soft" type="button">ดูช่วงวันที่</button>
             </div>
+            <div id="sales-comparison" class="sales-comparison-card"></div>
             <div id="sales-overview" class="sales-overview-grid premium-kpi"></div>
             <div id="sales-chart" class="sales-chart"></div>
           </div>
@@ -118,10 +120,10 @@
               <button class="subtab" data-sales-tab="best">🔥 เมนูขายดี</button>
             </div>
             <div id="sales-tab-history" class="sales-tab-panel">
-              <div class="btn-row">
+              <div id="sales-list" class="sales-history-list"></div>
+              <div class="btn-row history-danger-zone">
                 <button id="sales-clear-history" class="btn-soft btn-danger" type="button">🗑️ ลบประวัติทั้งหมด</button>
               </div>
-              <div id="sales-list" class="sales-history-list"></div>
             </div>
             <div id="sales-tab-best" class="sales-tab-panel hidden">
               <div id="sales-best-list" class="order-list"></div>
