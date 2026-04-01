@@ -333,7 +333,6 @@ async function loadLive() {
     setLockedTableUI();
     updateTableStatus(data.tables || []);
     renderMenu();
-    renderExistingOrders();
   } catch (error) {
     const cachedMenu = await window.posDB.loadMenu();
     if (cachedMenu.length) {

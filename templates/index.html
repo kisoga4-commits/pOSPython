@@ -94,7 +94,7 @@
               <h3>ภาพรวมยอดขาย</h3>
               <button id="open-sales-insight" class="btn-secondary" type="button">Insight</button>
             </div>
-            <div class="sales-period-switch" role="tablist" aria-label="ช่วงเวลา">
+          <div class="sales-period-switch" role="tablist" aria-label="ช่วงเวลา">
               <button id="sales-period-day" class="seg-btn is-active" data-sales-period="day" type="button">วัน</button>
               <button id="sales-period-week" class="seg-btn" data-sales-period="week" type="button">สัปดาห์</button>
               <button id="sales-period-month" class="seg-btn" data-sales-period="month" type="button">เดือน</button>
@@ -180,15 +180,6 @@
             </div>
           </section>
         </div>
-        <div id="system-display" class="panel-block system-panel">
-          <h3>โหมดจอแสดงผลลูกค้า</h3>
-          <p class="muted">แยกโหมดจอแสดงผลออกจากหน้าเช็คบิลโดยตรง</p>
-          <div class="manage-row two-col">
-            <select id="customer-display-table-select"></select>
-            <button id="open-customer-display-mode" class="btn-soft" type="button">🖥️ เปิดจอแสดงผล</button>
-          </div>
-        </div>
-
         <div id="system-security" class="panel-block system-panel">
           <h3>ความปลอดภัยแอดมิน</h3>
           <div class="printer-settings-block">
@@ -269,6 +260,16 @@
         <div class="receipt-total-row"><span>ยอดรวม (Total):</span><strong>150.-</strong></div>
         <div class="receipt-footer">ขอบคุณที่ใช้บริการ</div>
       </div>
+    </div>
+  </div>
+
+  <div id="sales-period-modal" class="modal hidden">
+    <div class="modal-card compact">
+      <div class="section-head">
+        <h3 id="sales-period-modal-title">ยอดขาย</h3>
+        <button id="close-sales-period-modal" class="btn-soft btn-close-x" type="button">✖</button>
+      </div>
+      <div id="sales-period-modal-content" class="sales-period-modal-content"></div>
     </div>
   </div>
 
