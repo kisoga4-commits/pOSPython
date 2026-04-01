@@ -15,7 +15,7 @@
         <button id="go-customer-mode" class="btn-primary" type="button">👥 โหมดลูกค้า</button>
         <button id="go-checkout-mode" class="btn-secondary" type="button">💵 โหมดเช็คบิล</button>
       </div>
-      <p class="muted">โหมดนี้จะทำงานเหมือนเครื่องแม่ แต่แสดงเฉพาะงานที่เลือก</p>
+      <p class="muted">โหมดนี้จะทำงานเหมือนเครื่องแม่ และจำกัดไว้เฉพาะโหมดลูกค้า/เช็คบิล</p>
       <p id="authorize-note" class="muted"></p>
     </section>
   </main>
@@ -25,7 +25,7 @@
       localStorage.setItem('user_role', 'staff');
       document.getElementById('authorize-note').textContent = 'กำลังพาไปยังโหมดพนักงาน...';
       setTimeout(() => {
-        window.location.href = `${staffBase}/staff?mode=${mode}`;
+        window.location.href = `${staffBase}/?mode=scanner&screen=${mode === 'checkout' ? 'cashier' : 'customer'}`;
       }, 350);
     }
     document.getElementById('go-customer-mode').addEventListener('click', () => goStaff('customer'));
