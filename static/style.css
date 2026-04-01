@@ -1,10 +1,15 @@
 :root{
   --primary:#7c3aed;
   --primary-2:#06b6d4;
+  --primary-color:var(--primary);
+  --primary-color-2:var(--primary-2);
+  --surface-bg:#f3f4f6;
+  --surface-card:#ffffff;
+  --role-shadow:0 20px 45px rgba(17,24,39,.12);
   --primary-soft:#f3e8ff;
   --accent:#10b981;
-  --bg:#f3f4f6;
-  --card:#ffffff;
+  --bg:var(--surface-bg);
+  --card:var(--surface-card);
   --line:#e5e7eb;
   --text:#111827;
   --muted:#6b7280;
@@ -17,10 +22,36 @@
 }
 *{box-sizing:border-box}
 body{margin:0;font-family:"Inter","Noto Sans Thai",sans-serif;background:radial-gradient(circle at top right,color-mix(in srgb,var(--primary) 12%,#ffffff) 0,var(--bg) 45%,#f9fafb 100%);color:var(--text)}
+body.theme-staff{
+  --primary:#5b21b6;
+  --primary-2:#1d4ed8;
+  --primary-color:var(--primary);
+  --primary-color-2:var(--primary-2);
+  --surface-bg:#eef2ff;
+  --surface-card:#ffffff;
+}
+body.theme-customer{
+  --primary:#ea580c;
+  --primary-2:#16a34a;
+  --primary-color:var(--primary);
+  --primary-color-2:var(--primary-2);
+  --surface-bg:#fff7ed;
+  --surface-card:#ffffff;
+}
 .hidden{display:none!important}
 h1,h2,h3,h4,p{margin:0}
 
 .app-shell{max-width:1500px;margin:auto;padding:18px}
+.app-master{
+  width:min(100%,500px);
+  margin:10px auto;
+  min-height:calc(100vh - 20px);
+  background:var(--surface-card);
+  border:1px solid color-mix(in srgb,var(--primary-color) 20%,#e5e7eb);
+  border-radius:26px;
+  box-shadow:var(--role-shadow);
+  overflow:hidden;
+}
 .section-card,.mobile-panel,.mobile-header{background:var(--card);border:1px solid rgba(229,231,235,.9);border-radius:20px;box-shadow:var(--shadow-soft);backdrop-filter:blur(2px)}
 .section-card{padding:14px;margin-top:12px}
 .hidden-overflow{overflow:hidden}
@@ -72,6 +103,18 @@ h1,h2,h3,h4,p{margin:0}
 .status-chip.accepted,.status-accepted_order{background:#dcfce7;color:#166534;border:1px solid #86efac}
 .status-chip.checkout,.status-checkout_requested{background:#fee2e2;color:#991b1b}
 .table-card.checkout,.checkout-card.checkout,.table-card.status-checkout_requested{border:4px solid #ef4444;background:linear-gradient(180deg,#fff1f2,#ffffff);animation:blink-red 0.8s linear infinite}
+.table-order-summary{
+  display:grid;
+  gap:6px;
+  max-height:200px;
+  overflow-y:auto;
+  padding-right:4px;
+}
+.checkout-card .checkout-items{
+  max-height:200px;
+  overflow-y:auto;
+  padding-right:4px;
+}
 
 .cart-sidebar{position:sticky;top:18px;height:fit-content;max-height:calc(100vh - 34px);overflow:auto;border-radius:20px;background:#fff}
 .order-workspace{border:1px solid var(--line);padding:12px}

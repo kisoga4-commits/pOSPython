@@ -8,9 +8,15 @@ const USER_ROLE_KEY = 'user_role';
 let authState = null;
 let liveEventSource = null;
 
+function applyRoleThemeClass() {
+  document.body.classList.remove('theme-staff', 'theme-customer');
+  document.body.classList.add('theme-staff');
+}
+
 if (document.body?.dataset.autoStaff === '1') {
   localStorage.setItem(USER_ROLE_KEY, 'staff');
 }
+applyRoleThemeClass();
 
 const TABLE_STATUS_META = {
   available: { label: 'ว่าง', className: 'status-available' },
