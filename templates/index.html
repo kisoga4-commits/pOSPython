@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#3b82f6" />
   <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWix+LLJAJ9/2PKZ5QiAj6Ta86w+fsb2TkR4j8Y+5q9I5yY9h6+QcmGeXjr6UIKqg3Q8AA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <title>FAKDU POS</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version }}" />
 </head>
@@ -25,30 +26,26 @@
         </div>
       </div>
       <div class="header-icons">
-        <button id="admin-login-btn" class="btn-soft" type="button" aria-label="Admin login">🔐 Admin Login</button>
-        <button id="admin-logout-btn" class="btn-soft hidden" type="button" aria-label="Admin logout">🚪 Admin Logout</button>
-        <button id="open-customer-display-from-header" class="icon-btn" type="button" aria-label="Open customer display">🖥️</button>
-        <button id="open-staff-qr-modal" class="icon-btn" type="button" aria-label="Staff access QR">📱</button>
+        <button id="admin-login-btn" class="btn-soft icon-only-btn" type="button" aria-label="Admin login"><i class="fa-solid fa-user-shield"></i></button>
+        <button id="admin-logout-btn" class="btn-soft icon-only-btn hidden" type="button" aria-label="Admin logout"><i class="fa-solid fa-right-from-bracket"></i></button>
+        <button id="open-customer-display-from-header" class="icon-btn" type="button" aria-label="Open customer display"><i class="fa-solid fa-display"></i></button>
+        <button id="open-staff-qr-modal" class="icon-btn" type="button" aria-label="Staff access QR"><i class="fa-solid fa-qrcode"></i></button>
       </div>
     </header>
 
     <main>
-      <nav class="section-card tab-bar desktop-only">
+      <nav class="section-card tab-bar desktop-only icon-nav" aria-label="main navigation">
         <button class="main-tab is-active" data-screen="customer" aria-label="ลูกค้า">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 10.5 12 4l9 6.5"/><path d="M5 9.5V20h14V9.5"/><path d="M9 14h6"/></svg>
-          <small>ลูกค้า</small>
+          <i class="fa-solid fa-house"></i>
         </button>
         <button class="main-tab" data-screen="cashier" aria-label="เช็คบิล">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="3.5" width="14" height="17" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
-          <small>เช็คบิล</small>
+          <i class="fa-solid fa-receipt"></i>
         </button>
         <button class="main-tab" data-screen="backstore" aria-label="หลังร้าน">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19h16"/><rect x="5" y="10" width="3" height="6" rx="1"/><rect x="10.5" y="7" width="3" height="9" rx="1"/><rect x="16" y="5" width="3" height="11" rx="1"/></svg>
-          <small>หลังร้าน</small>
+          <i class="fa-solid fa-boxes-stacked"></i>
         </button>
         <button class="main-tab" data-screen="system" aria-label="ระบบ">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.9V20a2 2 0 1 1-4 0v-.2a1 1 0 0 0-.6-.9 1 1 0 0 0-1.1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.9-.6H4a2 2 0 1 1 0-4h.2a1 1 0 0 0 .9-.6 1 1 0 0 0-.2-1.1l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1 1 0 0 0 1.1.2h.1a1 1 0 0 0 .6-.9V4a2 2 0 1 1 4 0v.2a1 1 0 0 0 .6.9 1 1 0 0 0 1.1-.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1 1 0 0 0-.2 1.1v.1a1 1 0 0 0 .9.6H20a2 2 0 1 1 0 4h-.2a1 1 0 0 0-.9.6Z"/></svg>
-          <small>ระบบ</small>
+          <i class="fa-solid fa-gear"></i>
         </button>
       </nav>
 
@@ -279,8 +276,8 @@
       <button id="mobile-open-order-modal" class="btn-primary" type="button">จัดการออเดอร์</button>
     </header>
     <nav class="mobile-bottom-nav mobile-only" aria-label="Mobile navigation">
-      <button class="mobile-tab is-active" data-screen="customer" type="button">โต๊ะ</button>
-      <button class="mobile-tab" data-screen="cashier" type="button">เช็คบิล</button>
+      <button class="mobile-tab is-active" data-screen="customer" type="button" aria-label="โต๊ะ"><i class="fa-solid fa-table-cells-large"></i></button>
+      <button class="mobile-tab" data-screen="cashier" type="button" aria-label="เช็คบิล"><i class="fa-solid fa-cash-register"></i></button>
     </nav>
   </div>
   <div id="receipt-preview-modal" class="modal hidden">

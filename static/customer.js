@@ -727,6 +727,27 @@ function bind() {
     }
   });
 
+  document.getElementById('call-staff-btn')?.addEventListener('click', async () => {
+    if (!lockedTableId) return;
+    const bellBtn = document.getElementById('call-staff-btn');
+    bellBtn.disabled = true;
+    try {
+      const result = await api('/api/table/call-staff', {
+        method: 'POST',
+        body: JSON.stringify({ table_id: lockedTableId }),
+      });
+      const messageEl = document.getElementById('message');
+      if (result?.status === 'success' || result?.status === 'already_requested') {
+        messageEl.textContent = 'เรียกพนักงานแล้ว กรุณารอสักครู่';
+      } else {
+        messageEl.textContent = result?.error || 'เรียกพนักงานไม่สำเร็จ';
+      }
+      await loadLive();
+    } finally {
+      setTimeout(() => { bellBtn.disabled = false; }, 1200);
+    }
+  });
+
 }
 
 (function init() {
