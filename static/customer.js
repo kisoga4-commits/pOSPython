@@ -108,6 +108,7 @@ function addToCart(item, options = {}) {
   persistCart();
   renderCart();
   showAddedFeedback();
+  playAddToCartSound();
 }
 
 function persistCart() {
@@ -134,6 +135,15 @@ function clearCart(closeModal = false) {
   localStorage.removeItem(cartStorageKey);
   renderCart();
   if (closeModal) document.getElementById('cart-modal').classList.add('hidden');
+}
+
+
+function playAddToCartSound() {
+  const sound = document.getElementById('add-to-cart-sound');
+  if (!sound) return;
+  sound.currentTime = 0;
+  sound.volume = 1;
+  sound.play().catch(() => {});
 }
 
 function showAddedFeedback() {
@@ -184,15 +194,7 @@ function renderMenu() {
   const list = document.getElementById('menu-list');
   const tabs = document.getElementById('customer-category-tabs');
   list.innerHTML = '';
-  const table = currentTables.find((entry) => Number(entry.id) === Number(lockedTableId));
-  const existingItems = Array.isArray(table?.items) ? table.items : [];
-  const orderedItemIds = new Set(existingItems.map((item) => Number(item.item_id || item.id)).filter((id) => Number.isFinite(id) && id > 0));
-  const orderedItemNames = new Set(existingItems.map((item) => String(item.name || '').trim()).filter(Boolean));
-  const availableMenu = menu.filter((item) => {
-    const itemId = Number(item.item_id || item.id || 0);
-    if (Number.isFinite(itemId) && itemId > 0 && orderedItemIds.has(itemId)) return false;
-    return !orderedItemNames.has(String(item.name || '').trim());
-  });
+  const availableMenu = [...menu];
   const categories = ['ทั้งหมด', ...new Set(availableMenu.map((item) => item.category || 'ทั่วไป'))];
   if (!categories.includes(activeCategory)) activeCategory = 'ทั้งหมด';
   if (tabs) {
@@ -546,7 +548,7 @@ function bind() {
     const sound = document.getElementById('customer-confirm-sound');
     if (sound) {
       sound.currentTime = 0;
-      sound.volume = 0.4;
+      sound.volume = 1;
       sound.play().catch(() => {});
     }
     await loadLive();
