@@ -40,6 +40,7 @@ def local_now() -> str:
 
 @app.route("/")
 def index():
+    scanner_mode = request.args.get("mode") == "scanner"
     local_ip = get_local_ip()
     port = request.environ.get("SERVER_PORT", "5000")
     local_base_url = f"{request.scheme}://{local_ip}:{port}"
@@ -47,6 +48,7 @@ def index():
         "index.html",
         local_ip=local_ip,
         local_base_url=local_base_url,
+        scanner_mode=scanner_mode,
         asset_version=ASSET_VERSION,
     )
 
@@ -87,6 +89,9 @@ def customer_page():
 
 @app.route("/scan/customer/<int:table_id>")
 def customer_scan_page(table_id: int):
+    db = load_db()
+    if not any(table.get("id") == table_id for table in db.get("tables", [])):
+        abort(404, description="table_not_found")
     local_ip = get_local_ip()
     port = request.environ.get("SERVER_PORT", "5000")
     local_base_url = f"{request.scheme}://{local_ip}:{port}"
@@ -100,6 +105,9 @@ def customer_scan_page(table_id: int):
 
 @app.route("/table/<int:table_id>")
 def customer_table_page(table_id: int):
+    db = load_db()
+    if not any(table.get("id") == table_id for table in db.get("tables", [])):
+        abort(404, description="table_not_found")
     local_ip = get_local_ip()
     port = request.environ.get("SERVER_PORT", "5000")
     local_base_url = f"{request.scheme}://{local_ip}:{port}"
@@ -114,6 +122,20 @@ def customer_table_page(table_id: int):
 @app.route("/staff")
 def staff_page():
     return render_template("staff.html", asset_version=ASSET_VERSION)
+
+
+@app.route("/scan/staff")
+def staff_scan_page():
+    local_ip = get_local_ip()
+    port = request.environ.get("SERVER_PORT", "5000")
+    local_base_url = f"{request.scheme}://{local_ip}:{port}"
+    return render_template(
+        "index.html",
+        local_ip=local_ip,
+        local_base_url=local_base_url,
+        scanner_mode=True,
+        asset_version=ASSET_VERSION,
+    )
 
 
 @app.route("/api/license", methods=["GET"])
@@ -605,13 +627,19 @@ def api_staff_live():
 @require_license
 def api_customer_live():
     since = int(request.args.get("since", "0"))
+    table_id = request.args.get("table_id", type=int)
     db = load_db()
+    if table_id is not None and not any(table.get("id") == table_id for table in db.get("tables", [])):
+        return jsonify({"error": "table_not_found"}), 404
     if db["meta"]["version"] <= since:
         return jsonify({"changed": False, "version": db["meta"]["version"]})
+    tables = db["tables"]
+    if table_id is not None:
+        tables = [table for table in db["tables"] if table.get("id") == table_id]
     return jsonify({
         "changed": True,
         "menu": db["menu"],
-        "tables": db["tables"],
+        "tables": tables,
         "settings": db["settings"],
         "version": db["meta"]["version"],
     })

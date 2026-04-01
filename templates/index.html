@@ -8,7 +8,11 @@
   <title>FAKDU POS Dashboard</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version }}" />
 </head>
-<body data-local-ip="{{ local_ip }}" data-local-base-url="{{ local_base_url }}">
+<body
+  data-local-ip="{{ local_ip }}"
+  data-local-base-url="{{ local_base_url }}"
+  data-scanner-mode="{{ '1' if scanner_mode else '0' }}"
+>
   <div class="app-shell desktop-shell">
     <header class="app-header modern-header">
       <div class="brand-left">
