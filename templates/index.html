@@ -195,7 +195,34 @@
           </div>
         </div>
 
-                <div class="panel-block system-panel">
+        <div id="system-check" class="panel-block system-panel system-check-card">
+          <div class="system-check-head">
+            <h3>System Check / สุขภาพระบบ</h3>
+            <button id="recheck-system" class="btn-soft" type="button">รีเช็คระบบ</button>
+          </div>
+          <div id="system-check-status" class="system-health-pill is-checking">กำลังเช็ค...</div>
+          <div class="system-check-grid">
+            <div class="system-check-item">
+              <small>สถานะเซิร์ฟเวอร์</small>
+              <strong id="system-server-status">Checking...</strong>
+            </div>
+            <div class="system-check-item">
+              <small>เวลา UTC ของเซิร์ฟเวอร์</small>
+              <strong id="system-server-utc">-</strong>
+            </div>
+            <div class="system-check-item">
+              <small>Base URL</small>
+              <strong id="system-base-url">-</strong>
+            </div>
+            <div class="system-check-item">
+              <small>LAN IP</small>
+              <strong id="system-lan-ip">-</strong>
+            </div>
+          </div>
+          <small id="system-check-note" class="muted">กดรีเช็คระบบเพื่ออัปเดตสถานะล่าสุด</small>
+        </div>
+
+        <div class="panel-block system-panel">
           <h3>เสียง UI</h3>
           <label class="toggle-row">
             <input id="ui-sound-toggle" type="checkbox" />

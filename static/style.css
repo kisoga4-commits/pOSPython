@@ -96,6 +96,19 @@ input,select{width:100%;padding:10px;border-radius:10px;border:1px solid var(--l
 
 .cashier-layout{display:grid;grid-template-columns:.9fr 1.1fr;gap:10px}
 .cashier-detail,.panel-block{border:1px solid var(--line);border-radius:14px;padding:12px;background:#fff}
+.system-check-card{background:linear-gradient(145deg,#ffffff,#f5f3ff 60%,#ecfeff);border:1px solid #ddd6fe;box-shadow:0 16px 30px rgba(79,70,229,.09)}
+.system-check-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.system-health-pill{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;font-size:.82rem;font-weight:700;margin-top:10px;width:max-content}
+.system-health-pill::before{content:'';width:9px;height:9px;border-radius:999px;background:currentColor}
+.system-health-pill.is-online{background:#dcfce7;color:#166534;border:1px solid #86efac}
+.system-health-pill.is-offline{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5}
+.system-health-pill.is-checking{background:#e0f2fe;color:#075985;border:1px solid #7dd3fc}
+.system-check-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
+.system-check-item{border:1px solid rgba(199,210,254,.7);background:rgba(255,255,255,.8);border-radius:12px;padding:10px;display:grid;gap:5px}
+.system-check-item small{color:#6b7280}
+.system-check-item strong{font-size:.95rem;word-break:break-word}
+.system-server-online{color:#166534}
+.system-server-offline{color:#b91c1c}
 .menu-form,.manage-row,.form-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}
 .subtabs{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
 .subtab{border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 12px;cursor:pointer}
@@ -162,6 +175,7 @@ input,select{width:100%;padding:10px;border-radius:10px;border:1px solid var(--l
   .tab-bar{grid-template-columns:repeat(2,1fr)}
   .split-desktop,.cashier-layout,.menu-form,.manage-row,.form-grid{grid-template-columns:1fr}
   .cart-sidebar{position:relative;max-height:none;top:auto}
+  .system-check-grid{grid-template-columns:1fr}
 }
 
 .clean-table-grid .table-card small{color:#4b5563;line-height:1.45;display:block;min-height:38px}
