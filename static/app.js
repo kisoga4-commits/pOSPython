@@ -30,6 +30,8 @@ const money = (n) => Number(n || 0).toLocaleString('th-TH', { minimumFractionDig
 const unitLabel = () => (db?.settings?.serviceMode === 'queue' ? 'คิว' : 'โต๊ะ');
 const qrApiBase = 'https://api.qrserver.com/v1/create-qr-code/';
 let networkBaseUrl = document.body.dataset.localBaseUrl || '';
+const scannerMode = document.body.dataset.scannerMode === '1';
+const scannerAllowedScreens = new Set(['customer', 'cashier']);
 
 async function loadNetworkBaseUrl() {
   const network = await api('/api/system/network');
@@ -131,9 +133,21 @@ async function checkSystemHealth() {
 }
 
 function showScreen(id) {
+  if (scannerMode && !scannerAllowedScreens.has(id)) return;
   document.querySelectorAll('.screen').forEach((s) => s.classList.add('hidden'));
   qs(id).classList.remove('hidden');
   document.querySelectorAll('[data-screen]').forEach((b) => b.classList.toggle('is-active', b.dataset.screen === id));
+}
+
+function applyScannerModeUI() {
+  if (!scannerMode) return;
+  document.querySelectorAll('[data-screen]').forEach((btn) => {
+    if (!scannerAllowedScreens.has(btn.dataset.screen)) {
+      btn.classList.add('hidden');
+      btn.setAttribute('aria-hidden', 'true');
+    }
+  });
+  ['backstore', 'system'].forEach((screenId) => qs(screenId)?.classList.add('hidden'));
 }
 
 function applyTheme() {
@@ -821,7 +835,7 @@ function bind() {
   qs('table-zoom-in')?.addEventListener('click', () => { tableZoom = Math.min(140, tableZoom + 10); applyTableZoom(); });
   qs('table-zoom-out')?.addEventListener('click', () => { tableZoom = Math.max(85, tableZoom - 10); applyTableZoom(); });
   qs('open-staff-qr-modal')?.addEventListener('click', () => {
-    const url = `${resolveRuntimeHost()}/`;
+    const url = `${resolveRuntimeHost()}/scan/staff`;
     openQRModal('Staff-Access', url, buildQrImageUrl(url));
   });
   qs('table-qr-select')?.addEventListener('change', (event) => {
@@ -887,8 +901,10 @@ async function poll() {
 }
 
 (async function init() {
+  applyScannerModeUI();
   bind();
   await loadNetworkBaseUrl();
   await loadData();
+  if (scannerMode) showScreen('customer');
   setInterval(poll, 1200);
 })();

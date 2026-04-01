@@ -309,7 +309,7 @@ function renderExistingOrders() {
 
 async function loadLive() {
   try {
-    const data = await api(`/api/customer/live?since=${version}`);
+    const data = await api(`/api/customer/live?since=${version}&table_id=${encodeURIComponent(lockedTableId)}`);
     if (!data.changed) return;
     menu = data.menu || [];
     currentSettings = data.settings || {};
@@ -333,7 +333,7 @@ async function loadLive() {
 async function validateCartAgainstTableStatus() {
   if (!lockedTableId) return;
   try {
-    const data = await api('/api/customer/live?since=0');
+    const data = await api(`/api/customer/live?since=0&table_id=${encodeURIComponent(lockedTableId)}`);
     const table = (data.tables || []).find((item) => Number(item.id) === Number(lockedTableId));
     if (!table) return;
     const isFreshTable = ['available', 'closed'].includes(table.status);
