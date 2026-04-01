@@ -129,14 +129,9 @@ function updateAuthUI() {
 
 function connectLiveEvents() {
   if (liveEventSource || !window.EventSource) return;
-  liveEventSource = new EventSource(`/api/staff/stream?since=${encodeURIComponent(version)}`);
-  liveEventSource.addEventListener('reset', (event) => {
-    const payload = JSON.parse(event.data || '{}');
-    applySnapshot(payload.snapshot || {});
-  });
-  liveEventSource.addEventListener('delta', (event) => {
-    const payload = JSON.parse(event.data || '{}');
-    applyDelta(payload);
+  liveEventSource = new EventSource('/api/events');
+  liveEventSource.addEventListener('update', () => {
+    loadLive().catch(() => {});
   });
   liveEventSource.onerror = () => {
     disconnectLiveEvents();
