@@ -132,7 +132,16 @@ def customer_table_page(table_id: int):
 
 @app.route("/staff")
 def staff_page():
-    return render_template("staff.html", asset_version=ASSET_VERSION)
+    local_ip = get_local_ip()
+    port = request.environ.get("SERVER_PORT", "5000")
+    local_base_url = f"{request.scheme}://{local_ip}:{port}"
+    return render_template(
+        "index.html",
+        local_ip=local_ip,
+        local_base_url=local_base_url,
+        scanner_mode=True,
+        asset_version=ASSET_VERSION,
+    )
 
 
 @app.route("/customer-display")

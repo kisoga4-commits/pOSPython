@@ -3,24 +3,23 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Authorize Staff Device</title>
+  <title>Staff Access</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version }}" />
 </head>
 <body class="customer-app">
   <main class="mobile-shell app-mobile delivery-app-shell">
     <section class="mobile-panel compact-panel">
-      <h3>Staff Device Authorization</h3>
-      <p>กดปุ่มด้านล่างเพื่อผูกมือถือเครื่องนี้เป็น Staff Phone (ไม่ใช้รหัสผ่าน)</p>
-      <button id="authorize-staff-btn" class="btn-primary" type="button">✅ Authorize this device</button>
+      <h3>เข้าโหมดพนักงาน</h3>
+      <p>ลิงก์นี้เข้าใช้งานโหมดพนักงานได้ทันที (ลูกค้า + เช็คบิล)</p>
+      <button id="authorize-staff-btn" class="btn-primary" type="button">✅ เข้าโหมดพนักงาน</button>
       <p id="authorize-note" class="muted"></p>
     </section>
   </main>
   <script>
     document.getElementById('authorize-staff-btn').addEventListener('click', () => {
-      localStorage.setItem('user_role', 'staff');
-      document.getElementById('authorize-note').textContent = 'อุปกรณ์นี้ถูกตั้งค่าเป็น Staff แล้ว กำลังพาไปหน้า Dashboard...';
+      document.getElementById('authorize-note').textContent = 'กำลังพาไปหน้าโหมดพนักงาน...';
       setTimeout(() => {
-        window.location.href = '/';
+        window.location.href = '/scan/staff';
       }, 350);
     });
   </script>
