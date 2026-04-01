@@ -747,6 +747,7 @@ main{display:grid;gap:10px}
 .section-head{margin-bottom:8px}
 .table-grid{grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
 .table-card{padding:12px;min-height:130px}
+.table-item-thumb{width:18px;height:18px;border-radius:4px;object-fit:cover;vertical-align:middle}
 .checkout-symbol-grid{grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px}
 .checkout-card{padding:14px;min-height:150px}
 .sales-row-card{padding:12px}
