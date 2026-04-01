@@ -2,7 +2,7 @@ import logging
 import base64
 import io
 import importlib.util
-from datetime import datetime, timezone
+from datetime import datetime
 from collections import defaultdict
 
 from flask import Flask, abort, jsonify, render_template, request
@@ -33,8 +33,8 @@ def run_server() -> None:
     app.run(host="0.0.0.0", port=5000)
 
 
-def utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+def local_now() -> str:
+    return datetime.now().isoformat()
 
 
 @app.route("/")
@@ -70,6 +70,9 @@ def customer_page():
     table_id = request.args.get("table", type=int)
     if table_id is None or table_id < 1:
         abort(400, description="missing_or_invalid_table")
+    db = load_db()
+    if not any(table.get("id") == table_id for table in db.get("tables", [])):
+        abort(404, description="table_not_found")
     local_ip = get_local_ip()
     port = request.environ.get("SERVER_PORT", "5000")
     local_base_url = f"{request.scheme}://{local_ip}:{port}"
@@ -157,8 +160,8 @@ def _create_order(payload: dict) -> dict:
         "target_id": target_id,
         "items": normalized_cart,
         "status": initial_status,
-        "created_at": utc_now(),
-        "updated_at": utc_now(),
+        "created_at": local_now(),
+        "updated_at": local_now(),
         "source": source,
         "note": payload.get("note", ""),
     }
@@ -220,7 +223,7 @@ def _normalize_cart_items(raw_cart: list) -> list:
 
 @app.route("/api/ping", methods=["GET"])
 def api_ping():
-    return jsonify({"status": "ok", "server_time": utc_now()})
+    return jsonify({"status": "ok", "server_time": local_now()})
 
 
 @app.route("/api/sync/pending-orders", methods=["POST"])
@@ -257,7 +260,7 @@ def api_checkout():
     for order in db["orders"]:
         if order["target"] == target and order["target_id"] == target_id and order["status"] != "served":
             order["status"] = "served"
-            order["updated_at"] = utc_now()
+            order["updated_at"] = local_now()
         if order["target"] == target and order["target_id"] == target_id:
             pending_items.extend(order["items"])
 
@@ -269,7 +272,7 @@ def api_checkout():
         "items": pending_items,
         "total": total,
         "payment_method": payment_method,
-        "paid_at": utc_now(),
+        "paid_at": local_now(),
     }
     db["sales"].append(sale_record)
 
@@ -347,7 +350,7 @@ def api_order_item():
                 items[item_index]["addon"] = str(payload.get("addon", "")).strip()
 
         order["items"] = items
-        order["updated_at"] = utc_now()
+        order["updated_at"] = local_now()
 
         if order["target"] == "table" and isinstance(order.get("target_id"), int):
             for table in db["tables"]:
@@ -413,7 +416,7 @@ def api_table_accept():
     for order in db["orders"]:
         if order["target"] == "table" and order["target_id"] == table_id and order["status"] == "new":
             order["status"] = "preparing"
-            order["updated_at"] = utc_now()
+            order["updated_at"] = local_now()
             touched = True
 
     for table in db["tables"]:
@@ -510,7 +513,7 @@ def api_order_status():
     for order in db["orders"]:
         if order["id"] == order_id:
             order["status"] = status
-            order["updated_at"] = utc_now()
+            order["updated_at"] = local_now()
             db = save_db(db)
             return jsonify({"status": "success", "version": db["meta"]["version"]})
     return jsonify({"error": "order not found"}), 404

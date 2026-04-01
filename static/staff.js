@@ -4,6 +4,8 @@ let lastCheckoutIds = new Set();
 let state = { tables: [], orders: [] };
 let serviceMode = 'table';
 const blinkTimers = new Map();
+const STAFF_AUTH_KEY = 'fakdu_staff_auth';
+let authState = null;
 
 const TABLE_STATUS_META = {
   available: { label: 'ว่าง', className: 'status-available' },
@@ -39,7 +41,48 @@ function playCheckoutSound() {
   audio.play().catch(() => {});
 }
 
-function tableCard(table, actions = []) {
+function playCallStaffSound() {
+  const audio = document.getElementById('call-staff-sound');
+  if (!audio) return;
+  audio.currentTime = 0;
+  audio.play().catch(() => {});
+}
+
+function loadAuthState() {
+  try {
+    const raw = localStorage.getItem(STAFF_AUTH_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed?.username || !parsed?.role) return null;
+    return parsed;
+  } catch (error) {
+    return null;
+  }
+}
+
+function updateAuthUI() {
+  const loginScreen = document.getElementById('staff-login-screen');
+  const appScreen = document.getElementById('staff-app-screen');
+  const nav = document.getElementById('staff-bottom-nav');
+  const logoutBtn = document.getElementById('staff-logout-btn');
+  const dot = document.getElementById('staff-online-dot');
+  const online = navigator.onLine;
+  dot.classList.toggle('online', online);
+  dot.classList.toggle('offline', !online);
+  if (authState) {
+    loginScreen.classList.add('hidden');
+    appScreen.classList.remove('hidden');
+    nav.classList.remove('hidden');
+    logoutBtn.classList.remove('hidden');
+  } else {
+    loginScreen.classList.remove('hidden');
+    appScreen.classList.add('hidden');
+    nav.classList.add('hidden');
+    logoutBtn.classList.add('hidden');
+  }
+}
+
+function tableCard(table, orders = [], actions = []) {
   const meta = getStatusMeta(table.status);
   const unit = serviceMode === 'queue' ? 'คิว' : 'โต๊ะ';
   const card = document.createElement('div');
@@ -71,6 +114,17 @@ function tableCard(table, actions = []) {
     });
     card.appendChild(actionWrap);
   }
+  if (orders.length) {
+    const orderSummary = document.createElement('div');
+    orderSummary.className = 'table-order-summary';
+    orders.slice(0, 4).forEach((item) => {
+      const hasAddon = Array.isArray(item.addons) ? item.addons.length > 0 : Boolean(item.addon);
+      const row = document.createElement('small');
+      row.innerHTML = `• ${item.name}${hasAddon ? '<span class="addon-flag">➕ Add-on</span>' : ''}`;
+      orderSummary.appendChild(row);
+    });
+    card.appendChild(orderSummary);
+  }
   return card;
 }
 
@@ -101,7 +155,8 @@ function renderCustomerTab() {
         },
       });
     }
-    list.appendChild(tableCard(table, actions));
+    const tableItems = tableOrders.flatMap((order) => order.items || []);
+    list.appendChild(tableCard(table, tableItems, actions));
   });
 }
 
@@ -116,7 +171,10 @@ function renderCheckoutTab() {
   }
 
   checkoutTables.forEach((table) => {
-    list.appendChild(tableCard(table, [{
+    const tableItems = state.orders
+      .filter((order) => order.target === 'table' && order.target_id === table.id && order.status !== 'cancelled')
+      .flatMap((order) => order.items || []);
+    list.appendChild(tableCard(table, tableItems, [{
       label: '💵 ปิดบิลเงินสด',
       className: 'btn-secondary',
       onClick: async () => {
@@ -152,6 +210,7 @@ function bindTabs() {
 }
 
 async function loadLive() {
+  if (!authState) return;
   const data = await api(`/api/staff/live?since=${version}`);
   if (!data.changed) return;
 
@@ -170,6 +229,7 @@ async function loadLive() {
   checkoutNow.forEach((tableId) => {
     if (!lastCheckoutIds.has(tableId)) blinkTableCard(tableId);
   });
+  if (hasNewCheckout) playCallStaffSound();
   lastPendingIds = pendingNow;
   lastCheckoutIds = checkoutNow;
 
@@ -191,7 +251,31 @@ function blinkTableCard(tableId) {
 }
 
 (function init() {
+  authState = loadAuthState();
+  updateAuthUI();
   bindTabs();
-  loadLive();
+  document.getElementById('staff-login-btn').addEventListener('click', () => {
+    const username = document.getElementById('staff-username').value.trim() || 'staff';
+    const role = document.getElementById('staff-role').value;
+    const pin = document.getElementById('staff-pin').value;
+    const message = document.getElementById('staff-login-message');
+    if (role === 'admin' && pin !== 'admin') {
+      message.textContent = 'PIN Admin ไม่ถูกต้อง';
+      return;
+    }
+    authState = { username, role };
+    localStorage.setItem(STAFF_AUTH_KEY, JSON.stringify(authState));
+    message.textContent = '';
+    updateAuthUI();
+    loadLive();
+  });
+  document.getElementById('staff-logout-btn').addEventListener('click', () => {
+    localStorage.removeItem(STAFF_AUTH_KEY);
+    authState = null;
+    updateAuthUI();
+  });
+  window.addEventListener('online', updateAuthUI);
+  window.addEventListener('offline', updateAuthUI);
+  if (authState) loadLive();
   setInterval(loadLive, 2000);
 })();

@@ -2,7 +2,7 @@ import json
 import os
 import sqlite3
 from copy import deepcopy
-from datetime import datetime, timezone
+from datetime import datetime
 from threading import Lock
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -11,7 +11,7 @@ _db_lock = Lock()
 
 
 def now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now().isoformat()
 
 
 def normalize_table_status(status: str) -> str:

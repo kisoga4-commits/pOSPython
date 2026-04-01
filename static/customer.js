@@ -271,7 +271,8 @@ function renderExistingOrders() {
   items.forEach((item) => {
     const row = document.createElement('div');
     row.className = 'list-item';
-    row.innerHTML = `${item.name} · ${money(item.price)} บาท ${item.addon ? `· ${item.addon}` : ''} ${item.note ? `· ${item.note}` : ''}`;
+    const hasAddon = (Array.isArray(item.addons) && item.addons.length) || Boolean(item.addon);
+    row.innerHTML = `${item.name}${hasAddon ? ' <span class="addon-flag">➕</span>' : ''} · ${money(item.price)} บาท ${item.addon ? `· ${item.addon}` : ''} ${item.note ? `· ${item.note}` : ''}`;
     list.appendChild(row);
   });
 
@@ -429,6 +430,12 @@ function bind() {
 }
 
 (function init() {
+  if (!lockedTableId) {
+    document.getElementById('message').textContent = 'Invalid table access. กรุณาเข้าผ่าน QR Code เท่านั้น';
+    document.getElementById('submit-order').disabled = true;
+    document.getElementById('call-staff-bill').disabled = true;
+    return;
+  }
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/static/sw.js').catch(() => {});
   }
