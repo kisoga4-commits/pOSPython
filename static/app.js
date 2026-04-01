@@ -9,6 +9,8 @@ let tableZoom = 100;
 let editingMenuId = null;
 let lastPendingTableIds = new Set();
 let lastCheckoutRequestIds = new Set();
+const DASHBOARD_AUTH_KEY = 'dashboard_session_unlocked';
+let dashboardUnlocked = localStorage.getItem(DASHBOARD_AUTH_KEY) === '1';
 const RECOVERY_COLORS = ['แดง', 'ส้ม', 'เหลือง', 'เขียว', 'ฟ้า', 'น้ำเงิน', 'ม่วง'];
 const CELEBRITIES = ['ณเดชน์ คูกิมิยะ', 'ญาญ่า อุรัสยา', 'ใหม่ ดาวิกา', 'มาริโอ้ เมาเร่อ', 'เบลล่า ราณี', 'ชมพู่ อารยา', 'อั้ม พัชราภา', 'แพนเค้ก เขมนิจ', 'เวียร์ ศุกลวัฒน์', 'โป๊ป ธนวรรธน์', 'เจมส์ จิรายุ', 'คิมเบอร์ลี่', 'บอย ปกรณ์', 'เต้ย จรินทร์พร', 'ใบเฟิร์น พิมพ์ชนก', 'โตโน่ ภาคิน', 'แพทริเซีย กู๊ด', 'แอฟ ทักษอร', 'นนกุล ชานน', 'กลัฟ คณาวุฒิ'];
 const THEME_PRESETS = [
@@ -632,6 +634,7 @@ function renderSelectedTableQR(tableId) {
 }
 
 async function loadData() {
+  if (!dashboardUnlocked) return;
   db = await api('/api/data');
   if (db.error) return;
   version = db.meta.version;
@@ -647,6 +650,24 @@ async function loadData() {
   updateNetworkStatus(true);
 }
 
+function setDashboardLocked(locked) {
+  document.querySelector('main')?.classList.toggle('hidden', locked);
+}
+
+async function unlockDashboard() {
+  const payload = await api('/api/data');
+  const pin = window.prompt('กรอกรหัสแอดมิน');
+  if (pin === null) return;
+  if (pin.trim() === String(payload?.settings?.adminPin || 'admin')) {
+    dashboardUnlocked = true;
+    localStorage.setItem(DASHBOARD_AUTH_KEY, '1');
+    setDashboardLocked(false);
+    await loadData();
+    return;
+  }
+  alert('รหัสไม่ถูกต้อง');
+}
+
 function updateNetworkStatus(online) {
   const dot = qs('network-status-dot');
   if (!dot) return;
@@ -658,6 +679,12 @@ function updateNetworkStatus(online) {
 let addAddonRow = () => {};
 
 function bind() {
+  qs('dashboard-login-btn')?.addEventListener('click', unlockDashboard);
+  qs('dashboard-logout-btn')?.addEventListener('click', () => {
+    dashboardUnlocked = false;
+    localStorage.removeItem(DASHBOARD_AUTH_KEY);
+    setDashboardLocked(true);
+  });
   document.querySelectorAll('[data-screen]').forEach((btn) => btn.addEventListener('click', () => showScreen(btn.dataset.screen)));
   document.querySelectorAll('[data-backstore-tab]').forEach((btn) => btn.addEventListener('click', () => {
     document.querySelectorAll('[data-backstore-tab]').forEach((s) => s.classList.toggle('is-active', s === btn));
@@ -817,8 +844,13 @@ function bind() {
   qs('table-zoom-in')?.addEventListener('click', () => { tableZoom = Math.min(140, tableZoom + 10); applyTableZoom(); });
   qs('table-zoom-out')?.addEventListener('click', () => { tableZoom = Math.max(85, tableZoom - 10); applyTableZoom(); });
   qs('open-staff-qr-modal')?.addEventListener('click', () => {
-    const url = `${resolveRuntimeHost()}/`;
-    openQRModal('Staff-Access', url, buildQrImageUrl(url));
+    const customerMode = `${resolveRuntimeHost()}/scan/staff/customer`;
+    const checkoutMode = `${resolveRuntimeHost()}/scan/staff/checkout`;
+    openQRModal('Staff-Customer', customerMode, buildQrImageUrl(customerMode));
+    const modalLink = qs('qr-modal-link');
+    if (modalLink) {
+      modalLink.innerHTML = `ลูกค้า/รับออเดอร์: <a href="${customerMode}" target="_blank" rel="noopener noreferrer">${customerMode}</a><br>เช็คบิล: <a href="${checkoutMode}" target="_blank" rel="noopener noreferrer">${checkoutMode}</a>`;
+    }
   });
   qs('table-qr-select')?.addEventListener('change', (event) => {
     renderSelectedTableQR(event.target.value);
@@ -863,6 +895,7 @@ function bind() {
 }
 
 async function poll() {
+  if (!dashboardUnlocked) return;
   const info = await api(`/api/staff/live?since=${version}`);
   if (info.error) {
     updateNetworkStatus(false);
@@ -884,6 +917,8 @@ async function poll() {
 
 (async function init() {
   bind();
+  setDashboardLocked(!dashboardUnlocked);
+  if (!dashboardUnlocked) return;
   await loadNetworkBaseUrl();
   await loadData();
   setInterval(poll, 1200);

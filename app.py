@@ -109,7 +109,18 @@ def customer_table_page(table_id: int):
 
 @app.route("/staff")
 def staff_page():
-    return render_template("staff.html", asset_version=ASSET_VERSION)
+    mode = str(request.args.get("mode", "customer")).lower()
+    if mode not in {"customer", "checkout"}:
+        mode = "customer"
+    return render_template("staff.html", asset_version=ASSET_VERSION, initial_mode=mode)
+
+
+@app.route("/scan/staff/<string:mode>")
+def staff_scan_page(mode: str):
+    normalized = str(mode).lower()
+    if normalized not in {"customer", "checkout"}:
+        normalized = "customer"
+    return render_template("staff.html", asset_version=ASSET_VERSION, initial_mode=normalized)
 
 
 @app.route("/api/license", methods=["GET"])

@@ -35,7 +35,7 @@ h1,h2,h3,h4,p{margin:0}
 .header-icons{display:flex;gap:10px}
 .icon-btn{width:44px;height:44px;border-radius:999px;border:1px solid #ddd6fe;background:#fff;cursor:pointer;font-size:1.08rem;box-shadow:0 6px 14px rgba(124,58,237,.1);transition:.2s}
 .icon-btn:hover{transform:translateY(-1px)}
-.network-dot{width:12px;height:12px;border-radius:999px;display:inline-block;position:absolute;top:6px;left:6px;z-index:2}
+.network-dot{width:12px;height:12px;border-radius:999px;display:inline-block;position:absolute;top:-2px;right:-2px;z-index:3}
 .network-dot.online{background:#22c55e;box-shadow:0 0 0 4px rgba(34,197,94,.25),0 0 14px rgba(34,197,94,.8)}
 .network-dot.offline{background:#ef4444;box-shadow:0 0 0 4px rgba(239,68,68,.22),0 0 14px rgba(239,68,68,.7)}
 
@@ -66,6 +66,7 @@ h1,h2,h3,h4,p{margin:0}
 .status-online{background:#dcfce7;color:#166534;border:1px solid #86efac;padding:8px 12px}
 .status-chip.available,.status-available{background:#f3f4f6}
 .status-chip.pending,.status-pending_order{background:#ffedd5;color:#9a3412}
+.table-card.pending,.checkout-card.pending{border:4px solid #f59e0b;background:linear-gradient(180deg,#fff7ed,#ffffff);animation:pulse 1.4s infinite}
 .status-chip.accepted,.status-accepted_order{background:#dcfce7;color:#166534}
 .status-chip.checkout,.status-checkout_requested{background:#ede9fe;color:#5b21b6}
 .table-card.checkout,.checkout-card.checkout{border:4px solid #3b82f6;background:linear-gradient(180deg,#eff6ff,#ffffff);animation:pulse-blue 1.6s infinite}
@@ -149,6 +150,7 @@ input,select{width:100%;padding:10px;border-radius:10px;border:1px solid var(--l
 .menu-tap-card:active{transform:scale(.985)}
 .menu-tap-card:hover{box-shadow:0 10px 20px rgba(91,33,182,.12)}
 .floating-cart-btn{position:fixed;left:12px;right:12px;bottom:14px;z-index:40;background:linear-gradient(90deg,var(--primary),var(--primary-2));border:none;color:#fff;border-radius:16px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 12px 24px rgba(124,58,237,.28);font-size:.95rem;cursor:pointer}
+.floating-cart-indicator{background:#fee2e2;color:#991b1b;border-radius:999px;padding:4px 10px;font-size:.78rem;font-weight:700}
 .cart-modal-card{max-width:520px}
 .cart-item-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center}
 .cart-item-main{display:grid;gap:4px}
@@ -261,6 +263,7 @@ input,select{width:100%;padding:10px;border-radius:10px;border:1px solid var(--l
 @keyframes blink-red{0%,100%{background:#fff;border-color:inherit}50%{background:#fee2e2;border-color:#ef4444}}
 
 .staff-shell{padding-bottom:76px}
+.staff-auth-actions{display:flex;gap:8px}
 .staff-bottom-nav{position:fixed;left:0;right:0;bottom:0;display:grid;grid-template-columns:1fr 1fr;background:#fff;border-top:1px solid var(--line);padding:8px;gap:8px}
 .staff-nav-btn{border:1px solid var(--line);border-radius:12px;background:#fff;font-size:1.4rem;padding:10px}
 .staff-nav-btn.is-active{background:#ede9fe;border-color:#a78bfa}

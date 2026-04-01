@@ -5,6 +5,7 @@ let currentSettings = {};
 let currentTables = [];
 let activeItemDraft = null;
 let toastTimer = null;
+let existingItemCount = 0;
 const params = new URLSearchParams(window.location.search);
 const lockedTableId = Number(params.get('table') || document.body.dataset.tableId || 0);
 let masterBaseUrl = document.body.dataset.localBaseUrl || `${window.location.protocol}//${window.location.host}`;
@@ -133,6 +134,8 @@ function updateFloatingCart() {
     badge.classList.toggle('status-pending_order', count > 0);
     badge.classList.toggle('status-accepted_order', count === 0);
   }
+  const indicator = document.getElementById('floating-cart-indicator');
+  indicator.classList.toggle('hidden', !(existingItemCount > 0 && count > 0));
 }
 
 function buildAddonText(item) {
@@ -259,6 +262,7 @@ function renderExistingOrders() {
   const timeNode = document.getElementById('existing-order-time');
   const table = currentTables.find((t) => Number(t.id) === Number(lockedTableId));
   const items = table?.items || [];
+  existingItemCount = items.length;
   list.innerHTML = '';
 
   if (!items.length) {
