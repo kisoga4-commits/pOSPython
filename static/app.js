@@ -83,6 +83,53 @@ async function api(path, options = {}) {
   return res.ok ? data : { error: data.error || `request_failed_${res.status}` };
 }
 
+async function safeApi(path, options = {}) {
+  try {
+    return await api(path, options);
+  } catch (error) {
+    return { error: 'network_unreachable' };
+  }
+}
+
+function setSystemCheckState(state, note = '') {
+  const pill = qs('system-check-status');
+  if (!pill) return;
+  pill.classList.remove('is-online', 'is-offline', 'is-checking');
+  pill.classList.add(`is-${state}`);
+  pill.textContent = state === 'online' ? 'Online' : state === 'offline' ? 'Offline' : 'กำลังเช็ค...';
+  const noteEl = qs('system-check-note');
+  if (noteEl && note) noteEl.textContent = note;
+}
+
+async function checkSystemHealth() {
+  setSystemCheckState('checking', 'กำลังตรวจสอบการเชื่อมต่อจาก /api/ping และ /api/system/network ...');
+  const [ping, network] = await Promise.all([
+    safeApi('/api/ping'),
+    safeApi('/api/system/network'),
+  ]);
+  const online = !ping.error && !network.error;
+  const serverStatus = qs('system-server-status');
+  const serverUtc = qs('system-server-utc');
+  const baseUrl = qs('system-base-url');
+  const lanIp = qs('system-lan-ip');
+  if (serverStatus) {
+    serverStatus.textContent = online ? 'Online' : 'Offline';
+    serverStatus.classList.toggle('system-server-online', online);
+    serverStatus.classList.toggle('system-server-offline', !online);
+  }
+  if (serverUtc) serverUtc.textContent = ping.server_time || '-';
+  if (baseUrl) baseUrl.textContent = network.base_url || resolveRuntimeHost();
+  if (lanIp) lanIp.textContent = network.local_ip || document.body.dataset.localIp || '-';
+  if (!online) {
+    const fallbackReason = ping.error === 'network_unreachable' || network.error === 'network_unreachable'
+      ? 'ไม่สามารถติดต่อเครือข่ายได้ (fallback mode)'
+      : 'เซิร์ฟเวอร์ตอบกลับไม่สมบูรณ์ (fallback mode)';
+    setSystemCheckState('offline', fallbackReason);
+    return;
+  }
+  setSystemCheckState('online', 'ข้อมูลล่าสุดจากเซิร์ฟเวอร์พร้อมใช้งาน');
+}
+
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach((s) => s.classList.add('hidden'));
   qs(id).classList.remove('hidden');
@@ -595,6 +642,7 @@ async function loadData() {
   renderSales();
   await renderBestSellers();
   renderSystem();
+  await checkSystemHealth();
   renderDeskSummary();
   updateNetworkStatus(true);
 }
@@ -775,6 +823,7 @@ function bind() {
   qs('table-qr-select')?.addEventListener('change', (event) => {
     renderSelectedTableQR(event.target.value);
   });
+  qs('recheck-system')?.addEventListener('click', checkSystemHealth);
 
   qs('save-system').addEventListener('click', async () => {
     let qrImage = db.settings?.qrImage || '';
