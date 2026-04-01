@@ -203,11 +203,18 @@ def _create_order(payload: dict) -> dict:
     target = str(payload.get("target", "table"))
     target_id = payload.get("target_id")
     cart = payload.get("cart", [])
+    if not isinstance(cart, list):
+        raise ValueError("cart must be a list")
 
     if not cart:
         raise ValueError("cart is empty")
 
     db = load_db()
+    if target == "table":
+        if not isinstance(target_id, int):
+            raise ValueError("invalid table target_id")
+        if not any(table.get("id") == target_id for table in db.get("tables", [])):
+            raise ValueError("table not found")
     order_id = f"ORD-{int(datetime.now().timestamp())}-{len(db['orders']) + 1}"
     source = payload.get("source", "customer")
     initial_status = "request_pending" if source == "customer" else "accepted"
@@ -360,9 +367,10 @@ def _normalize_cart_items(raw_cart: list, menu: list) -> list:
             if addon_name:
                 menu_addon_prices[addon_name] = addon_price
 
+        resolved_name = str((menu_item or {}).get("name", "")).strip() or item_name or "Unknown Item"
         base = {
             "id": item.get("id") if item.get("id") is not None else item.get("item_id"),
-            "name": item_name or "Unknown Item",
+            "name": resolved_name,
             "price": base_price,
             "base_price": base_price,
             "note": str(item.get("note", "")).strip(),
