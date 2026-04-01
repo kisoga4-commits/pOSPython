@@ -5,6 +5,8 @@ let orderCart = [];
 let activeCashierTableId = null;
 let menuImagePreviewData = '';
 let uiSoundEnabled = localStorage.getItem('uiSoundEnabled') !== '0';
+let tableZoom = 100;
+let editingMenuId = null;
 let lastPendingTableIds = new Set();
 let lastCheckoutRequestIds = new Set();
 const RECOVERY_COLORS = ['แดง', 'ส้ม', 'เหลือง', 'เขียว', 'ฟ้า', 'น้ำเงิน', 'ม่วง'];
@@ -98,7 +100,7 @@ function applyTheme() {
 }
 
 function getTableOrders(tableId) {
-  return db.orders.filter((o) => o.target === 'table' && o.target_id === tableId && o.status !== 'cancelled');
+  return db.orders.filter((o) => o.target === 'table' && o.target_id === tableId && !['cancelled', 'served'].includes(o.status));
 }
 
 function getTableSummary(tableId) {
@@ -347,10 +349,39 @@ function renderMenu() {
   db.menu.forEach((item, idx) => {
     const row = document.createElement('div');
     row.className = 'list-card menu-admin-row';
-    row.innerHTML = `<div class="menu-admin-meta"><div class="menu-thumb">${item.image ? `<img src="${item.image}" alt="${item.name}" />` : 'IMG'}</div><div><strong>${item.name}</strong><small>${money(item.price)} บาท</small></div></div><div><button data-a="d" class="btn-soft">ลบ</button></div>`;
+    row.innerHTML = `<div class="menu-admin-meta"><div class="menu-thumb">${item.image ? `<img src="${item.image}" alt="${item.name}" />` : 'IMG'}</div><div><strong>${item.name}</strong><small>${money(item.price)} บาท</small></div></div><div class="btn-row"><button data-a="e" class="btn-soft">แก้ไข</button><button data-a="d" class="btn-soft">ลบ</button></div>`;
+    row.querySelector('[data-a="e"]').addEventListener('click', () => openEditMenuModal(item));
     row.querySelector('[data-a="d"]').addEventListener('click', async () => { db.menu.splice(idx, 1); await api('/api/settings', { method: 'POST', body: JSON.stringify({ menu: db.menu }) }); await loadData(); });
     list.appendChild(row);
   });
+}
+
+function resetMenuModal() {
+  editingMenuId = null;
+  qs('menu-modal').querySelector('h3').textContent = 'Add Menu';
+  qs('menu-name').value = '';
+  qs('menu-price').value = '';
+  qs('addon-rows').innerHTML = '';
+  qs('menu-image-file').value = '';
+  qs('menu-image-preview').src = '';
+  qs('menu-image-preview').classList.add('hidden');
+  menuImagePreviewData = '';
+}
+
+function openEditMenuModal(item) {
+  editingMenuId = item.id;
+  qs('menu-modal').querySelector('h3').textContent = 'Edit Menu';
+  qs('menu-name').value = item.name || '';
+  qs('menu-price').value = Number(item.price || 0);
+  qs('addon-rows').innerHTML = '';
+  const addonRows = item.addon_json || [];
+  if (addonRows.length) addonRows.forEach((addon) => addAddonRow(addon));
+  else if ((item.addons || []).length) item.addons.forEach((addonText) => addAddonRow({ name: String(addonText), price: 0 }));
+  else addAddonRow();
+  menuImagePreviewData = item.image || '';
+  qs('menu-image-preview').src = menuImagePreviewData;
+  qs('menu-image-preview').classList.toggle('hidden', !menuImagePreviewData);
+  qs('menu-modal').classList.remove('hidden');
 }
 
 function renderSales() {
@@ -382,6 +413,28 @@ function renderSales() {
     const tr = document.createElement('tr');
     tr.innerHTML = `<td>${new Date(sale.paid_at || Date.now()).toLocaleString('th-TH')}</td><td>${sale.target_id}</td><td>${sale.payment_method}</td><td>฿${money(sale.total)}</td>`;
     body.appendChild(tr);
+  });
+}
+
+async function renderBestSellers() {
+  const bestWrap = qs('sales-best-list');
+  if (!bestWrap) return;
+  const best = await api('/api/sales/best-sellers');
+  bestWrap.innerHTML = '';
+  if (best.error) {
+    bestWrap.innerHTML = '<div class="empty">โหลดเมนูยอดฮิตไม่สำเร็จ</div>';
+    return;
+  }
+  const items = best.items || [];
+  if (!items.length) {
+    bestWrap.innerHTML = '<div class="empty">ยังไม่มีข้อมูลเมนูยอดฮิต</div>';
+    return;
+  }
+  items.forEach((item, index) => {
+    const row = document.createElement('div');
+    row.className = 'list-card';
+    row.innerHTML = `<strong>#${index + 1} ${item.name}</strong><small>ขายแล้ว ${item.qty} รายการ</small>`;
+    bestWrap.appendChild(row);
   });
 }
 
@@ -531,9 +584,21 @@ async function loadData() {
   renderCashier();
   renderMenu();
   renderSales();
+  await renderBestSellers();
   renderSystem();
   renderDeskSummary();
+  updateNetworkStatus(true);
 }
+
+function updateNetworkStatus(online) {
+  const dot = qs('network-status-dot');
+  if (!dot) return;
+  dot.classList.toggle('online', online);
+  dot.classList.toggle('offline', !online);
+  dot.title = online ? 'Online' : 'Offline';
+}
+
+let addAddonRow = () => {};
 
 function bind() {
   document.querySelectorAll('[data-screen]').forEach((btn) => btn.addEventListener('click', () => showScreen(btn.dataset.screen)));
@@ -573,15 +638,15 @@ function bind() {
     await loadData();
   });
 
-  const addAddonRow = (addon = { name: '', price: 0 }) => {
+  addAddonRow = (addon = { name: '', price: 0 }) => {
     const row = document.createElement('div');
     row.className = 'form-grid three-col';
     row.innerHTML = `<input class="addon-name" placeholder="ชื่อ Add-on" value="${addon.name || ''}" /><input class="addon-price" type="number" min="0" placeholder="ราคาเพิ่ม" value="${addon.price || 0}" /><button class="btn-soft" type="button">ลบ</button>`;
     row.querySelector('button').addEventListener('click', () => row.remove());
     qs('addon-rows').appendChild(row);
   };
-  qs('open-menu-modal')?.addEventListener('click', () => { qs('menu-modal').classList.remove('hidden'); if (!qs('addon-rows').children.length) addAddonRow(); });
-  qs('close-menu-modal')?.addEventListener('click', () => qs('menu-modal').classList.add('hidden'));
+  qs('open-menu-modal')?.addEventListener('click', () => { resetMenuModal(); qs('menu-modal').classList.remove('hidden'); if (!qs('addon-rows').children.length) addAddonRow(); });
+  qs('close-menu-modal')?.addEventListener('click', () => { qs('menu-modal').classList.add('hidden'); resetMenuModal(); });
   qs('add-addon-row')?.addEventListener('click', () => addAddonRow());
 
   qs('menu-image-file').addEventListener('change', async (event) => {
@@ -591,6 +656,7 @@ function bind() {
     const compressed = await api('/api/menu/upload-image', { method: 'POST', body: JSON.stringify({ image: menuImagePreviewData }) });
     menuImagePreviewData = compressed.image || menuImagePreviewData;
     qs('menu-image-preview').src = menuImagePreviewData;
+    qs('menu-image-preview').classList.remove('hidden');
   });
 
   qs('save-menu').addEventListener('click', async () => {
@@ -599,15 +665,15 @@ function bind() {
     if (!name || price <= 0) return;
     const addons = [...document.querySelectorAll('#addon-rows .form-grid')].map((row) => ({ name: row.querySelector('.addon-name').value.trim(), price: Number(row.querySelector('.addon-price').value || 0) })).filter((a) => a.name);
     const payload = { name, price, addons: addons.map((a) => `${a.name} (+${a.price})`), addon_json: addons, image: menuImagePreviewData || '' };
-    db.menu.push({ id: Date.now(), ...payload });
+    if (editingMenuId) {
+      const targetIndex = db.menu.findIndex((item) => item.id === editingMenuId);
+      if (targetIndex >= 0) db.menu[targetIndex] = { ...db.menu[targetIndex], ...payload, id: editingMenuId };
+    } else {
+      db.menu.push({ id: Date.now(), ...payload });
+    }
     await api('/api/settings', { method: 'POST', body: JSON.stringify({ menu: db.menu }) });
     qs('menu-modal').classList.add('hidden');
-    qs('menu-name').value = '';
-    qs('menu-price').value = '';
-    qs('addon-rows').innerHTML = '';
-    qs('menu-image-file').value = '';
-    qs('menu-image-preview').src = '';
-    menuImagePreviewData = '';
+    resetMenuModal();
     await loadData();
   });
 
@@ -690,8 +756,12 @@ function bind() {
       qs('ui-sound-label').textContent = uiSoundEnabled ? '🔊' : '🔇';
     });
   }
-  qs('table-zoom')?.addEventListener('input', (e) => {
-    document.documentElement.style.setProperty('--table-scale', Number(e.target.value) / 100);
+  const applyTableZoom = () => document.documentElement.style.setProperty('--table-scale', tableZoom / 100);
+  qs('table-zoom-in')?.addEventListener('click', () => { tableZoom = Math.min(140, tableZoom + 10); applyTableZoom(); });
+  qs('table-zoom-out')?.addEventListener('click', () => { tableZoom = Math.max(85, tableZoom - 10); applyTableZoom(); });
+  qs('open-staff-qr-modal')?.addEventListener('click', () => {
+    const url = `${resolveRuntimeHost()}/`;
+    openQRModal('Staff-Access', url, buildQrImageUrl(url));
   });
 
   qs('save-system').addEventListener('click', async () => {
@@ -733,6 +803,11 @@ function bind() {
 
 async function poll() {
   const info = await api(`/api/staff/live?since=${version}`);
+  if (info.error) {
+    updateNetworkStatus(false);
+    return;
+  }
+  updateNetworkStatus(true);
   if (info.changed) {
     const pendingSet = new Set((info.tables || []).filter((t) => t.status === 'pending_order').map((t) => t.id));
     const checkoutSet = new Set((info.tables || []).filter((t) => t.status === 'checkout_requested').map((t) => t.id));

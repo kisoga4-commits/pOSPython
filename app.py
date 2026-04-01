@@ -3,6 +3,7 @@ import base64
 import io
 import importlib.util
 from datetime import datetime, timezone
+from collections import defaultdict
 
 from flask import Flask, abort, jsonify, render_template, request
 
@@ -503,6 +504,30 @@ def api_customer_live():
         "menu": db["menu"],
         "tables": db["tables"],
         "settings": db["settings"],
+        "version": db["meta"]["version"],
+    })
+
+
+@app.route("/api/sales/best-sellers", methods=["GET"])
+@require_license
+def api_sales_best_sellers():
+    db = load_db()
+    totals = defaultdict(int)
+    for sale in db.get("sales", []):
+        for item in sale.get("items", []):
+            name = str(item.get("name", "")).strip()
+            if not name:
+                continue
+            qty = item.get("qty", 1)
+            try:
+                qty_value = int(qty)
+            except (TypeError, ValueError):
+                qty_value = 1
+            totals[name] += max(1, qty_value)
+
+    top_items = sorted(totals.items(), key=lambda pair: pair[1], reverse=True)[:5]
+    return jsonify({
+        "items": [{"name": name, "qty": qty} for name, qty in top_items],
         "version": db["meta"]["version"],
     })
 
