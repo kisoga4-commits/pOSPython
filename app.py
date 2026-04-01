@@ -8,7 +8,7 @@ import hashlib
 from datetime import datetime
 from collections import defaultdict
 
-from flask import Flask, abort, jsonify, render_template, request
+from flask import Flask, abort, jsonify, redirect, render_template, request, url_for
 
 from db import ensure_db_exists, load_db, reset_tables, save_db
 
@@ -176,10 +176,7 @@ def staff_scan_page():
 
 @app.route("/authorize-staff")
 def authorize_staff_page():
-    local_ip = get_local_ip()
-    port = request.environ.get("SERVER_PORT", "5000")
-    local_base_url = f"{request.scheme}://{local_ip}:{port}"
-    return render_template("authorize_staff.html", asset_version=ASSET_VERSION, local_base_url=local_base_url)
+    return redirect(url_for("staff_scan_page"))
 
 
 @app.route("/api/license", methods=["GET"])

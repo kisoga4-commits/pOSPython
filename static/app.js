@@ -40,7 +40,6 @@ const unitLabel = () => (db?.settings?.serviceMode === 'queue' ? 'คิว' : '
 const qrApiBase = 'https://api.qrserver.com/v1/create-qr-code/';
 let networkBaseUrl = document.body.dataset.localBaseUrl || '';
 const scannerMode = document.body.dataset.scannerMode === '1';
-const role = localStorage.getItem('user_role') || '';
 const ADMIN_SESSION_KEY = 'admin_logged_in';
 const adminAllowedScreens = new Set(['customer', 'cashier', 'backstore', 'system']);
 const nonAdminAllowedScreens = new Set(['customer', 'cashier']);
@@ -168,16 +167,6 @@ function applyRoleUI() {
   const tabBar = document.querySelector('.tab-bar');
   const tabButtons = [...document.querySelectorAll('[data-screen]')];
 
-  if (role === 'staff') {
-    tabButtons.forEach((button) => {
-      const allowed = new Set(['customer', 'cashier']);
-      const visible = allowed.has(button.dataset.screen);
-      button.classList.toggle('hidden', !visible);
-      button.setAttribute('aria-hidden', visible ? 'false' : 'true');
-    });
-    return;
-  }
-
   if (tableParam > 0) {
     window.location.replace(`/customer?table=${encodeURIComponent(tableParam)}`);
     return;
@@ -199,7 +188,7 @@ function applyRoleUI() {
 }
 
 function openAdminLoginModal(note = '') {
-  if (scannerMode || role === 'staff') return;
+  if (scannerMode) return;
   qs('admin-login-pin').value = '';
   qs('admin-login-note').textContent = note;
   qs('admin-login-modal').classList.remove('hidden');
@@ -243,6 +232,8 @@ function applyScannerModeUI() {
     }
   });
   ['backstore', 'system'].forEach((screenId) => qs(screenId)?.classList.add('hidden'));
+  ['admin-login-btn', 'admin-logout-btn', 'open-customer-display-from-header', 'open-staff-qr-modal']
+    .forEach((id) => qs(id)?.classList.add('hidden'));
 }
 
 function applyTheme() {
@@ -1715,8 +1706,6 @@ function blinkTableCard(tableId) {
   bind();
   await loadNetworkBaseUrl();
   await loadData();
-  if (scannerMode || role === 'staff') showScreen('customer');
-  if (!scannerMode && role !== 'staff' && !isAdminLoggedIn) showScreen('customer');
-  if (role === 'staff' && tableParam > 0) selectTable(tableParam);
+  showScreen('customer');
   setInterval(poll, 3000);
 })();
