@@ -277,12 +277,29 @@
           <h4>ตะกร้าปัจจุบัน</h4>
           <div id="order-cart-list" class="order-list"></div>
           <div id="order-cart-total" class="order-total"></div>
-          <button id="order-submit" class="btn-primary">ส่งเข้าครัว</button>
+          <div class="modal-fixed-footer">
+            <button id="order-submit" class="btn-primary">ส่งเข้าครัว</button>
+          </div>
           <hr>
           <h4>รายการที่ลูกค้าสั่งแล้ว</h4>
           <div id="order-existing-list" class="order-list"></div>
           <div id="order-existing-total" class="order-total"></div>
         </section>
+      </div>
+    </div>
+  </div>
+
+  <div id="order-item-detail-modal" class="modal hidden">
+    <div class="modal-card cart-modal-card">
+      <div class="section-head">
+        <h3 id="order-item-detail-title">เลือกตัวเลือก</h3>
+        <button id="close-order-item-detail-modal" class="btn-soft" type="button">ปิด</button>
+      </div>
+      <div class="order-list">
+        <div id="order-item-addon-checkboxes" class="addon-check-list"></div>
+      </div>
+      <div class="btn-row modal-fixed-footer">
+        <button id="order-item-detail-add-btn" class="btn-primary" type="button">เพิ่มลงตะกร้า</button>
       </div>
     </div>
   </div>
@@ -295,7 +312,7 @@
       <div class="bill-payment-qr">
         <img id="bill-payment-qr-image" class="qr-preview" alt="Payment QR" />
       </div>
-      <div class="manage-row two-col bill-action-row">
+      <div class="manage-row two-col bill-action-row modal-fixed-footer">
         <button id="bill-pay-cash" class="btn-primary">💵 รับเงินสด (Cash)</button>
         <button id="bill-pay-qr" class="btn-secondary">📱 รับโอน (Transfer)</button>
       </div>

@@ -180,8 +180,12 @@ function renderCustomerTab() {
   customerTables.forEach((table) => {
     const tableOrders = state.orders.filter((order) => order.target === 'table' && order.target_id === table.id && order.status !== 'cancelled');
     const hasCustomerNewOrder = tableOrders.some((order) => order.source === 'customer' && order.status === 'new');
+    const tableTotal = tableOrders.flatMap((order) => order.items || []).reduce((sum, item) => {
+      const qty = Math.max(1, Number(item.qty || 1));
+      return sum + (Number(item.price || 0) * qty);
+    }, 0);
     const actions = [];
-    if (hasCustomerNewOrder) {
+    if (hasCustomerNewOrder && tableTotal > 0) {
       actions.push({
         label: 'รับออร์เดอร์',
         className: 'btn-primary',
@@ -267,7 +271,10 @@ async function loadLive() {
   const hasNewPending = [...pendingNow].some((id) => !lastPendingIds.has(id));
   const hasNewCheckout = [...checkoutNow].some((id) => !lastCheckoutIds.has(id));
   if (hasNewPending) playNewOrderSound();
-  if (hasNewCheckout) playCheckoutSound();
+  if (hasNewCheckout) {
+    playCheckoutSound();
+    playCallStaffSound();
+  }
   checkoutNow.forEach((tableId) => {
     if (!lastCheckoutIds.has(tableId)) blinkTableCard(tableId);
   });

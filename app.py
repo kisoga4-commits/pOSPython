@@ -176,7 +176,7 @@ def _create_order(payload: dict) -> dict:
     source = payload.get("source", "customer")
     initial_status = "new" if source == "customer" else "preparing"
     normalized_cart = _normalize_cart_items(cart, db.get("menu", []))
-    total_price = sum(float(item.get("price", 0)) for item in normalized_cart)
+    total_price = sum(float(item.get("price", 0)) * max(1, int(item.get("qty", 1) or 1)) for item in normalized_cart)
 
     new_order = {
         "id": order_id,
@@ -271,9 +271,10 @@ def _normalize_cart_items(raw_cart: list, menu: list) -> list:
                 menu_addon_prices[addon_name] = addon_price
 
         base = {
-            "id": item.get("id"),
+            "id": item.get("id") if item.get("id") is not None else item.get("item_id"),
             "name": item_name or "Unknown Item",
             "price": base_price,
+            "base_price": base_price,
             "note": str(item.get("note", "")).strip(),
             "addon": str(item.get("addon", "")).strip(),
         }
@@ -301,9 +302,7 @@ def _normalize_cart_items(raw_cart: list, menu: list) -> list:
                 if not base["addon"]:
                     base["addon"] = ", ".join(addon["name"] for addon in packed_addons)
                 base["price"] = base_price + sum(float(addon.get("price", 0) or 0) for addon in packed_addons)
-
-        for _ in range(qty):
-            normalized.append({**base, "qty": 1})
+        normalized.append({**base, "qty": qty})
     return normalized
 
 
@@ -350,7 +349,7 @@ def api_checkout():
         if order["target"] == target and order["target_id"] == target_id:
             pending_items.extend(order["items"])
 
-    total = sum(float(item.get("price", 0)) for item in pending_items)
+    total = sum(float(item.get("price", 0)) * max(1, int(item.get("qty", 1) or 1)) for item in pending_items)
     sale_record = {
         "id": f"SALE-{int(datetime.now().timestamp())}",
         "target": target,
@@ -393,9 +392,10 @@ def api_bill(target: str, target_id: int):
                 "item_index": idx,
                 "name": item.get("name", "-"),
                 "price": float(item.get("price", 0)),
+                "qty": max(1, int(item.get("qty", 1) or 1)),
                 "addon": item.get("addon", ""),
             })
-    total = sum(i["price"] for i in items)
+    total = sum(i["price"] * i["qty"] for i in items)
     return jsonify({
         "target": target,
         "target_id": target_id,
