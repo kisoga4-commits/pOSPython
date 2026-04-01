@@ -9,6 +9,7 @@ from datetime import datetime
 from collections import defaultdict
 
 from flask import Flask, abort, jsonify, render_template, request
+from flask import redirect, url_for
 
 from db import ensure_db_exists, load_db, reset_tables, save_db
 
@@ -153,16 +154,7 @@ def customer_display_page():
 
 @app.route("/scan/staff")
 def staff_scan_page():
-    local_ip = get_local_ip()
-    port = request.environ.get("SERVER_PORT", "5000")
-    local_base_url = f"{request.scheme}://{local_ip}:{port}"
-    return render_template(
-        "index.html",
-        local_ip=local_ip,
-        local_base_url=local_base_url,
-        scanner_mode=True,
-        asset_version=ASSET_VERSION,
-    )
+    return redirect(url_for("authorize_staff_page"))
 
 
 @app.route("/authorize-staff")
