@@ -18,7 +18,7 @@
         <div class="brand-copy">
           <p class="mobile-subtitle">Table {{ table_id }}</p>
           <p id="table-mode-note" class="mobile-subtitle"></p>
-          <p class="mobile-subtitle">มือถือสั่งง่าย ปุ่มใหญ่ อ่านชัด</p>
+          <p class="mobile-subtitle">เลือกเมนูจากรูปได้ทันที</p>
         </div>
       </div>
       <div id="table-badge" class="badge status-accepted_order"></div>
@@ -31,11 +31,13 @@
       </section>
 
       <section class="mobile-panel compact-panel">
-        <h3>รายการที่ส่งแล้ว</h3>
-        <div id="existing-order-list" class="order-list"></div>
-        <div id="existing-order-total" class="order-total"></div>
-        <div id="existing-order-time" class="muted"></div>
-        <button id="call-staff-bill" class="btn-call-staff" type="button">🔔 Call Staff</button>
+        <details id="existing-order-details" class="clean-collapse">
+          <summary>รายการที่สั่งแล้ว <span id="existing-order-summary" class="muted"></span></summary>
+          <div id="existing-order-list" class="order-list collapse-body"></div>
+          <div id="existing-order-total" class="order-total"></div>
+          <div id="existing-order-time" class="muted"></div>
+        </details>
+        <button id="call-staff-bill" class="btn-call-staff" type="button">🔔 เรียกพนักงานเช็คบิล</button>
       </section>
     </section>
   </main>

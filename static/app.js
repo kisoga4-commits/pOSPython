@@ -10,6 +10,7 @@ let editingMenuId = null;
 let lastPendingTableIds = new Set();
 let lastCheckoutRequestIds = new Set();
 let activeOrderItemDraft = null;
+let salesPeriod = 'day';
 const RECOVERY_COLORS = ['แดง', 'ส้ม', 'เหลือง', 'เขียว', 'ฟ้า', 'น้ำเงิน', 'ม่วง'];
 const CELEBRITIES = ['ณเดชน์ คูกิมิยะ', 'ญาญ่า อุรัสยา', 'ใหม่ ดาวิกา', 'มาริโอ้ เมาเร่อ', 'เบลล่า ราณี', 'ชมพู่ อารยา', 'อั้ม พัชราภา', 'แพนเค้ก เขมนิจ', 'เวียร์ ศุกลวัฒน์', 'โป๊ป ธนวรรธน์', 'เจมส์ จิรายุ', 'คิมเบอร์ลี่', 'บอย ปกรณ์', 'เต้ย จรินทร์พร', 'ใบเฟิร์น พิมพ์ชนก', 'โตโน่ ภาคิน', 'แพทริเซีย กู๊ด', 'แอฟ ทักษอร', 'นนกุล ชานน', 'กลัฟ คณาวุฒิ'];
 const THEME_PRESETS = [
@@ -592,32 +593,63 @@ function openEditMenuModal(item) {
   qs('menu-modal').classList.remove('hidden');
 }
 
-function renderSales() {
-  let sales = db.sales || [];
-  const from = qs('sales-from')?.value;
-  const to = qs('sales-to')?.value;
-  if (from || to) {
-    sales = sales.filter((s) => {
-      const d = new Date(s.timestamp || s.created_at || Date.now());
-      return (!from || d >= new Date(`${from}T00:00:00`)) && (!to || d <= new Date(`${to}T23:59:59`));
-    });
+function salesDate(record) {
+  return new Date(record.paid_at || record.timestamp || record.created_at || Date.now());
+}
+
+function periodRange(period, now = new Date()) {
+  const start = new Date(now);
+  const end = new Date(now);
+  if (period === 'day') {
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
+    return { start, end, previousStart: new Date(start.getTime() - (24 * 60 * 60 * 1000)), previousEnd: new Date(end.getTime() - (24 * 60 * 60 * 1000)), label: 'วันนี้', compareLabel: 'เมื่อวาน' };
   }
-  const daily = {};
-  sales.forEach((sale) => {
-    const key = new Date(sale.paid_at || sale.timestamp || Date.now()).toISOString().slice(0, 10);
-    daily[key] = (daily[key] || 0) + Number(sale.total || 0);
-  });
-  const total = sales.reduce((sum, s) => sum + Number(s.total || 0), 0);
-  const cash = sales.filter((s) => s.payment_method === 'cash').reduce((sum, s) => sum + Number(s.total || 0), 0);
-  const qr = sales.filter((s) => s.payment_method === 'qr').reduce((sum, s) => sum + Number(s.total || 0), 0);
-  qs('sales-overview').innerHTML = `<div class="list-card sales-kpi total"><strong>Total</strong><div>฿${money(total)}</div></div><div class="list-card sales-kpi"><strong>Cash</strong><div>฿${money(cash)}</div></div><div class="list-card sales-kpi"><strong>QR</strong><div>฿${money(qr)}</div></div><div class="list-card sales-kpi"><strong>Txns</strong><div>${sales.length}</div></div>`;
+  if (period === 'week') {
+    const day = start.getDay() || 7;
+    start.setDate(start.getDate() - day + 1);
+    start.setHours(0, 0, 0, 0);
+    end.setTime(start.getTime() + (7 * 24 * 60 * 60 * 1000) - 1);
+    return { start, end, previousStart: new Date(start.getTime() - (7 * 24 * 60 * 60 * 1000)), previousEnd: new Date(end.getTime() - (7 * 24 * 60 * 60 * 1000)), label: 'สัปดาห์นี้', compareLabel: 'สัปดาห์ที่แล้ว' };
+  }
+  start.setDate(1);
+  start.setHours(0, 0, 0, 0);
+  end.setMonth(start.getMonth() + 1, 0);
+  end.setHours(23, 59, 59, 999);
+  const previousStart = new Date(start);
+  previousStart.setMonth(previousStart.getMonth() - 1);
+  const previousEnd = new Date(start.getTime() - 1);
+  return { start, end, previousStart, previousEnd, label: 'เดือนนี้', compareLabel: 'เดือนที่แล้ว' };
+}
+
+function renderSales() {
+  const sales = db.sales || [];
+  const range = periodRange(salesPeriod, new Date());
+  const inCurrent = sales.filter((s) => salesDate(s) >= range.start && salesDate(s) <= range.end);
+  const inPrevious = sales.filter((s) => salesDate(s) >= range.previousStart && salesDate(s) <= range.previousEnd);
+  const currentTotal = inCurrent.reduce((sum, s) => sum + Number(s.total || 0), 0);
+  const previousTotal = inPrevious.reduce((sum, s) => sum + Number(s.total || 0), 0);
+  const diff = currentTotal - previousTotal;
+  const percent = previousTotal > 0 ? (diff / previousTotal) * 100 : (currentTotal > 0 ? 100 : 0);
+  const cash = inCurrent.filter((s) => s.payment_method === 'cash').reduce((sum, s) => sum + Number(s.total || 0), 0);
+  const qr = inCurrent.filter((s) => s.payment_method === 'qr').reduce((sum, s) => sum + Number(s.total || 0), 0);
+  const sign = diff >= 0 ? '+' : '-';
+  const trendClass = diff >= 0 ? 'up' : 'down';
+  qs('sales-comparison').innerHTML = `<strong>${range.label} เทียบ ${range.compareLabel}</strong><div class="sales-compare-value ${trendClass}">${sign}฿${money(Math.abs(diff))} (${sign}${Math.abs(percent).toFixed(1)}%)</div>`;
+  qs('sales-overview').innerHTML = `<div class="list-card sales-kpi total"><strong>ยอดรวม</strong><div>฿${money(currentTotal)}</div></div><div class="list-card sales-kpi"><strong>เงินสด</strong><div>฿${money(cash)}</div></div><div class="list-card sales-kpi"><strong>QR</strong><div>฿${money(qr)}</div></div><div class="list-card sales-kpi"><strong>จำนวนบิล</strong><div>${inCurrent.length}</div></div>`;
   const chart = qs('sales-chart');
-  const points = Object.entries(daily).sort((a, b) => a[0].localeCompare(b[0])).slice(-7);
+  const bucket = {};
+  inCurrent.forEach((sale) => {
+    const d = salesDate(sale);
+    const key = salesPeriod === 'month' ? `${d.getDate()}` : (salesPeriod === 'week' ? d.toLocaleDateString('th-TH', { weekday: 'short' }) : d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false }).slice(0, 2));
+    bucket[key] = (bucket[key] || 0) + Number(sale.total || 0);
+  });
+  const points = Object.entries(bucket);
   const max = Math.max(1, ...points.map(([, val]) => val));
-  chart.innerHTML = points.map(([day, val]) => `<div class="chart-col"><div class="chart-bar" style="height:${Math.max(8, (val / max) * 100)}%"></div><small>${day.slice(5)}</small></div>`).join('') || '<div class="empty">ยังไม่มีข้อมูลกราฟ</div>';
+  chart.innerHTML = points.map(([label, val]) => `<div class="chart-col"><div class="chart-bar" style="height:${Math.max(10, (val / max) * 100)}%"></div><small>${label}</small></div>`).join('') || '<div class="empty">ยังไม่มีข้อมูลยอดขายในช่วงนี้</div>';
   const body = qs('sales-list');
   body.innerHTML = '';
-  sales.slice().reverse().forEach((sale) => {
+  inCurrent.slice().sort((a, b) => salesDate(b) - salesDate(a)).forEach((sale) => {
     const isCash = sale.payment_method === 'cash';
     const card = document.createElement('article');
     card.className = 'list-card sales-row-card';
@@ -672,6 +704,17 @@ function renderSystem() {
   renderThemePresets(s.themePreset || '');
   updateReceiptPreview();
   renderTableQRList();
+  const displaySelect = qs('customer-display-table-select');
+  if (displaySelect) {
+    const count = Number(db.tableCount || 0);
+    displaySelect.innerHTML = '';
+    for (let i = 1; i <= count; i += 1) {
+      const option = document.createElement('option');
+      option.value = i;
+      option.textContent = `${unitLabel()} ${i}`;
+      displaySelect.appendChild(option);
+    }
+  }
 }
 
 function renderPrinterDriverOptions(selectedDriver) {
@@ -862,8 +905,13 @@ function bind() {
   });
   qs('open-receipt-preview')?.addEventListener('click', () => qs('receipt-preview-modal').classList.remove('hidden'));
   qs('close-receipt-preview')?.addEventListener('click', () => qs('receipt-preview-modal').classList.add('hidden'));
-  qs('sales-from')?.addEventListener('change', renderSales);
-  qs('sales-to')?.addEventListener('change', renderSales);
+  document.querySelectorAll('[data-sales-period]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      salesPeriod = btn.dataset.salesPeriod || 'day';
+      document.querySelectorAll('[data-sales-period]').forEach((node) => node.classList.toggle('is-active', node === btn));
+      renderSales();
+    });
+  });
   qs('paper-size')?.addEventListener('change', updateReceiptPreview);
   qs('store-name')?.addEventListener('input', updateReceiptPreview);
 
@@ -882,12 +930,13 @@ function bind() {
     qs('payment-modal').classList.add('hidden');
     await loadData();
   });
-  qs('bill-open-customer-display')?.addEventListener('click', () => {
-    if (!activeCashierTableId) return;
-    openCustomerDisplayWindow(activeCashierTableId);
-  });
   qs('open-customer-display-from-header')?.addEventListener('click', () => {
     const tableId = activeCashierTableId || selectedTableId;
+    if (!tableId) return;
+    openCustomerDisplayWindow(tableId);
+  });
+  qs('open-customer-display-mode')?.addEventListener('click', () => {
+    const tableId = Number(qs('customer-display-table-select')?.value || 0);
     if (!tableId) return;
     openCustomerDisplayWindow(tableId);
   });
