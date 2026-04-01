@@ -31,7 +31,7 @@ const statusMap = {
 };
 
 const qs = (id) => document.getElementById(id);
-const money = (n) => Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const money = (n) => Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 const unitLabel = () => (db?.settings?.serviceMode === 'queue' ? 'คิว' : 'โต๊ะ');
 const qrApiBase = 'https://api.qrserver.com/v1/create-qr-code/';
 let networkBaseUrl = document.body.dataset.localBaseUrl || '';
@@ -121,6 +121,7 @@ async function checkSystemHealth() {
   const serverUtc = qs('system-server-utc');
   const baseUrl = qs('system-base-url');
   const lanIp = qs('system-lan-ip');
+  const hostCheck = qs('system-host-check');
   if (serverStatus) {
     serverStatus.textContent = online ? 'Online' : 'Offline';
     serverStatus.classList.toggle('system-server-online', online);
@@ -129,6 +130,7 @@ async function checkSystemHealth() {
   if (serverUtc) serverUtc.textContent = ping.server_time || '-';
   if (baseUrl) baseUrl.textContent = network.base_url || resolveRuntimeHost();
   if (lanIp) lanIp.textContent = network.local_ip || document.body.dataset.localIp || '-';
+  if (hostCheck) hostCheck.textContent = network.is_host_request ? `ใช่ (${network.request_ip || '-'})` : `ไม่ใช่ (${network.request_ip || '-'})`;
   if (!online) {
     const fallbackReason = ping.error === 'network_unreachable' || network.error === 'network_unreachable'
       ? 'ไม่สามารถติดต่อเครือข่ายได้ (fallback mode)'
@@ -322,6 +324,25 @@ function getMenuCategories() {
   return [...categories];
 }
 
+function getMenuCategoryChoices() {
+  const presets = ['ทั่วไป', 'อาหารจานหลัก', 'ของทานเล่น', 'เครื่องดื่ม', 'ของหวาน'];
+  const categories = new Set(presets);
+  (db?.menu || []).forEach((item) => {
+    const name = String(item.category || '').trim();
+    if (name) categories.add(name);
+  });
+  return [...categories];
+}
+
+function renderMenuCategorySelect(selected = 'ทั่วไป') {
+  const select = qs('menu-category');
+  if (!select) return;
+  const categories = getMenuCategoryChoices();
+  const safeSelected = categories.includes(selected) ? selected : 'ทั่วไป';
+  select.innerHTML = categories.map((name) => `<option value="${name}">${name}</option>`).join('');
+  select.value = safeSelected;
+}
+
 function renderMenuCategoryAdmin() {
   const wrap = qs('menu-category-admin');
   if (!wrap) return;
@@ -354,7 +375,7 @@ function renderOrderCart() {
   list.innerHTML = '';
   if (!orderCart.length) {
     list.innerHTML = '<div class="empty">ยังไม่มีรายการในตะกร้า</div>';
-    qs('order-cart-total').textContent = 'รวม 0.00 บาท';
+    qs('order-cart-total').textContent = 'รวม 0 บาท';
     return;
   }
   orderCart.forEach((item, idx) => {
@@ -431,7 +452,7 @@ function renderDeskSummary() {
     metaNode.textContent = 'ยังไม่ได้เลือกโต๊ะ';
     statusNode.textContent = 'เลือกโต๊ะเพื่อดูสรุปคำสั่งซื้อ';
     list.innerHTML = '<div class="empty">ยังไม่มีข้อมูล</div>';
-    totalNode.textContent = 'รวม 0.00 บาท';
+    totalNode.textContent = 'รวม 0 บาท';
     if (acceptBtn) acceptBtn.disabled = true;
     return;
   }
@@ -630,8 +651,7 @@ function resetMenuModal() {
   qs('menu-price').value = '';
   qs('addon-rows').innerHTML = '';
   qs('menu-image-file').value = '';
-  qs('menu-category').value = '';
-  qs('menu-new-category').value = '';
+  renderMenuCategorySelect('ทั่วไป');
   qs('menu-image-preview').src = '';
   qs('menu-image-preview').classList.add('hidden');
   menuImagePreviewData = '';
@@ -650,8 +670,7 @@ function openEditMenuModal(item) {
   menuImagePreviewData = item.image || '';
   qs('menu-image-preview').src = menuImagePreviewData;
   qs('menu-image-preview').classList.toggle('hidden', !menuImagePreviewData);
-  qs('menu-category').value = item.category || 'ทั่วไป';
-  qs('menu-new-category').value = '';
+  renderMenuCategorySelect(item.category || 'ทั่วไป');
   qs('menu-modal').classList.remove('hidden');
 }
 
@@ -1048,9 +1067,7 @@ function bind() {
     const price = Number(qs('menu-price').value || 0);
     if (!name || price <= 0) return;
     const addons = [...document.querySelectorAll('#addon-rows .form-grid')].map((row) => ({ name: row.querySelector('.addon-name').value.trim(), price: Number(row.querySelector('.addon-price').value || 0) })).filter((a) => a.name);
-    const newCategory = qs('menu-new-category').value.trim();
-    const selectedCategory = qs('menu-category').value.trim();
-    const category = newCategory || selectedCategory || 'ทั่วไป';
+    const category = qs('menu-category').value.trim() || 'ทั่วไป';
     const payload = { name, price, category, addons: addons.map((a) => `${a.name} (+${a.price})`), addon_json: addons, image: menuImagePreviewData || '' };
     if (editingMenuId) {
       const targetIndex = db.menu.findIndex((item) => item.id === editingMenuId);

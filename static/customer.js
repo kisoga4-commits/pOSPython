@@ -39,7 +39,7 @@ function getStatusMeta(status) {
 }
 
 function money(n) {
-  return Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
 
 function normalizeAddonOptions(item) {
@@ -281,7 +281,7 @@ function renderCart() {
   if (!cart.length) {
     list.innerHTML = '<div class="empty">ยังไม่มีรายการ</div>';
     if (inlineList) inlineList.innerHTML = '<div class="empty">ยังไม่มีรายการในตะกร้า</div>';
-    totalNode.textContent = 'รวม 0.00 บาท';
+    totalNode.textContent = 'รวม 0 บาท';
     if (toggleBtn) toggleBtn.textContent = inlineCartToggleLabel();
     updateFloatingCart();
     return;
@@ -357,7 +357,7 @@ function renderExistingOrders() {
 
   if (!items.length) {
     list.innerHTML = '<div class="empty">ยังไม่มีรายการที่ส่งเข้าร้าน</div>';
-    totalNode.textContent = 'ยอดรวมปัจจุบัน 0.00 บาท';
+    totalNode.textContent = 'ยอดรวมปัจจุบัน 0 บาท';
     timeNode.textContent = 'ยังไม่มีเวลาออร์เดอร์';
     if (summaryNode) summaryNode.textContent = '(0 รายการ)';
     return;

@@ -60,6 +60,8 @@ def api_system_network():
     return jsonify({
         "local_ip": local_ip,
         "base_url": f"{request.scheme}://{local_ip}:{port}",
+        "request_ip": request.remote_addr,
+        "is_host_request": is_server_request(),
     })
 
 
@@ -451,6 +453,8 @@ def api_order_item():
             return jsonify({"error": "item not found"}), 404
 
         if request.method == "DELETE":
+            if not is_server_request():
+                return jsonify({"error": "host_machine_only"}), 403
             if order.get("status") in {"accepted", "completed"}:
                 return jsonify({"error": "submitted_order_locked"}), 403
             if str(order.get("source", "customer")) == "customer":
