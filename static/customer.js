@@ -14,7 +14,6 @@ const params = new URLSearchParams(window.location.search);
 const lockedTableId = Number(document.body.dataset.tableId || params.get('table') || 0);
 let masterBaseUrl = document.body.dataset.localBaseUrl || `${window.location.protocol}//${window.location.host}`;
 const cartStorageKey = `customer_cart_table_${lockedTableId || 'unknown'}`;
-const userRole = localStorage.getItem('user_role') || '';
 
 const TABLE_STATUS_META = {
   available: { label: 'ว่าง', className: 'status-available' },
@@ -724,11 +723,6 @@ function bind() {
 }
 
 (function init() {
-  if (userRole === 'staff' && lockedTableId) {
-    window.location.replace(`/?table=${encodeURIComponent(lockedTableId)}&staff_scan=1`);
-    return;
-  }
-
   if (!lockedTableId) {
     document.getElementById('message').textContent = 'Invalid table access. กรุณาเข้าผ่าน QR Code เท่านั้น';
     document.getElementById('submit-order').disabled = true;
