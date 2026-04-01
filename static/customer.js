@@ -11,7 +11,8 @@ let submitState = 'idle';
 let lastSubmittedOrderId = '';
 const params = new URLSearchParams(window.location.search);
 const lockedTableId = Number(params.get('table') || document.body.dataset.tableId || 0);
-let masterBaseUrl = document.body.dataset.localBaseUrl || `${window.location.protocol}//${window.location.host}`;
+const masterBaseUrl = window.location.origin;
+let liveEventSource = null;
 const cartStorageKey = `customer_cart_table_${lockedTableId || 'unknown'}`;
 const userRole = localStorage.getItem('user_role') || '';
 
@@ -28,19 +29,24 @@ const VISUAL_MENU_LABELS = [
 ];
 
 async function api(path, options = {}) {
-  const url = path.startsWith('http') ? path : `${masterBaseUrl}${path}`;
+  const url = path.startsWith('http') ? path : `${window.location.origin}${path}`;
   const requestOptions = {
     ...options,
     headers: { 'Content-Type': 'application/json', 'X-POS-Role': 'customer', ...(options.headers || {}) },
   };
-  try {
-    const res = await fetch(url, requestOptions);
-    return res.json();
-  } catch (networkError) {
-    if (path.startsWith('http') || !masterBaseUrl) throw networkError;
-    const fallbackRes = await fetch(path, requestOptions);
-    return fallbackRes.json();
-  }
+  const res = await fetch(url, requestOptions);
+  return res.json();
+}
+
+function connectLiveEvents() {
+  if (liveEventSource || !window.EventSource || !lockedTableId) return;
+  liveEventSource = new EventSource(`/api/events?table_id=${encodeURIComponent(lockedTableId)}`);
+  liveEventSource.addEventListener('update', () => loadLive());
+  liveEventSource.onerror = () => {
+    if (liveEventSource) liveEventSource.close();
+    liveEventSource = null;
+    setTimeout(connectLiveEvents, 2500);
+  };
 }
 
 function boostPlaySound(soundId, gain = 1.6) {
@@ -688,11 +694,6 @@ function bind() {
 }
 
 (function init() {
-  if (userRole === 'staff' && lockedTableId) {
-    window.location.replace(`/?table=${encodeURIComponent(lockedTableId)}&staff_scan=1`);
-    return;
-  }
-
   if (!lockedTableId) {
     document.getElementById('message').textContent = 'Invalid table access. กรุณาเข้าผ่าน QR Code เท่านั้น';
     document.getElementById('submit-order').disabled = true;
@@ -711,5 +712,5 @@ function bind() {
   renderCart();
   window.posSync.startSync(masterBaseUrl);
   validateCartAgainstTableStatus().then(() => loadLive()).then(setLockedTableUI);
-  setInterval(loadLive, 3000);
+  connectLiveEvents();
 })();

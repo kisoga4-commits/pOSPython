@@ -6,6 +6,7 @@ let serviceMode = 'table';
 const blinkTimers = new Map();
 const USER_ROLE_KEY = 'user_role';
 let authState = null;
+let liveEventSource = null;
 
 const TABLE_STATUS_META = {
   available: { label: 'ว่าง', className: 'status-available' },
@@ -112,12 +113,32 @@ function updateAuthUI() {
     nav.classList.remove('hidden');
     logoutBtn.classList.remove('hidden');
     applyRoleRestrictions();
+    connectLiveEvents();
   } else {
     loginScreen.classList.remove('hidden');
     appScreen.classList.add('hidden');
     nav.classList.add('hidden');
     logoutBtn.classList.add('hidden');
+    disconnectLiveEvents();
   }
+}
+
+function connectLiveEvents() {
+  if (liveEventSource || !window.EventSource) return;
+  liveEventSource = new EventSource('/api/events');
+  liveEventSource.addEventListener('update', () => {
+    loadLive();
+  });
+  liveEventSource.onerror = () => {
+    disconnectLiveEvents();
+    setTimeout(connectLiveEvents, 2500);
+  };
+}
+
+function disconnectLiveEvents() {
+  if (!liveEventSource) return;
+  liveEventSource.close();
+  liveEventSource = null;
 }
 
 function tableCard(table, orders = [], actions = [], options = {}) {
@@ -380,5 +401,4 @@ function blinkTableCard(tableId) {
   window.addEventListener('online', updateAuthUI);
   window.addEventListener('offline', updateAuthUI);
   if (authState) loadLive();
-  setInterval(loadLive, 3000);
 })();
