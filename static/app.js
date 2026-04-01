@@ -513,7 +513,7 @@ async function openBill(targetId) {
   qs('bill-total').textContent = money(bill.total);
   const paymentImage = db.settings?.qrImage || buildPromptPayQrImage(db.settings?.promptPay || '', Number(bill.total || 0), Boolean(db.settings?.dynamicPromptPay));
   qs('bill-payment-qr-image').src = paymentImage;
-  qs('bill-payment-qr-wrap').classList.add('hidden');
+  qs('bill-payment-qr-wrap').classList.remove('hidden');
   qs('payment-modal').classList.remove('hidden');
 }
 
@@ -1007,7 +1007,6 @@ function bind() {
   });
   qs('bill-pay-qr').addEventListener('click', async () => {
     if (!activeCashierTableId) return;
-    qs('bill-payment-qr-wrap')?.classList.remove('hidden');
     await api('/api/checkout', { method: 'POST', body: JSON.stringify({ target: 'table', target_id: activeCashierTableId, payment_method: 'qr' }) });
     localStorage.setItem(CUSTOMER_DISPLAY_ACTIVE_TABLE_KEY, '0');
     qs('payment-modal').classList.add('hidden');
