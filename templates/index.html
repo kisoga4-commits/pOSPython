@@ -25,6 +25,8 @@
         </div>
       </div>
       <div class="header-icons">
+        <button id="admin-login-btn" class="btn-soft" type="button" aria-label="Admin login">🔐 Admin Login</button>
+        <button id="admin-logout-btn" class="btn-soft hidden" type="button" aria-label="Admin logout">🚪 Admin Logout</button>
         <button id="open-customer-display-from-header" class="icon-btn" type="button" aria-label="Open customer display">🖥️</button>
         <button id="open-staff-qr-modal" class="icon-btn" type="button" aria-label="Staff access QR">📱</button>
       </div>
@@ -378,6 +380,20 @@
         <input id="new-admin-pin" placeholder="รหัส Admin ใหม่" />
         <button id="reset-admin-pin" class="btn-primary" type="button">ยืนยันรีเซ็ตรหัส</button>
       </div>
+    </div>
+  </div>
+
+  <div id="admin-login-modal" class="modal hidden">
+    <div class="modal-content">
+      <div class="section-head">
+        <h3>เข้าสู่ระบบ Admin</h3>
+        <button id="close-admin-login-modal" class="btn-soft btn-close-x" type="button">✖</button>
+      </div>
+      <div class="form-grid">
+        <input id="admin-login-pin" type="password" placeholder="กรอกรหัส Admin" autocomplete="current-password" />
+        <button id="admin-login-submit" class="btn-primary" type="button">เข้าสู่ระบบ</button>
+      </div>
+      <small id="admin-login-note" class="muted"></small>
     </div>
   </div>
 

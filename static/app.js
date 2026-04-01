@@ -41,6 +41,10 @@ const qrApiBase = 'https://api.qrserver.com/v1/create-qr-code/';
 let networkBaseUrl = document.body.dataset.localBaseUrl || '';
 const scannerMode = document.body.dataset.scannerMode === '1';
 const role = localStorage.getItem('user_role') || '';
+const ADMIN_SESSION_KEY = 'admin_logged_in';
+const adminAllowedScreens = new Set(['customer', 'cashier', 'backstore', 'system']);
+const nonAdminAllowedScreens = new Set(['customer', 'cashier']);
+let isAdminLoggedIn = localStorage.getItem(ADMIN_SESSION_KEY) === '1';
 const tableParam = Number(new URLSearchParams(window.location.search).get('table') || 0);
 const scannerAllowedScreens = new Set(['customer', 'cashier']);
 
@@ -146,6 +150,13 @@ async function checkSystemHealth() {
 }
 
 function showScreen(id) {
+  const allowedScreens = isAdminLoggedIn ? adminAllowedScreens : nonAdminAllowedScreens;
+  if (!allowedScreens.has(id)) {
+    if (id === 'backstore' || id === 'system') {
+      openAdminLoginModal('เฉพาะ Admin เท่านั้นสำหรับเมนูนี้');
+    }
+    return;
+  }
   if (scannerMode && !scannerAllowedScreens.has(id)) return;
   document.querySelectorAll('.screen').forEach((s) => s.classList.add('hidden'));
   qs(id).classList.remove('hidden');
@@ -172,7 +183,55 @@ function applyRoleUI() {
     return;
   }
 
+  const allowed = isAdminLoggedIn ? adminAllowedScreens : nonAdminAllowedScreens;
+  tabButtons.forEach((button) => {
+    const visible = allowed.has(button.dataset.screen);
+    button.classList.toggle('hidden', !visible);
+    button.setAttribute('aria-hidden', visible ? 'false' : 'true');
+  });
+
+  const loginBtn = qs('admin-login-btn');
+  const logoutBtn = qs('admin-logout-btn');
+  loginBtn?.classList.toggle('hidden', isAdminLoggedIn);
+  logoutBtn?.classList.toggle('hidden', !isAdminLoggedIn);
+
   if (tabBar) tabBar.classList.remove('hidden');
+}
+
+function openAdminLoginModal(note = '') {
+  if (scannerMode || role === 'staff') return;
+  qs('admin-login-pin').value = '';
+  qs('admin-login-note').textContent = note;
+  qs('admin-login-modal').classList.remove('hidden');
+}
+
+function closeAdminLoginModal() {
+  qs('admin-login-modal').classList.add('hidden');
+}
+
+async function handleAdminLogin() {
+  const enteredPin = qs('admin-login-pin').value.trim();
+  const actualPin = String(db?.settings?.adminPin || '').trim();
+  if (!enteredPin) {
+    qs('admin-login-note').textContent = 'กรุณากรอกรหัส Admin';
+    return;
+  }
+  if (!actualPin || enteredPin !== actualPin) {
+    qs('admin-login-note').textContent = 'รหัสไม่ถูกต้อง';
+    return;
+  }
+  isAdminLoggedIn = true;
+  localStorage.setItem(ADMIN_SESSION_KEY, '1');
+  closeAdminLoginModal();
+  applyRoleUI();
+  showScreen('system');
+}
+
+function handleAdminLogout() {
+  isAdminLoggedIn = false;
+  localStorage.removeItem(ADMIN_SESSION_KEY);
+  applyRoleUI();
+  showScreen('customer');
 }
 
 function applyScannerModeUI() {
@@ -1298,6 +1357,13 @@ function bind() {
 
   qs('close-qr-modal').addEventListener('click', () => qs('qr-modal').classList.add('hidden'));
   qs('close-forgot-admin-modal').addEventListener('click', () => qs('forgot-admin-modal').classList.add('hidden'));
+  qs('admin-login-btn')?.addEventListener('click', () => openAdminLoginModal(''));
+  qs('admin-logout-btn')?.addEventListener('click', () => handleAdminLogout());
+  qs('close-admin-login-modal')?.addEventListener('click', closeAdminLoginModal);
+  qs('admin-login-submit')?.addEventListener('click', handleAdminLogin);
+  qs('admin-login-pin')?.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') handleAdminLogin();
+  });
   qs('close-table-order-modal').addEventListener('click', () => qs('table-order-modal').classList.add('hidden'));
   qs('close-order-item-detail-modal')?.addEventListener('click', () => {
     activeOrderItemDraft = null;
@@ -1650,6 +1716,7 @@ function blinkTableCard(tableId) {
   await loadNetworkBaseUrl();
   await loadData();
   if (scannerMode || role === 'staff') showScreen('customer');
+  if (!scannerMode && role !== 'staff' && !isAdminLoggedIn) showScreen('customer');
   if (role === 'staff' && tableParam > 0) selectTable(tableParam);
   setInterval(poll, 3000);
 })();
