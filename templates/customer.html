@@ -38,9 +38,10 @@
       <section class="mobile-panel menu-panel compact-panel">
         <h3>เมนู</h3>
         <div class="btn-row">
-          <button id="toggle-current-cart" class="btn-soft" type="button">🧺 ▸</button>
+          <button id="toggle-current-cart" class="btn-soft icon-text-btn" type="button"><i class="fa-solid fa-basket-shopping"></i><span>Cart</span></button>
           <button id="call-staff-btn" class="btn-soft btn-call-staff-mini menu-bell-btn" type="button" aria-label="เรียกพนักงาน">
             <i class="fa-solid fa-bell-concierge"></i>
+            <span>Call</span>
           </button>
         </div>
         <div id="inline-cart-panel" class="order-list hidden"></div>
@@ -50,12 +51,12 @@
     </section>
   </main>
 
-  <button id="floating-cart-btn" class="floating-cart-btn" type="button">
+  <button id="floating-cart-btn" class="floating-cart-btn icon-text-btn" type="button">
     <div>
       <span id="floating-cart-count">0 รายการ</span>
       <strong id="floating-cart-total">฿0.00</strong>
     </div>
-    <strong>🛒</strong>
+    <strong><i class="fa-solid fa-cart-shopping"></i> Checkout</strong>
   </button>
 
   <div id="cart-modal" class="modal hidden">
