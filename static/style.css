@@ -218,6 +218,11 @@ input,select{width:100%;padding:10px;border-radius:10px;border:1px solid var(--l
 .sales-row-head{display:flex;justify-content:space-between;align-items:center}
 .sales-pay-icon{font-size:1.35rem}
 .sales-row-foot{display:flex;justify-content:flex-end;color:#4c1d95}
+.sales-tab-panel{margin-top:10px}
+.checkout-meta-row{display:flex;gap:8px;flex-wrap:wrap}
+.checkout-item-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.checkout-item-thumb{width:34px;height:34px;border-radius:10px;object-fit:cover;background:#e2e8f0;display:grid;place-items:center}
+.checkout-item-thumb.fallback{font-size:.95rem}
 .table-picker{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px}
 .table-picker.horizontal-picker{display:flex}
 
@@ -480,6 +485,11 @@ input,select{width:100%;padding:10px;border-radius:10px;border:1px solid var(--l
 .bill-payment-qr{display:grid;place-items:center;padding:8px 0 12px}
 .bill-action-row button{min-height:56px;font-size:1rem}
 .bill-display-tools{display:flex;justify-content:center;margin-bottom:6px}
+.clean-collapse{border:1px solid var(--line);border-radius:12px;background:#f8fafc;overflow:hidden}
+.clean-collapse summary{cursor:pointer;list-style:none;padding:10px 12px;font-weight:700}
+.clean-collapse summary::-webkit-details-marker{display:none}
+.collapse-body{padding:0 10px 10px}
+.clean-collapse[open] summary{border-bottom:1px solid #e5e7eb}
 .customer-facing-body{margin:0;background:#0f172a;color:#e2e8f0;min-height:100vh}
 .customer-facing-wrap{max-width:960px;margin:0 auto;padding:18px;display:grid;gap:14px}
 .customer-facing-header{display:grid;gap:4px}
