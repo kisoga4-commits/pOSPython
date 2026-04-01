@@ -5,6 +5,8 @@ let state = { tables: [], orders: [] };
 let serviceMode = 'table';
 const blinkTimers = new Map();
 const USER_ROLE_KEY = 'user_role';
+const params = new URLSearchParams(window.location.search);
+const initialMode = params.get('mode') === 'checkout' ? 'checkout' : 'customer';
 
 const TABLE_STATUS_META = {
   available: { label: 'ว่าง', className: 'status-available' },
@@ -285,11 +287,15 @@ function bindTabs() {
   document.querySelectorAll('[data-staff-tab]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const target = btn.dataset.staffTab;
-      document.querySelectorAll('[data-staff-tab]').forEach((node) => node.classList.toggle('is-active', node === btn));
-      document.getElementById('staff-tab-customer').classList.toggle('hidden', target !== 'customer');
-      document.getElementById('staff-tab-checkout').classList.toggle('hidden', target !== 'checkout');
+      setActiveTab(target);
     });
   });
+}
+
+function setActiveTab(target) {
+  document.querySelectorAll('[data-staff-tab]').forEach((node) => node.classList.toggle('is-active', node.dataset.staffTab === target));
+  document.getElementById('staff-tab-customer').classList.toggle('hidden', target !== 'customer');
+  document.getElementById('staff-tab-checkout').classList.toggle('hidden', target !== 'checkout');
 }
 
 async function loadLive() {
@@ -338,6 +344,7 @@ function blinkTableCard(tableId) {
   localStorage.setItem(USER_ROLE_KEY, 'staff');
   updateAuthUI();
   bindTabs();
+  setActiveTab(initialMode);
   window.addEventListener('online', updateAuthUI);
   window.addEventListener('offline', updateAuthUI);
   loadLive();
