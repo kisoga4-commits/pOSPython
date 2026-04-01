@@ -51,6 +51,9 @@ if (!isAdminLoggedIn && localStorage.getItem(ADMIN_SESSION_KEY) === '1') {
 }
 const tableParam = Number(new URLSearchParams(window.location.search).get('table') || 0);
 const scannerAllowedScreens = new Set(['customer', 'cashier']);
+const mobileAllowedScreens = new Set(['customer', 'cashier']);
+const viewportQuery = window.matchMedia('(max-width: 768px)');
+let isMobileViewport = viewportQuery.matches;
 
 async function loadNetworkBaseUrl() {
   const network = await api('/api/system/network');
@@ -153,7 +156,9 @@ async function checkSystemHealth() {
 }
 
 function showScreen(id) {
-  const allowedScreens = isAdminLoggedIn ? adminAllowedScreens : nonAdminAllowedScreens;
+  const allowedScreens = isMobileViewport
+    ? mobileAllowedScreens
+    : (isAdminLoggedIn ? adminAllowedScreens : nonAdminAllowedScreens);
   if (!allowedScreens.has(id)) {
     if (id === 'backstore' || id === 'system') {
       openAdminLoginModal('เฉพาะ Admin เท่านั้นสำหรับเมนูนี้');
@@ -171,7 +176,9 @@ function applyRoleUI() {
   const tabBar = document.querySelector('.tab-bar');
   const tabButtons = [...document.querySelectorAll('[data-screen]')];
 
-  const allowed = isAdminLoggedIn ? adminAllowedScreens : nonAdminAllowedScreens;
+  const allowed = isMobileViewport
+    ? mobileAllowedScreens
+    : (isAdminLoggedIn ? adminAllowedScreens : nonAdminAllowedScreens);
   tabButtons.forEach((button) => {
     const visible = allowed.has(button.dataset.screen);
     button.classList.toggle('hidden', !visible);
@@ -183,7 +190,30 @@ function applyRoleUI() {
   loginBtn?.classList.toggle('hidden', isAdminLoggedIn);
   logoutBtn?.classList.toggle('hidden', !isAdminLoggedIn);
 
+  if (isMobileViewport) {
+    loginBtn?.classList.add('hidden');
+    logoutBtn?.classList.add('hidden');
+    qs('open-customer-display-from-header')?.classList.add('hidden');
+    qs('open-staff-qr-modal')?.classList.add('hidden');
+  }
+
   if (tabBar) tabBar.classList.remove('hidden');
+}
+
+function getActiveScreenId() {
+  const active = document.querySelector('[data-screen].is-active');
+  return active?.dataset.screen || 'customer';
+}
+
+function applyAdaptiveLayout() {
+  document.body.classList.toggle('is-mobile-ui', isMobileViewport);
+  qs('desktop-layout')?.classList.toggle('hidden', isMobileViewport);
+  qs('mobile-layout')?.classList.toggle('hidden', !isMobileViewport);
+  qs('table-order-modal')?.classList.toggle('mobile-fullscreen-modal', isMobileViewport);
+  qs('payment-modal')?.classList.toggle('mobile-fullscreen-modal', isMobileViewport);
+  const activeScreen = getActiveScreenId();
+  applyRoleUI();
+  showScreen(activeScreen);
 }
 
 function openAdminLoginModal(note = '') {
@@ -240,6 +270,8 @@ function applyTheme() {
   const s = db.settings || {};
   qs('header-store-name').textContent = s.storeName || 'FAKDU';
   qs('store-logo').innerHTML = s.logoImage ? `<img src="${s.logoImage}" alt="logo" />` : (s.logoName || 'LOGO');
+  if (qs('mobile-store-name')) qs('mobile-store-name').textContent = s.storeName || 'FAKDU';
+  if (qs('mobile-store-logo')) qs('mobile-store-logo').innerHTML = s.logoImage ? `<img src="${s.logoImage}" alt="logo" />` : (s.logoName || 'LOGO');
   qs('shop-logo-preview').src = s.logoImage || '';
   document.documentElement.style.setProperty('--primary', s.themeColor || '#7c3aed');
   document.documentElement.style.setProperty('--bg', s.bgColor || '#f3f4f6');
@@ -1322,21 +1354,31 @@ async function loadData() {
   renderSystem();
   await checkSystemHealth();
   renderDeskSummary();
+  applyAdaptiveLayout();
   updateNetworkStatus(true);
 }
 
 function updateNetworkStatus(online) {
-  const dot = qs('network-status-dot');
-  if (!dot) return;
-  dot.classList.toggle('online', online);
-  dot.classList.toggle('offline', !online);
-  dot.title = online ? 'Online' : 'Offline';
+  ['network-status-dot', 'mobile-network-status-dot'].forEach((id) => {
+    const dot = qs(id);
+    if (!dot) return;
+    dot.classList.toggle('online', online);
+    dot.classList.toggle('offline', !online);
+    dot.title = online ? 'Online' : 'Offline';
+  });
 }
 
 let addAddonRow = () => {};
 
 function bind() {
   document.querySelectorAll('[data-screen]').forEach((btn) => btn.addEventListener('click', () => showScreen(btn.dataset.screen)));
+  qs('mobile-open-order-modal')?.addEventListener('click', () => {
+    if (!selectedTableId) {
+      window.alert('เลือกโต๊ะก่อนเพื่อจัดการออเดอร์');
+      return;
+    }
+    selectTable(selectedTableId);
+  });
   document.querySelectorAll('[data-backstore-tab]').forEach((btn) => btn.addEventListener('click', () => {
     document.querySelectorAll('[data-backstore-tab]').forEach((s) => s.classList.toggle('is-active', s === btn));
     ['menu', 'sales'].forEach((name) => qs(`backstore-${name}`).classList.toggle('hidden', name !== btn.dataset.backstoreTab));
@@ -1623,6 +1665,17 @@ function bind() {
     renderSelectedTableQR(event.target.value);
   });
   qs('recheck-system')?.addEventListener('click', checkSystemHealth);
+  viewportQuery.addEventListener('change', (event) => {
+    isMobileViewport = event.matches;
+    applyAdaptiveLayout();
+  });
+  window.addEventListener('resize', () => {
+    const nextState = window.innerWidth <= 768;
+    if (nextState !== isMobileViewport) {
+      isMobileViewport = nextState;
+      applyAdaptiveLayout();
+    }
+  });
 
   qs('save-system').addEventListener('click', async () => {
     let qrImage = db.settings?.qrImage || '';
@@ -1712,6 +1765,8 @@ function blinkTableCard(tableId) {
 }
 
 (async function init() {
+  isMobileViewport = window.innerWidth <= 768;
+  applyAdaptiveLayout();
   applyRoleUI();
   applyScannerModeUI();
   bind();
