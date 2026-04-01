@@ -9,6 +9,7 @@ let tableZoom = 100;
 let editingMenuId = null;
 let lastPendingTableIds = new Set();
 let lastCheckoutRequestIds = new Set();
+let activeOrderItemDraft = null;
 const RECOVERY_COLORS = ['แดง', 'ส้ม', 'เหลือง', 'เขียว', 'ฟ้า', 'น้ำเงิน', 'ม่วง'];
 const CELEBRITIES = ['ณเดชน์ คูกิมิยะ', 'ญาญ่า อุรัสยา', 'ใหม่ ดาวิกา', 'มาริโอ้ เมาเร่อ', 'เบลล่า ราณี', 'ชมพู่ อารยา', 'อั้ม พัชราภา', 'แพนเค้ก เขมนิจ', 'เวียร์ ศุกลวัฒน์', 'โป๊ป ธนวรรธน์', 'เจมส์ จิรายุ', 'คิมเบอร์ลี่', 'บอย ปกรณ์', 'เต้ย จรินทร์พร', 'ใบเฟิร์น พิมพ์ชนก', 'โตโน่ ภาคิน', 'แพทริเซีย กู๊ด', 'แอฟ ทักษอร', 'นนกุล ชานน', 'กลัฟ คณาวุฒิ'];
 const THEME_PRESETS = [
@@ -167,8 +168,69 @@ function getTableOrders(tableId) {
 function getTableSummary(tableId) {
   const orders = getTableOrders(tableId);
   const items = orders.flatMap((o) => o.items || []);
-  const total = items.reduce((s, i) => s + Number(i.price || 0), 0);
+  const total = items.reduce((s, i) => s + (Number(i.price || 0) * Math.max(1, Number(i.qty || 1))), 0);
   return { items, total };
+}
+
+function normalizeAddonOptions(item) {
+  if (Array.isArray(item?.addons)) return item.addons.filter(Boolean).map((value) => String(value).trim()).filter(Boolean);
+  if (Array.isArray(item?.modifiers)) return item.modifiers.filter(Boolean).map((value) => String(value).trim()).filter(Boolean);
+  if (typeof item?.addonOptions === 'string') return item.addonOptions.split(',').map((value) => value.trim()).filter(Boolean);
+  if (Array.isArray(item?.addonOptions)) return item.addonOptions.filter(Boolean).map((value) => String(value).trim()).filter(Boolean);
+  return [];
+}
+
+function parseAddonOption(rawOption = '') {
+  const option = String(rawOption || '').trim();
+  const explicitPrice = option.match(/\+\s*([\d]+(?:[.,][\d]+)?)/);
+  const wrappedPrice = option.match(/\(\+\s*([\d]+(?:[.,][\d]+)?)\)\s*$/);
+  const priceText = (wrappedPrice?.[1] || explicitPrice?.[1] || '0').replace(',', '.');
+  const price = Number(priceText || 0);
+  const cleanedName = option
+    .replace(/\s*\(\+\s*[\d]+(?:[.,][\d]+)?\)\s*$/u, '')
+    .replace(/\s*\+\s*[\d]+(?:[.,][\d]+)?\s*(บาท|baht)?\s*$/iu, '')
+    .trim();
+  return {
+    name: cleanedName || option,
+    price: Number.isFinite(price) ? price : 0,
+    label: option,
+  };
+}
+
+function orderCartIdentity(item) {
+  const addonKey = (item.addons || [])
+    .map((addon) => `${String(addon.name || '').trim()}:${Number(addon.price || 0)}`)
+    .sort()
+    .join('|');
+  const baseId = item.item_id || item.id || item.name;
+  return `${baseId}__${addonKey}__${(item.note || '').trim()}`;
+}
+
+function addItemToOrderCart(item, options = {}) {
+  const selectedAddons = Array.isArray(options.addons) ? options.addons : [];
+  const addonText = selectedAddons.map((addonItem) => addonItem.name).join(', ');
+  const addonTotal = selectedAddons.reduce((sum, addonItem) => sum + Number(addonItem.price || 0), 0);
+  const qty = Math.max(1, Number(options.qty || 1));
+  const note = String(options.note || '').trim();
+  const candidate = {
+    id: item.id,
+    item_id: item.id,
+    name: item.name,
+    base_price: Number(item.price || 0),
+    price: Number(item.price || 0) + addonTotal,
+    addon: addonText,
+    addons: selectedAddons,
+    note,
+    qty,
+  };
+  const key = orderCartIdentity(candidate);
+  const existing = orderCart.find((entry) => orderCartIdentity(entry) === key);
+  if (existing) {
+    existing.qty += qty;
+  } else {
+    orderCart.push(candidate);
+  }
+  renderOrderCart();
 }
 
 function renderTables() {
@@ -199,8 +261,22 @@ function renderOrderMenuChoices() {
     btn.className = 'menu-choice visual large-thumb';
     btn.innerHTML = `<div class="menu-choice-thumb">${item.image ? `<img src="${item.image}" alt="${item.name}" />` : 'Image'}</div><strong>${item.name}</strong><small>฿${money(item.price)}</small>`;
     btn.addEventListener('click', () => {
-      orderCart.push({ name: item.name, price: Number(item.price), addon: '', note: '', qty: 1 });
-      renderOrderCart();
+      const addonOptions = normalizeAddonOptions(item);
+      if (!addonOptions.length) {
+        addItemToOrderCart(item, { addons: [], qty: 1, note: '' });
+        return;
+      }
+      activeOrderItemDraft = item;
+      qs('order-item-detail-title').textContent = item.name;
+      const addonWrap = qs('order-item-addon-checkboxes');
+      addonWrap.innerHTML = '';
+      addonOptions.forEach((option) => {
+        const row = document.createElement('label');
+        row.className = 'addon-check-item';
+        row.innerHTML = `<input type="checkbox" value="${option}" /> <span>${option}</span>`;
+        addonWrap.appendChild(row);
+      });
+      qs('order-item-detail-modal').classList.remove('hidden');
     });
     grid.appendChild(btn);
   });
@@ -217,11 +293,13 @@ function renderOrderCart() {
   orderCart.forEach((item, idx) => {
     const row = document.createElement('div');
     row.className = 'list-card';
-    row.innerHTML = `<strong>${item.name}</strong> · ${money(item.price)} บาท <button class="btn-soft btn-danger icon-delete" aria-label="ลบรายการ" type="button">✕</button>`;
+    const qty = Math.max(1, Number(item.qty || 1));
+    const lineTotal = Number(item.price || 0) * qty;
+    row.innerHTML = `<strong>${item.name}${qty > 1 ? ` x${qty}` : ''}</strong> · ${money(lineTotal)} บาท ${item.addon ? `<small>(${item.addon})</small>` : ''} <button class="btn-soft btn-danger icon-delete" aria-label="ลบรายการ" type="button">✕</button>`;
     row.querySelector('button').addEventListener('click', () => { orderCart.splice(idx, 1); renderOrderCart(); });
     list.appendChild(row);
   });
-  qs('order-cart-total').textContent = `รวม ${money(orderCart.reduce((s, i) => s + Number(i.price || 0), 0))} บาท`;
+  qs('order-cart-total').textContent = `รวม ${money(orderCart.reduce((s, i) => s + (Number(i.price || 0) * Math.max(1, Number(i.qty || 1))), 0))} บาท`;
 }
 
 function summarizeItems(items = []) {
@@ -293,7 +371,7 @@ function renderDeskSummary() {
   totalNode.textContent = `รวม ${money(total)} บาท`;
   const hasCustomerNewOrder = getTableOrders(selectedTableId).some((o) => o.source === 'customer' && o.status === 'new');
   if (acceptBtn) {
-    acceptBtn.disabled = !hasCustomerNewOrder;
+    acceptBtn.disabled = !hasCustomerNewOrder || total <= 0;
     acceptBtn.textContent = hasCustomerNewOrder ? '🟠 ออเดอร์ใหม่ / Accept' : '✅ รับออเดอร์แล้ว';
   }
 }
@@ -314,7 +392,18 @@ function selectTable(tableId) {
 
 async function submitOrderFromPanel() {
   if (!selectedTableId || !orderCart.length) return;
-  const res = await api('/api/order', { method: 'POST', body: JSON.stringify({ target: 'table', target_id: selectedTableId, cart: orderCart, source: 'staff' }) });
+  const subtotal = orderCart.reduce((sum, item) => sum + (Number(item.price || 0) * Math.max(1, Number(item.qty || 1))), 0);
+  const res = await api('/api/order', {
+    method: 'POST',
+    body: JSON.stringify({
+      target: 'table',
+      target_id: selectedTableId,
+      cart: orderCart,
+      source: 'staff',
+      subtotal,
+      total_price: subtotal,
+    }),
+  });
   if (res.error) return;
   qs('table-order-modal').classList.add('hidden');
   orderCart = [];
@@ -685,6 +774,26 @@ function bind() {
   qs('close-qr-modal').addEventListener('click', () => qs('qr-modal').classList.add('hidden'));
   qs('close-forgot-admin-modal').addEventListener('click', () => qs('forgot-admin-modal').classList.add('hidden'));
   qs('close-table-order-modal').addEventListener('click', () => qs('table-order-modal').classList.add('hidden'));
+  qs('close-order-item-detail-modal')?.addEventListener('click', () => {
+    activeOrderItemDraft = null;
+    qs('order-item-detail-modal').classList.add('hidden');
+  });
+  qs('order-item-detail-modal')?.addEventListener('click', (event) => {
+    if (event.target.id === 'order-item-detail-modal') {
+      activeOrderItemDraft = null;
+      qs('order-item-detail-modal').classList.add('hidden');
+    }
+  });
+  qs('order-item-detail-add-btn')?.addEventListener('click', () => {
+    if (!activeOrderItemDraft) return;
+    const checked = [...document.querySelectorAll('#order-item-addon-checkboxes input[type="checkbox"]:checked')]
+      .map((node) => node.value.trim())
+      .filter(Boolean);
+    const selectedAddons = checked.map((label) => parseAddonOption(label));
+    addItemToOrderCart(activeOrderItemDraft, { addons: selectedAddons, qty: 1, note: '' });
+    activeOrderItemDraft = null;
+    qs('order-item-detail-modal').classList.add('hidden');
+  });
   qs('close-payment-modal').addEventListener('click', () => qs('payment-modal').classList.add('hidden'));
   qs('open-receipt-preview')?.addEventListener('click', () => qs('receipt-preview-modal').classList.remove('hidden'));
   qs('close-receipt-preview')?.addEventListener('click', () => qs('receipt-preview-modal').classList.add('hidden'));

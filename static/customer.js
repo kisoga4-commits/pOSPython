@@ -65,7 +65,10 @@ function calculateCartTotal(items = cart) {
 }
 
 function cartIdentity(item) {
-  const addonKey = (item.addons || []).map((addon) => `${addon.name}:${Number(addon.price || 0)}`).join('|');
+  const addonKey = (item.addons || [])
+    .map((addon) => `${String(addon.name || '').trim()}:${Number(addon.price || 0)}`)
+    .sort()
+    .join('|');
   const baseId = item.item_id || item.id || item.name;
   return `${baseId}__${addonKey}__${(item.note || '').trim()}`;
 }
@@ -102,23 +105,26 @@ function addToCart(item, options = {}) {
 
 function persistCart() {
   sessionStorage.setItem(cartStorageKey, JSON.stringify(cart));
+  localStorage.setItem(cartStorageKey, JSON.stringify(cart));
 }
 
 function loadCartFromSession() {
   try {
-    const raw = sessionStorage.getItem(cartStorageKey);
+    const raw = sessionStorage.getItem(cartStorageKey) || localStorage.getItem(cartStorageKey);
     if (!raw) return;
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) cart = parsed;
   } catch (error) {
     cart = [];
     sessionStorage.removeItem(cartStorageKey);
+    localStorage.removeItem(cartStorageKey);
   }
 }
 
 function clearCart(closeModal = false) {
   cart = [];
   sessionStorage.removeItem(cartStorageKey);
+  localStorage.removeItem(cartStorageKey);
   renderCart();
   if (closeModal) document.getElementById('cart-modal').classList.add('hidden');
 }
@@ -266,6 +272,10 @@ function updateTableStatus(tables = []) {
   note.textContent = table.status === 'pending_order'
     ? 'ส่งออร์เดอร์แล้ว · รอพนักงานกดรับ'
     : (table.status === 'accepted_order' ? 'พนักงานรับออร์เดอร์แล้ว · กำลังเตรียมอาหาร' : `สถานะล่าสุด: ${meta.label}`);
+  if (['available', 'closed'].includes(table.status) && cart.length) {
+    clearCart();
+    document.getElementById('message').textContent = 'โต๊ะนี้ถูกเคลียร์แล้ว ล้างตะกร้าให้อัตโนมัติ';
+  }
 }
 
 function renderExistingOrders() {
