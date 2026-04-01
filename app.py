@@ -371,8 +371,10 @@ def api_checkout():
         if order["target"] == target and order["target_id"] == target_id and order["status"] != "completed":
             order["status"] = "completed"
             order["updated_at"] = local_now()
-        if order["target"] == target and order["target_id"] == target_id:
             pending_items.extend(order["items"])
+
+    if not pending_items:
+        return jsonify({"error": "nothing_to_checkout"}), 409
 
     total = sum(float(item.get("price", 0)) * max(1, int(item.get("qty", 1) or 1)) for item in pending_items)
     sale_record = {

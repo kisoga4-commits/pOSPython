@@ -94,36 +94,51 @@ function updateTableHeader() {
 
 function renderBill(bill) {
   const list = qs('customer-facing-items');
+  const qrWrap = qs('customer-facing-qr-wrap');
   list.innerHTML = '';
   const groupedItems = summarizeItems(bill.items || []);
   if (!groupedItems.length) {
-    list.innerHTML = '<div class="empty">ยังไม่มีรายการค้างชำระ</div>';
-  } else {
-    groupedItems.forEach((item) => {
-      const row = document.createElement('div');
-      row.className = 'list-card bill-row-item';
-      const qty = Math.max(1, Number(item.qty || 1));
-      const thumb = item.image ? `<img src="${item.image}" alt="${item.name}" class="checkout-item-thumb" />` : '<span class="checkout-item-thumb fallback">🍽️</span>';
-      row.innerHTML = `<div style="display:flex;align-items:center;gap:8px"><span>${thumb}</span><strong>${item.name}${qty > 1 ? ` x${qty}` : ''}</strong></div><span>฿${money(item.price * qty)}</span>`;
-      list.appendChild(row);
-    });
+    list.innerHTML = '<div class="empty">ยังไม่มีรายการที่ต้องชำระ<br/>รอการเช็คบิลถัดไป</div>';
+    qs('customer-facing-total').textContent = money(0);
+    qs('customer-facing-qr-image').removeAttribute('src');
+    qrWrap?.classList.add('hidden');
+    return;
   }
+
+  qrWrap?.classList.remove('hidden');
+  groupedItems.forEach((item) => {
+    const row = document.createElement('div');
+    row.className = 'list-card bill-row-item';
+    const qty = Math.max(1, Number(item.qty || 1));
+    const thumb = item.image ? `<img src="${item.image}" alt="${item.name}" class="checkout-item-thumb" />` : '<span class="checkout-item-thumb fallback">🍽️</span>';
+    row.innerHTML = `<div style="display:flex;align-items:center;gap:8px"><span>${thumb}</span><strong>${item.name}${qty > 1 ? ` x${qty}` : ''}</strong></div><span>฿${money(item.price * qty)}</span>`;
+    list.appendChild(row);
+  });
   qs('customer-facing-total').textContent = money(bill.total);
   const qrImage = settings.qrImage || buildPromptPayQrImage(settings.promptPay || '', Number(bill.total || 0), Boolean(settings.dynamicPromptPay));
   qs('customer-facing-qr-image').src = qrImage;
+}
+
+function renderWaitingDisplay() {
+  const list = qs('customer-facing-items');
+  const qrWrap = qs('customer-facing-qr-wrap');
+  list.innerHTML = '<div class="empty">หน้าจอพร้อมใช้งาน<br/>รอการเช็คบิลถัดไป</div>';
+  qs('customer-facing-total').textContent = money(0);
+  qs('customer-facing-qr-image').removeAttribute('src');
+  qrWrap?.classList.add('hidden');
 }
 
 function clearDisplaySelection() {
   tableId = 0;
   localStorage.setItem(ACTIVE_TABLE_KEY, '0');
   updateTableHeader();
-  renderBill({ items: [], total: 0 });
+  renderWaitingDisplay();
 }
 
 async function refreshBill() {
   if (!tableId) {
     updateTableHeader();
-    renderBill({ items: [], total: 0 });
+    renderWaitingDisplay();
     return;
   }
   const bill = await api(`/api/bill/table/${tableId}`);
