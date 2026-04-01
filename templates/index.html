@@ -13,8 +13,8 @@
   data-local-base-url="{{ local_base_url }}"
   data-scanner-mode="{{ '1' if scanner_mode else '0' }}"
 >
-  <div class="app-shell desktop-shell">
-    <header class="app-header modern-header">
+  <div id="desktop-layout" class="app-shell desktop-shell desktop-layout">
+    <header class="app-header modern-header desktop-only">
       <div class="brand-left">
         <div class="logo-wrap">
           <span id="network-status-dot" class="network-dot online" title="Online"></span>
@@ -33,7 +33,7 @@
     </header>
 
     <main>
-      <nav class="section-card tab-bar">
+      <nav class="section-card tab-bar desktop-only">
         <button class="main-tab is-active" data-screen="customer" aria-label="ลูกค้า">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 10.5 12 4l9 6.5"/><path d="M5 9.5V20h14V9.5"/><path d="M9 14h6"/></svg>
           <small>ลูกค้า</small>
@@ -262,6 +262,26 @@
         <button id="save-system" class="btn-primary big-save">บันทึกการตั้งค่า</button>
       </section>
     </main>
+  </div>
+
+  <div id="mobile-layout" class="mobile-layout hidden">
+    <header class="mobile-header mobile-only">
+      <div class="brand-left">
+        <div class="logo-wrap">
+          <span id="mobile-network-status-dot" class="network-dot online" title="Online"></span>
+          <div id="mobile-store-logo" class="logo-slot">LOGO</div>
+        </div>
+        <div>
+          <h2 id="mobile-store-name">FAKDU</h2>
+          <small class="muted">Staff Mobile</small>
+        </div>
+      </div>
+      <button id="mobile-open-order-modal" class="btn-primary" type="button">จัดการออเดอร์</button>
+    </header>
+    <nav class="mobile-bottom-nav mobile-only" aria-label="Mobile navigation">
+      <button class="mobile-tab is-active" data-screen="customer" type="button">โต๊ะ</button>
+      <button class="mobile-tab" data-screen="cashier" type="button">เช็คบิล</button>
+    </nav>
   </div>
   <div id="receipt-preview-modal" class="modal hidden">
     <div class="modal-card compact">

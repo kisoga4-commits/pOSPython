@@ -318,6 +318,98 @@ body{
   border-radius:20px;
   padding:10px 12px;
 }
+
+/* Adaptive UI architecture */
+.mobile-layout{position:fixed;inset:0;pointer-events:none;z-index:25}
+.mobile-header{
+  margin:10px 10px 0;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  pointer-events:auto;
+}
+.mobile-bottom-nav{
+  position:fixed;
+  left:10px;
+  right:10px;
+  bottom:10px;
+  border-radius:18px;
+  background:linear-gradient(130deg,#ffffff,#eef2ff);
+  border:1px solid #d9def0;
+  box-shadow:0 12px 28px rgba(15,23,42,.15);
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  padding:8px;
+  pointer-events:auto;
+}
+.mobile-tab{
+  border:none;
+  border-radius:12px;
+  min-height:44px;
+  background:#f8fafc;
+  color:#334155;
+  font-weight:700;
+}
+.mobile-tab.is-active{
+  background:linear-gradient(90deg,var(--primary),var(--primary-2));
+  color:#fff;
+}
+
+@media (max-width: 768px){
+  body.is-mobile-ui .desktop-only{display:none!important}
+  body.is-mobile-ui #desktop-layout{
+    max-width:none;
+    padding:92px 10px 88px;
+  }
+  body.is-mobile-ui .section-card{
+    border-radius:14px;
+    padding:10px;
+    margin-top:8px;
+  }
+  body.is-mobile-ui #customer .section-head{
+    position:sticky;
+    top:0;
+    z-index:3;
+    background:linear-gradient(180deg,#ffffff,#f8fafc);
+    border-bottom:1px solid #e2e8f0;
+    padding:8px 2px;
+  }
+  body.is-mobile-ui .clean-table-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:8px;
+  }
+  body.is-mobile-ui .table-card{
+    min-height:120px;
+    border-radius:14px;
+    padding:10px;
+    border-width:2px;
+    background:linear-gradient(180deg,#ffffff,#f8fafc);
+  }
+  body.is-mobile-ui #backstore,
+  body.is-mobile-ui #system{display:none!important}
+  body.is-mobile-ui .mobile-fullscreen-modal{
+    padding:0;
+    align-items:stretch;
+  }
+  body.is-mobile-ui .mobile-fullscreen-modal .modal-card{
+    width:100vw;
+    max-width:none;
+    height:100vh;
+    max-height:none;
+    border-radius:0;
+    padding:12px 12px 90px;
+  }
+  body.is-mobile-ui .mobile-fullscreen-modal .modal-fixed-footer{
+    position:fixed;
+    left:0;
+    right:0;
+    bottom:0;
+    padding:10px 12px calc(env(safe-area-inset-bottom, 0px) + 8px);
+    background:#fff;
+  }
+}
 .logo-slot.hero-logo{width:68px;height:68px;border-radius:18px}
 .header-icons{gap:8px}
 .icon-btn{
