@@ -82,6 +82,7 @@
 
   <div id="cart-toast" class="cart-toast hidden" role="status" aria-live="polite">เพิ่มลงตะกร้าแล้ว</div>
   <audio id="customer-confirm-sound" src="{{ url_for('static', filename='sounds/warning.mp3') }}"></audio>
+  <audio id="add-to-cart-sound" src="{{ url_for('static', filename='sounds/new_order.mp3') }}"></audio>
 
   <script src="{{ url_for('static', filename='db.js') }}?v={{ asset_version }}"></script>
   <script src="{{ url_for('static', filename='sync.js') }}?v={{ asset_version }}"></script>

@@ -135,7 +135,6 @@ function tableCard(table, orders = [], actions = [], options = {}) {
     notify.textContent = '🔔 ลูกค้าสั่งจาก QR';
     card.appendChild(notify);
   }
-
   if (actions.length) {
     const actionWrap = document.createElement('div');
     actionWrap.className = 'btn-row';
