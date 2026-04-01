@@ -45,10 +45,17 @@ function normalizeAddonOptions(item) {
 
 function parseAddonOption(rawOption = '') {
   const option = String(rawOption || '').trim();
-  const match = option.match(/\(\+([\d.]+)\)\s*$/);
+  const explicitPrice = option.match(/\+\s*([\d]+(?:[.,][\d]+)?)/);
+  const wrappedPrice = option.match(/\(\+\s*([\d]+(?:[.,][\d]+)?)\)\s*$/);
+  const priceText = (wrappedPrice?.[1] || explicitPrice?.[1] || '0').replace(',', '.');
+  const price = Number(priceText || 0);
+  const cleanedName = option
+    .replace(/\s*\(\+\s*[\d]+(?:[.,][\d]+)?\)\s*$/u, '')
+    .replace(/\s*\+\s*[\d]+(?:[.,][\d]+)?\s*(บาท|baht)?\s*$/iu, '')
+    .trim();
   return {
-    name: option.replace(/\s*\(\+[\d.]+\)\s*$/, '').trim() || option,
-    price: match ? Number(match[1]) : 0,
+    name: cleanedName || option,
+    price: Number.isFinite(price) ? price : 0,
     label: option,
   };
 }
@@ -58,8 +65,9 @@ function calculateCartTotal(items = cart) {
 }
 
 function cartIdentity(item) {
-  const addonKey = (item.addons || []).map((addon) => addon.name).join('|');
-  return `${item.id || item.name}__${addonKey}__${(item.note || '').trim()}`;
+  const addonKey = (item.addons || []).map((addon) => `${addon.name}:${Number(addon.price || 0)}`).join('|');
+  const baseId = item.item_id || item.id || item.name;
+  return `${baseId}__${addonKey}__${(item.note || '').trim()}`;
 }
 
 function addToCart(item, options = {}) {
@@ -68,8 +76,10 @@ function addToCart(item, options = {}) {
   const addonTotal = selectedAddons.reduce((sum, addonItem) => sum + Number(addonItem.price || 0), 0);
   const note = '';
   const qty = Math.max(1, Number(options.qty || 1));
+  const baseItemId = item.item_id || item.id;
   const candidate = {
     ...item,
+    item_id: baseItemId,
     base_price: Number(item.price || 0),
     price: Number(item.price || 0) + addonTotal,
     addon,
@@ -77,6 +87,7 @@ function addToCart(item, options = {}) {
     note,
     qty,
   };
+  candidate.cart_item_id = cartIdentity(candidate);
   const key = cartIdentity(candidate);
   const existing = cart.find((entry) => cartIdentity(entry) === key);
   if (existing) {
@@ -364,20 +375,28 @@ function bind() {
   document.getElementById('submit-order').addEventListener('click', async () => {
     if (!lockedTableId || !cart.length) return;
 
-    const payloadCart = cart.map((item) => ({
-      id: item.id,
-      name: item.name,
-      price: Number(item.price || 0),
-      base_price: Number(item.base_price || item.price || 0),
-      addon: item.addon || '',
-      addons: (item.addons || []).map((addonItem) => ({
-        name: addonItem.name,
-        price: Number(addonItem.price || 0),
-      })),
-      note: item.note || '',
-      qty: Math.max(1, Number(item.qty || 1)),
-      line_total: Number(item.price || 0) * Math.max(1, Number(item.qty || 1)),
-    }));
+    const payloadCart = cart.map((item) => {
+      const quantity = Math.max(1, Number(item.qty || item.quantity || 1));
+      const unitPrice = Number(item.price || 0);
+      return {
+        item_id: item.item_id || item.id,
+        id: item.item_id || item.id,
+        cart_item_id: item.cart_item_id || cartIdentity(item),
+        name: item.name,
+        price: unitPrice,
+        base_price: Number(item.base_price || item.price || 0),
+        addon: item.addon || '',
+        addons: (item.addons || []).map((addonItem) => ({
+          name: addonItem.name,
+          price: Number(addonItem.price || 0),
+        })),
+        note: item.note || '',
+        quantity,
+        qty: quantity,
+        total: unitPrice * quantity,
+        line_total: unitPrice * quantity,
+      };
+    });
 
     const pendingPayload = {
       client_order_id: `mobile-${Date.now()}`,
