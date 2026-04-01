@@ -31,7 +31,19 @@ def default_db() -> dict:
             {"id": 3, "name": "ชุดผักรวมสุขภาพ", "price": 50, "category": "ผัก", "image": ""},
         ],
         "tableCount": table_count,
-        "tables": [{"id": i, "status": "available", "items": []} for i in range(1, table_count + 1)],
+        "tables": [
+            {
+                "id": i,
+                "status": "available",
+                "items": [],
+                "call_staff_status": "idle",
+                "call_staff_requested_at": "",
+                "call_staff_ack_at": "",
+                "last_order_event": "",
+                "last_order_event_at": "",
+            }
+            for i in range(1, table_count + 1)
+        ],
         "orders": [],
         "sales": [],
         "settings": {
@@ -93,7 +105,16 @@ def _normalize_db(data: dict) -> dict:
     merged.update(data or {})
     merged["settings"] = {**base["settings"], **(data or {}).get("settings", {})}
     merged["tables"] = [
-        {**table, "status": normalize_table_status(table.get("status", "available")), "items": table.get("items", [])}
+        {
+            **table,
+            "status": normalize_table_status(table.get("status", "available")),
+            "items": table.get("items", []),
+            "call_staff_status": table.get("call_staff_status", "idle"),
+            "call_staff_requested_at": table.get("call_staff_requested_at", ""),
+            "call_staff_ack_at": table.get("call_staff_ack_at", ""),
+            "last_order_event": table.get("last_order_event", ""),
+            "last_order_event_at": table.get("last_order_event_at", ""),
+        }
         for table in merged.get("tables", [])
     ]
     merged["menu"] = [
@@ -145,5 +166,17 @@ def save_db(data: dict) -> dict:
 
 def reset_tables(data: dict) -> dict:
     table_count = int(data.get("tableCount", 8))
-    data["tables"] = [{"id": i, "status": "available", "items": []} for i in range(1, table_count + 1)]
+    data["tables"] = [
+        {
+            "id": i,
+            "status": "available",
+            "items": [],
+            "call_staff_status": "idle",
+            "call_staff_requested_at": "",
+            "call_staff_ack_at": "",
+            "last_order_event": "",
+            "last_order_event_at": "",
+        }
+        for i in range(1, table_count + 1)
+    ]
     return data

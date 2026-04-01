@@ -44,13 +44,12 @@ function playCheckoutSound() {
 }
 
 function playCallStaffSound() {
-  const immediateAlert = new Audio('/static/alert.mp3');
-  immediateAlert.play().catch(() => {
-    const audio = document.getElementById('call-staff-sound');
-    if (!audio) return;
-    audio.currentTime = 0;
-    audio.play().catch(() => {});
-  });
+  const audio = document.getElementById('call-staff-sound');
+  if (!audio) return;
+  audio.currentTime = 0;
+  audio.volume = 1;
+  audio.playbackRate = 1;
+  audio.play().catch(() => {});
 }
 
 function cartIdentity(item) {
@@ -143,6 +142,17 @@ function tableCard(table, orders = [], actions = [], options = {}) {
     addMoreNotify.textContent = '🆕 โต๊ะนี้มีการสั่งเพิ่ม';
     card.appendChild(addMoreNotify);
   }
+  if (table.call_staff_status === 'requested') {
+    const callNotify = document.createElement('div');
+    callNotify.className = 'dot-notify';
+    callNotify.textContent = '🚨 เรียกพนักงาน';
+    card.appendChild(callNotify);
+  } else if (table.call_staff_status === 'acknowledged') {
+    const ackNotify = document.createElement('div');
+    ackNotify.className = 'dot-notify notify-additional';
+    ackNotify.textContent = '✅ รับรู้แล้ว';
+    card.appendChild(ackNotify);
+  }
   if (actions.length) {
     const actionWrap = document.createElement('div');
     actionWrap.className = 'btn-row';
@@ -182,28 +192,39 @@ function renderCustomerTab() {
 
   customerTables.forEach((table) => {
     const tableOrders = state.orders.filter((order) => order.target === 'table' && order.target_id === table.id && order.status !== 'cancelled');
-    const hasCustomerNewOrder = tableOrders.some((order) => order.source === 'customer' && order.status === 'pending');
+    const pendingRequests = tableOrders.filter((order) => order.source === 'customer' && order.status === 'request_pending');
     const hasAcceptedBefore = tableOrders.some((order) => order.status === 'accepted' || order.status === 'completed');
-    table.has_additional_order = hasCustomerNewOrder && hasAcceptedBefore;
+    table.has_additional_order = pendingRequests.length > 0 && hasAcceptedBefore;
     const tableTotal = tableOrders.flatMap((order) => order.items || []).reduce((sum, item) => {
       const qty = Math.max(1, Number(item.qty || 1));
       return sum + (Number(item.price || 0) * qty);
     }, 0);
     const actions = [];
-    if (hasCustomerNewOrder && tableTotal > 0) {
+    pendingRequests.forEach((requestOrder) => {
       actions.push({
-        label: '✅ ยืนยันรับออร์เดอร์ (Accept Order)',
+        label: `✅ ยืนยันคำขอ ${requestOrder.id}`,
         className: 'btn-primary',
         onClick: async () => {
           playCallStaffSound();
           await api('/api/table/accept', {
             method: 'POST',
-            body: JSON.stringify({ table_id: table.id }),
+            body: JSON.stringify({ order_id: requestOrder.id }),
           });
           await loadLive();
         },
       });
-    }
+      actions.push({
+        label: `❌ ปฏิเสธ ${requestOrder.id}`,
+        className: 'btn-soft',
+        onClick: async () => {
+          await api('/api/table/reject', {
+            method: 'POST',
+            body: JSON.stringify({ order_id: requestOrder.id }),
+          });
+          await loadLive();
+        },
+      });
+    });
     const tableItems = tableOrders.flatMap((order) => order.items || []);
     list.appendChild(tableCard(table, tableItems, actions));
   });
@@ -212,7 +233,9 @@ function renderCustomerTab() {
 function renderCheckoutTab() {
   const list = document.getElementById('staff-checkout-list');
   list.innerHTML = '';
-  const checkoutTables = state.tables.filter((table) => table.status === 'checkout_requested');
+  const checkoutTables = state.tables.filter((table) => state.orders.some(
+    (order) => order.target === 'table' && order.target_id === table.id && order.status === 'accepted'
+  ));
 
   if (!checkoutTables.length) {
     list.innerHTML = '<div class="empty-state">ยังไม่มีโต๊ะรอเช็คบิล</div>';
@@ -227,7 +250,7 @@ function renderCheckoutTab() {
       const qty = Math.max(1, Number(item.qty || 1));
       return Array.from({ length: qty }, () => ({ ...item, qty: 1 }));
     });
-    list.appendChild(tableCard(table, expandedItems, [{
+    const actions = [{
       label: '💵 ปิดบิลเงินสด',
       className: 'btn-secondary',
       onClick: async () => {
@@ -249,7 +272,21 @@ function renderCheckoutTab() {
         });
         await loadLive();
       },
-    }], { showQty: false }));
+    }];
+    if (table.call_staff_status === 'requested') {
+      actions.unshift({
+        label: '🔕 รับรู้การเรียกพนักงาน',
+        className: 'btn-primary',
+        onClick: async () => {
+          await api('/api/table/call-staff/ack', {
+            method: 'POST',
+            body: JSON.stringify({ table_id: table.id }),
+          });
+          await loadLive();
+        },
+      });
+    }
+    list.appendChild(tableCard(table, expandedItems, actions, { showQty: false }));
   });
 }
 
@@ -276,7 +313,7 @@ async function loadLive() {
   serviceMode = data.settings?.serviceMode || serviceMode;
 
   const pendingNow = new Set(state.tables.filter((table) => table.status === 'pending_order').map((table) => table.id));
-  const checkoutNow = new Set(state.tables.filter((table) => table.status === 'checkout_requested').map((table) => table.id));
+  const checkoutNow = new Set(state.tables.filter((table) => table.call_staff_status === 'requested').map((table) => table.id));
   const hasNewPending = [...pendingNow].some((id) => !lastPendingIds.has(id));
   const hasNewCheckout = [...checkoutNow].some((id) => !lastCheckoutIds.has(id));
   if (hasNewPending) playNewOrderSound();
@@ -303,7 +340,7 @@ function blinkTableCard(tableId) {
   const timeoutId = setTimeout(() => {
     card.classList.remove('blink-red');
     blinkTimers.delete(tableId);
-  }, 5000);
+  }, 10000);
   blinkTimers.set(tableId, timeoutId);
 }
 
