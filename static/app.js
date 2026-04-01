@@ -97,7 +97,11 @@ function playUISound() {
 }
 
 async function api(path, options = {}) {
-  const res = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...options });
+  const optionHeaders = options.headers || {};
+  const res = await fetch(path, {
+    ...options,
+    headers: { 'Content-Type': 'application/json', 'X-POS-Role': 'owner', ...optionHeaders },
+  });
   const text = await res.text();
   const data = text ? JSON.parse(text) : {};
   return res.ok ? data : { error: data.error || `request_failed_${res.status}` };

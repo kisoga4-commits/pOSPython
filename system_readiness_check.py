@@ -45,6 +45,7 @@ def main() -> None:
 
         create_order = client.post(
             "/api/order",
+            headers={"X-POS-Role": "customer"},
             json={
                 "target": "table",
                 "target_id": 1,
@@ -58,11 +59,12 @@ def main() -> None:
         if not order_id:
             raise AssertionError("create order did not return order id")
 
-        accept = client.post("/api/table/accept", json={"order_id": order_id})
+        accept = client.post("/api/table/accept", headers={"X-POS-Role": "staff"}, json={"order_id": order_id})
         assert_status(accept, 200, "accept order")
 
         checkout = client.post(
             "/api/checkout",
+            headers={"X-POS-Role": "staff"},
             json={"target": "table", "target_id": 1, "payment_method": "cash"},
         )
         assert_status(checkout, 200, "checkout")

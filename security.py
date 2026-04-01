@@ -58,6 +58,13 @@ def get_staff_host() -> str:
     return POS_STAFF_HOST
 
 
+def get_request_role(default: str = "guest") -> str:
+    role = (request.headers.get("X-POS-Role") or "").strip().lower()
+    if role in {"owner", "staff", "customer"}:
+        return role
+    return default
+
+
 def require_license(view):
     @wraps(view)
     def wrapped(*args, **kwargs):
@@ -88,6 +95,22 @@ def require_admin_host(view):
         return view(*args, **kwargs)
 
     return wrapped
+
+
+def require_roles(*allowed_roles: str):
+    normalized_roles = {str(role or "").strip().lower() for role in allowed_roles if str(role or "").strip()}
+
+    def decorator(view):
+        @wraps(view)
+        def wrapped(*args, **kwargs):
+            request_role = get_request_role(default="")
+            if request_role not in normalized_roles:
+                return {"error": "forbidden_role"}, 403
+            return view(*args, **kwargs)
+
+        return wrapped
+
+    return decorator
 
 
 def read_json() -> dict:

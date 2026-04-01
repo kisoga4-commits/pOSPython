@@ -29,18 +29,16 @@ const VISUAL_MENU_LABELS = [
 
 async function api(path, options = {}) {
   const url = path.startsWith('http') ? path : `${masterBaseUrl}${path}`;
+  const requestOptions = {
+    ...options,
+    headers: { 'Content-Type': 'application/json', 'X-POS-Role': 'customer', ...(options.headers || {}) },
+  };
   try {
-    const res = await fetch(url, {
-      headers: { 'Content-Type': 'application/json' },
-      ...options,
-    });
+    const res = await fetch(url, requestOptions);
     return res.json();
   } catch (networkError) {
     if (path.startsWith('http') || !masterBaseUrl) throw networkError;
-    const fallbackRes = await fetch(path, {
-      headers: { 'Content-Type': 'application/json' },
-      ...options,
-    });
+    const fallbackRes = await fetch(path, requestOptions);
     return fallbackRes.json();
   }
 }
@@ -570,7 +568,6 @@ function setLockedTableUI() {
     note.textContent = 'กรุณาสแกน QR ที่โต๊ะเพื่อเข้าโหมดลูกค้า';
     document.getElementById('submit-order').disabled = true;
     document.getElementById('floating-cart-btn').disabled = true;
-    document.getElementById('call-staff-bill').disabled = true;
     refreshSubmitState();
   }
 }
@@ -688,16 +685,6 @@ function bind() {
     }
   });
 
-  document.getElementById('call-staff-bill').addEventListener('click', async () => {
-    if (!lockedTableId) return;
-    const res = await api('/api/table/call-staff', {
-      method: 'POST',
-      body: JSON.stringify({ table_id: lockedTableId }),
-    });
-    document.getElementById('message').textContent = res.status === 'success' ? 'เรียกพนักงานแล้ว กรุณารอสักครู่' : (res.error || 'ทำรายการไม่สำเร็จ');
-    playConfirmSound();
-    await loadLive();
-  });
 }
 
 (function init() {
@@ -709,7 +696,6 @@ function bind() {
   if (!lockedTableId) {
     document.getElementById('message').textContent = 'Invalid table access. กรุณาเข้าผ่าน QR Code เท่านั้น';
     document.getElementById('submit-order').disabled = true;
-    document.getElementById('call-staff-bill').disabled = true;
     refreshSubmitState();
     return;
   }
