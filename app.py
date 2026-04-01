@@ -913,6 +913,28 @@ def api_sales_best_sellers():
     })
 
 
+@app.route("/api/sales/history", methods=["DELETE"])
+@require_server_request
+@require_license
+def api_sales_history_delete():
+    payload = read_json() or {}
+    db = load_db()
+
+    sale_id = payload.get("sale_id")
+    if isinstance(sale_id, str) and sale_id.strip():
+        before_count = len(db.get("sales", []))
+        db["sales"] = [sale for sale in db.get("sales", []) if str(sale.get("id")) != sale_id.strip()]
+        if len(db["sales"]) == before_count:
+            return jsonify({"error": "sale_not_found"}), 404
+        db = save_db(db)
+        return jsonify({"status": "success", "deleted": 1, "version": db["meta"]["version"]})
+
+    deleted = len(db.get("sales", []))
+    db["sales"] = []
+    db = save_db(db)
+    return jsonify({"status": "success", "deleted": deleted, "version": db["meta"]["version"]})
+
+
 
 if __name__ == "__main__":
     run_server()

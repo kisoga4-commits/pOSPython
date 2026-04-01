@@ -202,7 +202,7 @@ function renderCustomerTab() {
   customerTables.forEach((table) => {
     const tableOrders = state.orders.filter((order) => order.target === 'table' && order.target_id === table.id && order.status !== 'cancelled');
     const pendingRequests = tableOrders.filter((order) => order.source === 'customer' && order.status === 'request_pending');
-    const hasAcceptedBefore = tableOrders.some((order) => order.status === 'accepted' || order.status === 'completed');
+    const hasAcceptedBefore = tableOrders.some((order) => order.status === 'accepted');
     table.has_additional_order = pendingRequests.length > 0 && hasAcceptedBefore;
     const tableTotal = tableOrders.flatMap((order) => order.items || []).reduce((sum, item) => {
       const qty = Math.max(1, Number(item.qty || 1));

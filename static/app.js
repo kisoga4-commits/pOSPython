@@ -204,7 +204,7 @@ function getTablePendingRequests(tableId) {
 }
 
 function getTableAcceptedOrders(tableId) {
-  return getTableOrders(tableId).filter((order) => ['accepted', 'completed'].includes(order.status));
+  return getTableOrders(tableId).filter((order) => order.status === 'accepted');
 }
 
 function getTableSummary(tableId, options = {}) {
@@ -283,22 +283,25 @@ function renderTables() {
   db.tables.forEach((table) => {
     const tableOrders = getTableOrders(table.id);
     const pendingRequests = getTablePendingRequests(table.id);
-    const hasAcceptedBefore = tableOrders.some((order) => order.status === 'accepted' || order.status === 'completed');
+    const hasAcceptedBefore = tableOrders.some((order) => order.status === 'accepted');
     const showAdditionalOrder = pendingRequests.length > 0 && hasAcceptedBefore;
     const displayStatus = table.call_staff_status === 'requested' ? 'checkout_requested' : table.status;
     const meta = statusMap[displayStatus] || statusMap.available;
     const { items, total } = getTableSummary(table.id, { acceptedOnly: true });
+    const pendingItems = pendingRequests.flatMap((order) => order.items || []);
+    const previewItems = items.length ? items : pendingItems;
     const card = document.createElement('button');
     card.type = 'button';
     card.className = `table-card ${meta.tone}`;
+    card.dataset.tableId = String(table.id);
     if (table.call_staff_status === 'requested') card.classList.add('status-checkout_requested');
-    const stackedItems = summarizeItems(items);
-    card.innerHTML = items.length
+    const stackedItems = summarizeItems(previewItems);
+    card.innerHTML = previewItems.length
       ? `<div class="table-head-row"><strong>${unitLabel()} ${table.id}</strong><span class="status-chip ${meta.tone}">${meta.icon}</span></div>
          <small>${stackedItems.slice(-4).map((i) => `${i.image ? '<img src=\"' + i.image + '\" alt=\"' + i.name + '\" class=\"table-item-thumb\" /> ' : ''}${i.name}${Number(i.qty || 1) > 1 ? ` x${Number(i.qty || 1)}` : ''} • ${money(i.price)}`).join('<br>')}</small>
          ${pendingRequests.length > 0 ? '<div class="dot-notify">🔔 มีคำขอรอยืนยัน</div>' : ''}
          ${showAdditionalOrder ? '<div class="dot-notify notify-additional">🆕 มีการสั่งเพิ่ม</div>' : ''}
-         <div class="table-total">รวม ${money(total)} บาท</div>`
+         <div class="table-total">รวม ${money((items.length ? total : pendingItems.reduce((sum, item) => sum + (Number(item.price || 0) * Math.max(1, Number(item.qty || 1))), 0)))} บาท</div>`
       : `<div class="table-head-row"><strong>${unitLabel()} ${table.id}</strong><span class="status-chip available">○</span></div>
          <small>${pendingRequests.length > 0 ? '🔔 รอยืนยันคำขอ' : ''}</small>`;
     card.addEventListener('click', () => selectTable(table.id));
@@ -564,8 +567,8 @@ function renderPendingRequestActions(tableId) {
       <strong>คำขอ #${requestOrder.id}</strong>
       <div class="muted">${itemText}</div>
       <div class="btn-row">
-        <button class="btn-primary js-accept-request" data-order-id="${requestOrder.id}" ${inFlight ? 'disabled' : ''}>✅ รับคำขอ</button>
-        <button class="btn-soft js-reject-request" data-order-id="${requestOrder.id}" ${inFlight ? 'disabled' : ''}>❌ ปฏิเสธ</button>
+        <button class="btn-primary js-accept-request" data-order-id="${requestOrder.id}" ${inFlight ? 'disabled' : ''} title="รับคำขอ">✅</button>
+        <button class="btn-soft js-reject-request" data-order-id="${requestOrder.id}" ${inFlight ? 'disabled' : ''} title="ปฏิเสธ">❌</button>
       </div>`;
     list.appendChild(row);
   });
@@ -579,6 +582,7 @@ async function handlePendingRequestAction(orderId, action) {
   try {
     const res = await api(endpoint, { method: 'POST', body: JSON.stringify({ order_id: orderId }) });
     if (res.error) return;
+    if (action === 'accept') qs('table-order-modal')?.classList.add('hidden');
     await loadData();
   } finally {
     requestActionInFlight.delete(orderId);
@@ -887,7 +891,7 @@ function renderSales() {
     card.innerHTML = `<div class="sales-row-head"><strong>${unitLabel()} ${sale.target_id}</strong><strong>฿${money(sale.total)}</strong></div>
       <small>🕒 ${new Date(sale.paid_at || Date.now()).toLocaleString('th-TH')}</small>
       <div class="sales-order-items">${groupedItems.length ? groupedItems.map((item) => `<span class="sales-order-chip">${item.name}${Number(item.qty || 1) > 1 ? ` x${Number(item.qty || 1)}` : ''}</span>`).join('') : '<span class="sales-order-chip">ไม่มีรายการ</span>'}</div>
-      <div class="sales-row-foot"><span class="sales-pay-icon">${isCash ? '💵' : '📱'}</span><small>${isCash ? 'เงินสด' : 'โอน'}</small></div>`;
+      <div class="sales-row-foot"><span class="sales-pay-icon">${isCash ? '💵' : '📱'}</span><small>${isCash ? 'เงินสด' : 'โอน'}</small><button class="btn-soft btn-danger js-sales-delete" data-sale-id="${sale.id}" type="button" aria-label="ลบประวัติ">🗑️</button></div>`;
     body.appendChild(card);
   });
 }
@@ -1279,6 +1283,22 @@ function bind() {
       await handlePendingRequestAction(orderId, 'reject');
     }
   });
+  qs('sales-list')?.addEventListener('click', async (event) => {
+    const deleteBtn = event.target.closest('.js-sales-delete');
+    if (!deleteBtn) return;
+    const saleId = deleteBtn.dataset.saleId;
+    if (!saleId) return;
+    const ok = window.confirm('ลบประวัติรายการนี้?');
+    if (!ok) return;
+    await api('/api/sales/history', { method: 'DELETE', body: JSON.stringify({ sale_id: saleId }) });
+    await loadData();
+  });
+  qs('sales-clear-history')?.addEventListener('click', async () => {
+    const ok = window.confirm('ยืนยันลบประวัติยอดขายทั้งหมด?');
+    if (!ok) return;
+    await api('/api/sales/history', { method: 'DELETE', body: JSON.stringify({}) });
+    await loadData();
+  });
   qs('open-sales-insight')?.addEventListener('click', () => {
     const sales = db.sales || [];
     const sum = (days) => {
@@ -1407,18 +1427,29 @@ async function poll() {
     const hasNewCheckoutRequest = [...checkoutSet].some((id) => !lastCheckoutRequestIds.has(id));
     if (hasNewPending) {
       playAlert('new-order-sound');
-      qs('table-grid')?.classList.add('blink-pending');
-      setTimeout(() => qs('table-grid')?.classList.remove('blink-pending'), 10000);
+      [...pendingSet].filter((id) => !lastPendingTableIds.has(id)).forEach((tableId) => blinkTableCard(tableId));
     }
     if (hasNewCheckoutRequest) {
       playAlert('checkout-request-sound');
-      qs('table-grid')?.classList.add('blink-red');
-      setTimeout(() => qs('table-grid')?.classList.remove('blink-red'), 10000);
+      [...checkoutSet].filter((id) => !lastCheckoutRequestIds.has(id)).forEach((tableId) => blinkTableCard(tableId));
     }
     lastPendingTableIds = pendingSet;
     lastCheckoutRequestIds = checkoutSet;
     await loadData();
   }
+}
+
+const tableBlinkTimers = new Map();
+function blinkTableCard(tableId) {
+  const card = document.querySelector(`.table-card[data-table-id="${tableId}"]`);
+  if (!card) return;
+  card.classList.add('blink-red');
+  clearTimeout(tableBlinkTimers.get(tableId));
+  const timer = setTimeout(() => {
+    card.classList.remove('blink-red');
+    tableBlinkTimers.delete(tableId);
+  }, 10000);
+  tableBlinkTimers.set(tableId, timer);
 }
 
 (async function init() {
