@@ -13,9 +13,9 @@
       "url": "/"
     },
     {
-      "name": "Staff",
-      "short_name": "Staff",
-      "url": "/staff"
+      "name": "โหมดสแกนพนักงาน",
+      "short_name": "สแกน",
+      "url": "/?mode=scanner"
     },
     {
       "name": "Customer",

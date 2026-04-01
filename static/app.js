@@ -43,6 +43,7 @@ const scannerMode = document.body.dataset.scannerMode === '1';
 const role = localStorage.getItem('user_role') || '';
 const tableParam = Number(new URLSearchParams(window.location.search).get('table') || 0);
 const scannerAllowedScreens = new Set(['customer', 'cashier']);
+const hostOnlyScreens = new Set(['backstore', 'system']);
 
 async function loadNetworkBaseUrl() {
   const network = await api('/api/system/network');
@@ -147,6 +148,7 @@ async function checkSystemHealth() {
 
 function showScreen(id) {
   if (scannerMode && !scannerAllowedScreens.has(id)) return;
+  if ((role === 'staff' || scannerMode) && hostOnlyScreens.has(id)) return;
   document.querySelectorAll('.screen').forEach((s) => s.classList.add('hidden'));
   qs(id).classList.remove('hidden');
   document.querySelectorAll('[data-screen]').forEach((b) => b.classList.toggle('is-active', b.dataset.screen === id));
@@ -1661,10 +1663,6 @@ function blinkTableCard(tableId) {
 }
 
 (async function init() {
-  if (role === 'staff' && !scannerMode) {
-    window.location.replace('/staff');
-    return;
-  }
   applyRoleUI();
   applyScannerModeUI();
   bind();
