@@ -85,6 +85,7 @@
           <div class="menu-form single-row">
             <button id="open-menu-modal" class="btn-primary" type="button">+ Add Menu</button>
           </div>
+          <div id="menu-category-admin" class="order-list"></div>
           <div id="menu-list"></div>
         </div>
 
@@ -99,6 +100,12 @@
               <button id="sales-period-week" class="seg-btn" data-sales-period="week" type="button">สัปดาห์</button>
               <button id="sales-period-month" class="seg-btn" data-sales-period="month" type="button">เดือน</button>
             </div>
+            <div class="sales-range-row">
+              <input id="sales-range-from" type="date" />
+              <input id="sales-range-to" type="date" />
+              <button id="sales-range-apply" class="btn-soft" type="button">ดูช่วงวันที่</button>
+            </div>
+            <div id="sales-comparison" class="sales-comparison-card"></div>
             <div id="sales-overview" class="sales-overview-grid premium-kpi"></div>
             <div id="sales-chart" class="sales-chart"></div>
           </div>
@@ -286,6 +293,7 @@
       <div class="order-panel-layout two-col-layout">
         <section class="order-panel">
           <h4>Menu Selection</h4>
+          <div id="order-menu-category-tabs" class="menu-category-tabs"></div>
           <div id="order-menu-grid" class="menu-choice-grid"></div>
         </section>
         <section class="order-panel">
@@ -298,13 +306,6 @@
           <div class="modal-fixed-footer">
             <button id="order-submit" class="btn-primary">ส่งเข้าครัว</button>
           </div>
-          <hr>
-          <h4>รายการที่ลูกค้าสั่งแล้ว</h4>
-          <details id="order-existing-details" class="clean-collapse">
-            <summary>เปิดดูรายการที่สั่งแล้ว</summary>
-            <div id="order-existing-list" class="order-list collapse-body"></div>
-          </details>
-          <div id="order-existing-total" class="order-total"></div>
         </section>
       </div>
     </div>
@@ -372,6 +373,10 @@
         <input id="menu-name" placeholder="ชื่อเมนู" />
         <input id="menu-price" type="number" min="1" placeholder="ราคา" />
         <input id="menu-image-file" type="file" accept="image/*" />
+      </div>
+      <div class="form-grid two-col">
+        <input id="menu-category" placeholder="หมวดเมนู เช่น เครื่องดื่ม" />
+        <input id="menu-new-category" placeholder="เพิ่มหมวดใหม่ (ถ้ามี)" />
       </div>
       <img id="menu-image-preview" class="menu-image-preview hidden" alt="preview" />
       <div class="section-head" style="margin-top:8px"><strong>Add-ons</strong><button id="add-addon-row" class="btn-soft" type="button">+ Row</button></div>

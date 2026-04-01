@@ -6,6 +6,7 @@ let currentTables = [];
 let activeItemDraft = null;
 let toastTimer = null;
 let isInlineCartOpen = false;
+let activeCategory = 'ทั้งหมด';
 const params = new URLSearchParams(window.location.search);
 const lockedTableId = Number(params.get('table') || document.body.dataset.tableId || 0);
 let masterBaseUrl = document.body.dataset.localBaseUrl || `${window.location.protocol}//${window.location.host}`;
@@ -168,6 +169,7 @@ function buildAddonText(item) {
 
 function renderMenu() {
   const list = document.getElementById('menu-list');
+  const tabs = document.getElementById('customer-category-tabs');
   list.innerHTML = '';
   const table = currentTables.find((entry) => Number(entry.id) === Number(lockedTableId));
   const existingItems = Array.isArray(table?.items) ? table.items : [];
@@ -178,13 +180,30 @@ function renderMenu() {
     if (Number.isFinite(itemId) && itemId > 0 && orderedItemIds.has(itemId)) return false;
     return !orderedItemNames.has(String(item.name || '').trim());
   });
+  const categories = ['ทั้งหมด', ...new Set(availableMenu.map((item) => item.category || 'ทั่วไป'))];
+  if (!categories.includes(activeCategory)) activeCategory = 'ทั้งหมด';
+  if (tabs) {
+    tabs.innerHTML = '';
+    categories.forEach((category) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = `subtab ${category === activeCategory ? 'is-active' : ''}`;
+      btn.textContent = category;
+      btn.addEventListener('click', () => {
+        activeCategory = category;
+        renderMenu();
+      });
+      tabs.appendChild(btn);
+    });
+  }
+  const displayMenu = availableMenu.filter((item) => activeCategory === 'ทั้งหมด' || (item.category || 'ทั่วไป') === activeCategory);
 
-  if (!availableMenu.length) {
+  if (!displayMenu.length) {
     list.innerHTML = '<div class="empty">เมนูที่ยังไม่สั่งหมดแล้ว 🎉</div>';
     return;
   }
 
-  availableMenu.forEach((item) => {
+  displayMenu.forEach((item) => {
     const card = document.createElement('button');
     card.className = 'menu-mobile-card menu-tap-card';
     card.type = 'button';
