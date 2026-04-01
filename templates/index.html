@@ -12,6 +12,7 @@
   data-local-ip="{{ local_ip }}"
   data-local-base-url="{{ local_base_url }}"
   data-scanner-mode="{{ '1' if scanner_mode else '0' }}"
+  data-kiosk-mode="{{ '1' if kiosk_mode else '0' }}"
 >
   <div class="app-shell desktop-shell">
     <header class="app-header modern-header">
@@ -24,10 +25,12 @@
           <h1 id="header-store-name">FAKDU</h1>
         </div>
       </div>
-      <div class="header-icons">
-        <button id="open-customer-display-from-header" class="icon-btn" type="button" aria-label="Open customer display">🖥️</button>
-        <button id="open-staff-qr-modal" class="icon-btn" type="button" aria-label="Staff access QR">👤</button>
-      </div>
+      {% if not scanner_mode %}
+        <div class="header-icons">
+          <button id="open-customer-display-from-header" class="icon-btn" type="button" aria-label="Open customer display">🖥️</button>
+          <button id="open-staff-qr-modal" class="icon-btn" type="button" aria-label="Staff access QR">👤</button>
+        </div>
+      {% endif %}
     </header>
 
     <main>

@@ -77,6 +77,7 @@ function summarizeItems(items = []) {
 const ACTIVE_TABLE_KEY = 'customer_display_active_table';
 let settings = {};
 let tableId = Number(document.body.dataset.tableId || localStorage.getItem(ACTIVE_TABLE_KEY) || 0);
+const kioskMode = document.body.dataset.kioskMode === '1';
 
 async function loadSettings() {
   const data = await api('/api/data');
@@ -161,6 +162,14 @@ function bindAutoTableSync() {
 }
 
 async function init() {
+  if (kioskMode) {
+    const launchFullscreen = () => {
+      if (document.fullscreenElement || !document.documentElement.requestFullscreen) return;
+      document.documentElement.requestFullscreen().catch(() => {});
+    };
+    launchFullscreen();
+    window.addEventListener('click', launchFullscreen, { once: true });
+  }
   await loadSettings();
   bindAutoTableSync();
   updateTableHeader();
