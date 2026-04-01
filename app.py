@@ -882,6 +882,69 @@ def api_table_statuses():
     })
 
 
+def _project_staff_state(db: dict) -> dict:
+    table_projection = []
+    for table in db.get("tables", []):
+        table_projection.append({
+            "id": table.get("id"),
+            "status": table.get("status", "available"),
+            "call_staff_status": table.get("call_staff_status", "idle"),
+            "updated_at": table.get("updated_at", ""),
+            "last_order_event": table.get("last_order_event", ""),
+            "last_order_event_at": table.get("last_order_event_at", ""),
+        })
+
+    order_projection = []
+    for order in db.get("orders", []):
+        if order.get("target") != "table":
+            continue
+        if order.get("status") not in {"request_pending", "accepted"}:
+            continue
+        order_projection.append({
+            "id": order.get("id"),
+            "target": order.get("target"),
+            "target_id": order.get("target_id"),
+            "status": order.get("status"),
+            "source": order.get("source"),
+            "items": order.get("items", []),
+            "created_at": order.get("created_at", ""),
+            "updated_at": order.get("updated_at", ""),
+        })
+
+    return {
+        "tables": table_projection,
+        "orders": order_projection,
+        "service_mode": db.get("settings", {}).get("serviceMode", "table"),
+        "version": db.get("meta", {}).get("version", 0),
+        "updated_at": db.get("meta", {}).get("updated_at"),
+    }
+
+
+def _compute_staff_delta(previous: dict, current: dict) -> dict:
+    def _map_by_id(rows: list) -> dict:
+        return {str(row.get("id")): row for row in rows}
+
+    prev_tables = _map_by_id(previous.get("tables", []))
+    curr_tables = _map_by_id(current.get("tables", []))
+    prev_orders = _map_by_id(previous.get("orders", []))
+    curr_orders = _map_by_id(current.get("orders", []))
+
+    table_upserts = [row for row_id, row in curr_tables.items() if prev_tables.get(row_id) != row]
+    table_removals = [int(row_id) for row_id in prev_tables if row_id not in curr_tables]
+    order_upserts = [row for row_id, row in curr_orders.items() if prev_orders.get(row_id) != row]
+    order_removals = [row_id for row_id in prev_orders if row_id not in curr_orders]
+
+    return {
+        "tables_upsert": table_upserts,
+        "tables_remove": table_removals,
+        "orders_upsert": order_upserts,
+        "orders_remove": order_removals,
+        "service_mode": current.get("service_mode"),
+        "version": current.get("version", 0),
+        "updated_at": current.get("updated_at"),
+    }
+
+
 @app.route("/api/events", methods=["GET"])
 @require_license
 def api_events():
@@ -906,21 +969,61 @@ def api_events():
     return Response(generate_events(), mimetype="text/event-stream")
 
 
+@app.route("/api/staff/bootstrap", methods=["GET"])
+@require_license
+@require_roles("owner", "staff")
+def api_staff_bootstrap():
+    db = load_db()
+    snapshot = _project_staff_state(db)
+    return jsonify({
+        "snapshot": snapshot,
+        "cursor": snapshot.get("version", 0),
+        "updated_at": snapshot.get("updated_at"),
+    })
+
+
+@app.route("/api/staff/stream", methods=["GET"])
+@require_license
+@require_roles("owner", "staff")
+def api_staff_stream():
+    since = int(request.args.get("since", "0"))
+
+    @stream_with_context
+    def generate_staff_events():
+        db = load_db()
+        previous_snapshot = _project_staff_state(db)
+        last_version = max(since, previous_snapshot.get("version", 0))
+
+        if since < previous_snapshot.get("version", 0):
+            yield f"event: reset\ndata: {json.dumps({'snapshot': previous_snapshot}, ensure_ascii=False)}\n\n"
+
+        for _ in range(1800):
+            db = load_db()
+            current_version = db.get("meta", {}).get("version", 0)
+            if current_version != last_version:
+                current_snapshot = _project_staff_state(db)
+                delta_payload = _compute_staff_delta(previous_snapshot, current_snapshot)
+                yield f"event: delta\ndata: {json.dumps(delta_payload, ensure_ascii=False)}\n\n"
+                previous_snapshot = current_snapshot
+                last_version = current_version
+            else:
+                yield "event: heartbeat\ndata: {}\n\n"
+            time.sleep(1.2)
+
+    return Response(generate_staff_events(), mimetype="text/event-stream")
+
+
 @app.route("/api/staff/live", methods=["GET"])
 @require_license
 def api_staff_live():
-    since = int(request.args.get("since", "0"))
     db = load_db()
-    if db["meta"]["version"] <= since:
-        return jsonify({"changed": False, "version": db["meta"]["version"]})
-
-    orders = [o for o in db["orders"] if o["status"] in {"request_pending", "accepted", "completed", "cancelled"}]
+    snapshot = _project_staff_state(db)
     return jsonify({
         "changed": True,
-        "orders": orders,
-        "tables": db["tables"],
-        "settings": db["settings"],
-        "version": db["meta"]["version"],
+        "orders": snapshot.get("orders", []),
+        "tables": snapshot.get("tables", []),
+        "settings": {"serviceMode": snapshot.get("service_mode", "table")},
+        "version": snapshot.get("version", 0),
     })
 
 

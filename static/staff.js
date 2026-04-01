@@ -129,9 +129,14 @@ function updateAuthUI() {
 
 function connectLiveEvents() {
   if (liveEventSource || !window.EventSource) return;
-  liveEventSource = new EventSource('/api/events');
-  liveEventSource.addEventListener('update', () => {
-    loadLive();
+  liveEventSource = new EventSource(`/api/staff/stream?since=${encodeURIComponent(version)}`);
+  liveEventSource.addEventListener('reset', (event) => {
+    const payload = JSON.parse(event.data || '{}');
+    applySnapshot(payload.snapshot || {});
+  });
+  liveEventSource.addEventListener('delta', (event) => {
+    const payload = JSON.parse(event.data || '{}');
+    applyDelta(payload);
   });
   liveEventSource.onerror = () => {
     disconnectLiveEvents();
@@ -352,15 +357,48 @@ function bindTabs() {
 
 async function loadLive() {
   if (!authState) return;
-  const data = await api(`/api/staff/live?since=${version}`);
-  if (!data.changed) return;
+  const data = await api('/api/staff/bootstrap');
+  applySnapshot(data.snapshot || {});
+}
+
+function applySnapshot(snapshot = {}) {
+  state = {
+    tables: snapshot.tables || [],
+    orders: snapshot.orders || [],
+  };
+  serviceMode = snapshot.service_mode || serviceMode;
+  version = snapshot.version || version;
+  refreshRealtimeIndicators();
+}
+
+function applyDelta(delta = {}) {
+  const tableMap = new Map(state.tables.map((table) => [table.id, table]));
+  const orderMap = new Map(state.orders.map((order) => [order.id, order]));
+
+  (delta.tables_upsert || []).forEach((table) => {
+    tableMap.set(table.id, table);
+  });
+  (delta.tables_remove || []).forEach((tableId) => {
+    tableMap.delete(tableId);
+  });
+
+  (delta.orders_upsert || []).forEach((order) => {
+    orderMap.set(order.id, order);
+  });
+  (delta.orders_remove || []).forEach((orderId) => {
+    orderMap.delete(orderId);
+  });
 
   state = {
-    tables: data.tables || [],
-    orders: data.orders || [],
+    tables: [...tableMap.values()],
+    orders: [...orderMap.values()],
   };
-  serviceMode = data.settings?.serviceMode || serviceMode;
+  serviceMode = delta.service_mode || serviceMode;
+  version = delta.version || version;
+  refreshRealtimeIndicators();
+}
 
+function refreshRealtimeIndicators() {
   const pendingNow = new Set(state.tables.filter((table) => table.status === 'pending_order').map((table) => table.id));
   const checkoutNow = new Set(state.tables.filter((table) => table.call_staff_status === 'requested').map((table) => table.id));
   const hasNewPending = [...pendingNow].some((id) => !lastPendingIds.has(id));
@@ -375,8 +413,6 @@ async function loadLive() {
   });
   lastPendingIds = pendingNow;
   lastCheckoutIds = checkoutNow;
-
-  version = data.version || version;
   renderCustomerTab();
   renderCheckoutTab();
 }
