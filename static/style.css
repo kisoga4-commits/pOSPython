@@ -978,6 +978,92 @@ main{display:grid;gap:10px}
   overflow-x:auto;
   overscroll-behavior-x:contain;
 }
+
+/* adaptive polish override */
+.header-action-btn.icon-only-btn{
+  width:48px;
+  min-width:48px;
+  padding:0;
+  display:grid;
+  place-items:center;
+}
+.header-action-btn.icon-only-btn .nav-btn-label{display:none}
+.header-action-btn.icon-only-btn i{font-size:1.05rem}
+
+.tab-bar .main-tab{
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  gap:6px;
+}
+.tab-bar .main-tab i{font-size:1.1rem}
+.tab-bar .main-tab .nav-btn-label{
+  font-size:.88rem;
+  font-weight:700;
+  line-height:1.2;
+}
+.tab-bar .main-tab.is-active{
+  background:linear-gradient(180deg,#ede9fe,#dbeafe);
+  border-color:#8b5cf6;
+}
+
+.compact-head h2{
+  font-size:.75rem;
+  letter-spacing:.08em;
+  color:#94a3b8;
+}
+
+.table-head-row strong{
+  font-size:1.14rem;
+  font-weight:800;
+}
+.clean-table-grid .table-card small{
+  font-size:.78rem;
+  line-height:1.45;
+  color:#475569;
+}
+
+@media (min-width: 1024px){
+  body:not(.is-mobile-ui) .clean-table-grid{
+    grid-template-columns:repeat(5,minmax(0,1fr));
+    gap:12px;
+  }
+  body:not(.is-mobile-ui) .header-action-btn.icon-only-btn{
+    width:56px;
+    min-width:56px;
+    min-height:56px;
+  }
+  body:not(.is-mobile-ui) .tab-bar .main-tab{
+    min-height:92px;
+  }
+}
+
+@media (max-width: 1023px){
+  body.is-mobile-ui .clean-table-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:10px;
+  }
+  body.is-mobile-ui .table-card{
+    padding:12px;
+    border-radius:14px;
+  }
+  body.is-mobile-ui .table-head-row strong{
+    font-size:1rem;
+  }
+  body.is-mobile-ui .clean-table-grid .table-card small{
+    font-size:.72rem;
+    line-height:1.35;
+  }
+  body.is-mobile-ui .mobile-tab{
+    min-height:58px;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    gap:4px;
+  }
+  body.is-mobile-ui .mobile-tab i{font-size:1.05rem}
+}
 .backstore-menu-tabs .subtab{padding:8px 12px;border-radius:10px;flex:0 0 auto}
 .backstore-menu-tabs .subtab.is-active{
   background:linear-gradient(120deg,#f97316,#fb923c);
