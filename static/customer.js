@@ -154,6 +154,7 @@ function addToCart(item, options = {}) {
   }
   persistCart();
   renderCart();
+  refreshSubmitState();
   showAddedFeedback();
   playAddToCartSound();
 }
@@ -229,6 +230,27 @@ function inlineCartToggleLabel() {
   return isInlineCartOpen ? '🧺 ▾' : '🧺 ▸';
 }
 
+
+function refreshSubmitState() {
+  const submitButton = document.getElementById('submit-order');
+  if (!submitButton) return;
+  const hasItems = cart.length > 0;
+  const isLocked = submitState === 'sending' || submitState === 'waiting_confirm';
+  submitButton.disabled = !lockedTableId || !hasItems || isLocked;
+  if (!lockedTableId) {
+    submitButton.textContent = 'ส่งคำขอรายการ';
+    return;
+  }
+  if (submitState === 'sending') {
+    submitButton.textContent = 'กำลังส่ง...';
+    return;
+  }
+  if (submitState === 'waiting_confirm') {
+    submitButton.textContent = 'รอร้านยืนยันคำขอ';
+    return;
+  }
+  submitButton.textContent = hasItems ? 'ส่งคำขอรายการ' : 'เพิ่มเมนูก่อนส่งคำขอ';
+}
 function renderMenu() {
   const list = document.getElementById('menu-list');
   const tabs = document.getElementById('customer-category-tabs');
@@ -325,6 +347,7 @@ function renderCart() {
     totalNode.textContent = 'รวม 0 บาท';
     if (toggleBtn) toggleBtn.textContent = inlineCartToggleLabel();
     updateFloatingCart();
+    refreshSubmitState();
     return;
   }
 
@@ -365,6 +388,7 @@ function renderCart() {
   }
   if (toggleBtn) toggleBtn.textContent = inlineCartToggleLabel();
   updateFloatingCart();
+  refreshSubmitState();
 }
 
 function updateTableStatus(tables = []) {
@@ -459,12 +483,15 @@ async function loadLive() {
       if (lastOrder.status === 'request_pending') {
         submitState = 'waiting_confirm';
         msg.textContent = 'ส่งคำขอแล้ว · รอร้านยืนยัน';
+        refreshSubmitState();
       } else if (lastOrder.status === 'accepted') {
         submitState = 'confirmed';
         msg.textContent = 'พนักงานยืนยันคำขอแล้ว';
+        refreshSubmitState();
       } else if (lastOrder.status === 'cancelled') {
         submitState = 'rejected';
         msg.textContent = 'คำขอถูกปฏิเสธ กรุณาตรวจรายการแล้วส่งใหม่';
+        refreshSubmitState();
       }
     }
     version = data.version || version;
@@ -509,6 +536,7 @@ function setLockedTableUI() {
     document.getElementById('submit-order').disabled = true;
     document.getElementById('floating-cart-btn').disabled = true;
     document.getElementById('call-staff-bill').disabled = true;
+    refreshSubmitState();
   }
 }
 
@@ -543,8 +571,15 @@ function bind() {
   });
 
   document.getElementById('submit-order').addEventListener('click', async () => {
-    if (!lockedTableId || !cart.length || submitState === 'sending') return;
+    if (!lockedTableId) return;
+    if (!cart.length) {
+      document.getElementById('message').textContent = 'ยังไม่มีเมนูในตะกร้า (ยอดรวม 0) กรุณาเพิ่มรายการก่อนส่ง';
+      refreshSubmitState();
+      return;
+    }
+    if (submitState === 'sending' || submitState === 'waiting_confirm') return;
     submitState = 'sending';
+    refreshSubmitState();
     document.getElementById('message').textContent = 'กำลังส่งคำขอ...';
 
     const payloadCart = cart.map((item) => {
@@ -592,14 +627,17 @@ function bind() {
         playOrderSubmitSound();
         clearCart();
         document.getElementById('cart-modal').classList.add('hidden');
+        refreshSubmitState();
         await loadLive();
         return;
       }
       document.getElementById('message').textContent = res.error || 'ส่งไม่สำเร็จ';
       submitState = 'idle';
+      refreshSubmitState();
     } catch (error) {
       await window.posDB.enqueuePendingOrder(pendingPayload);
       submitState = 'waiting_confirm';
+      refreshSubmitState();
       document.getElementById('message').textContent = 'บันทึกคำขอไว้แล้ว จะซิงก์อัตโนมัติเมื่อเชื่อมต่อ LAN ได้';
       clearCart();
       document.getElementById('cart-modal').classList.add('hidden');
@@ -637,6 +675,7 @@ function bind() {
     document.getElementById('message').textContent = 'Invalid table access. กรุณาเข้าผ่าน QR Code เท่านั้น';
     document.getElementById('submit-order').disabled = true;
     document.getElementById('call-staff-bill').disabled = true;
+    refreshSubmitState();
     return;
   }
   if ('serviceWorker' in navigator) {

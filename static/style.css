@@ -779,3 +779,7 @@ main{display:grid;gap:10px}
 .customer-app .menu-mobile-card{border-radius:18px;padding:10px}
 .customer-app .cart-qty-btn{min-width:40px;min-height:40px}
 .staff-bottom-nav{padding-bottom:calc(env(safe-area-inset-bottom, 0px) + 8px)}
+
+.menu-category-admin-tabs{display:grid;gap:8px}
+.menu-category-tab-card{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.menu-category-pill{font-weight:700}
