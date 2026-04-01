@@ -16,7 +16,7 @@ import os
 import tempfile
 
 import db
-from app import app
+from app import app, build_table_token
 
 
 def assert_status(response, expected: int, label: str) -> None:
@@ -32,16 +32,28 @@ def main() -> None:
         client = app.test_client()
 
         staff_scan = client.get("/scan/staff")
-        assert_status(staff_scan, 200, "scan staff page")
+        assert_status(staff_scan, 302, "scan staff page redirect")
+        location = staff_scan.headers.get("Location", "")
+        if "/?mode=scanner" not in location:
+            raise AssertionError(f"scan staff redirect target is unexpected: {location}")
+
+        scanner_page = client.get("/scan/staff", follow_redirects=True)
+        assert_status(scanner_page, 200, "scan staff landing page")
 
         staff_page = client.get("/staff")
         assert_status(staff_page, 200, "staff page")
 
-        data = client.get("/api/data", environ_overrides={"REMOTE_ADDR": "127.0.0.1"})
+        data = client.get(
+            "/api/data",
+            headers={"X-POS-Role": "staff"},
+            environ_overrides={"REMOTE_ADDR": "127.0.0.1"},
+        )
         assert_status(data, 200, "api data")
         payload = data.get_json()
         if not payload or not payload.get("menu"):
             raise AssertionError("menu is empty")
+
+        table_token = build_table_token(payload["tables"][0])
 
         create_order = client.post(
             "/api/order",
@@ -49,6 +61,7 @@ def main() -> None:
             json={
                 "target": "table",
                 "target_id": 1,
+                "table_token": table_token,
                 "source": "customer",
                 "cart": [{"id": 1, "name": "เนื้อใบพายพรีเมียม", "price": 150, "qty": 2}],
             },
