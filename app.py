@@ -227,7 +227,7 @@ def customer_display_page():
 
 @app.route("/scan/staff")
 def staff_scan_page():
-    return redirect(url_for("authorize_staff_page"))
+    return authorize_staff_page()
 
 
 @app.route("/authorize-staff")
