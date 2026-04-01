@@ -617,16 +617,18 @@ def api_menu_upload_image():
     except Exception:
         return jsonify({"error": "decode_failed"}), 400
 
-    max_width = 800
+    # Menu card thumbnails are small on mobile, so aggressively downscale to
+    # reduce payload size before base64 encoding.
+    max_width = 500
     if image.width > max_width:
         ratio = max_width / float(image.width)
         new_size = (max_width, int(image.height * ratio))
         image = image.resize(new_size, Image.Resampling.LANCZOS)
 
     out = io.BytesIO()
-    image.save(out, format="JPEG", optimize=True, quality=70)
+    image.save(out, format="WEBP", quality=62, method=6)
     compressed = base64.b64encode(out.getvalue()).decode("utf-8")
-    return jsonify({"status": "success", "image": f"data:image/jpeg;base64,{compressed}"})
+    return jsonify({"status": "success", "image": f"data:image/webp;base64,{compressed}"})
 
 
 @app.route("/api/table/accept", methods=["POST"])
