@@ -572,7 +572,7 @@ function buildPromptPayQrImage(promptPayId, amount, dynamic) {
 function renderCashier() {
   const wrap = qs('checkout-list');
   wrap.innerHTML = '';
-  const queues = db.tables.filter((t) => ['pending_order', 'accepted_order', 'checkout_requested'].includes(t.status));
+  const queues = db.tables.filter((t) => t.status === 'checkout_requested');
   qs('checkout-count').textContent = `${queues.length} รายการ`;
   if (!queues.length) {
     wrap.innerHTML = '<div class="empty">ยังไม่มีคิวใช้งาน</div>';
@@ -688,13 +688,11 @@ function renderSales() {
   const sales = db.sales || [];
   const range = salesFilterRange || periodRange(salesPeriod, new Date());
   const inCurrent = sales.filter((s) => salesDate(s) >= range.start && salesDate(s) <= range.end);
-  const inPrevious = sales.filter((s) => salesDate(s) >= range.previousStart && salesDate(s) <= range.previousEnd);
   const currentTotal = inCurrent.reduce((sum, s) => sum + Number(s.total || 0), 0);
-  const previousTotal = inPrevious.reduce((sum, s) => sum + Number(s.total || 0), 0);
   const cash = inCurrent.filter((s) => s.payment_method === 'cash').reduce((sum, s) => sum + Number(s.total || 0), 0);
   const qr = inCurrent.filter((s) => s.payment_method === 'qr').reduce((sum, s) => sum + Number(s.total || 0), 0);
-  const comparePct = previousTotal > 0 ? (((currentTotal - previousTotal) / previousTotal) * 100) : (currentTotal > 0 ? 100 : 0);
-  qs('sales-comparison').innerHTML = `<strong>${range.label || 'ช่วงที่เลือก'}</strong><div class="sales-compare-value ${currentTotal >= previousTotal ? 'up' : 'down'}">${currentTotal >= previousTotal ? '▲' : '▼'} ${money(Math.abs(currentTotal - previousTotal))} บาท (${comparePct.toFixed(1)}%)</div><small>เทียบกับช่วงก่อนหน้า</small>`;
+  const salesComparison = qs('sales-comparison');
+  if (salesComparison) salesComparison.classList.add('hidden');
   qs('sales-overview').innerHTML = `<div class="list-card sales-kpi"><strong>💵 เงินสด</strong><div>฿${money(cash)}</div></div><div class="list-card sales-kpi"><strong>📱 QR</strong><div>฿${money(qr)}</div></div><div class="list-card sales-kpi total"><strong>🧾 ยอดรวม</strong><div>฿${money(currentTotal)}</div></div><div class="list-card sales-kpi"><strong>จำนวนบิล</strong><div>${inCurrent.length}</div></div>`;
   const chart = qs('sales-chart');
   const bucket = {};
@@ -951,6 +949,8 @@ function bind() {
     qs('order-item-detail-modal').classList.add('hidden');
   });
   qs('close-payment-modal').addEventListener('click', () => {
+    localStorage.setItem(CUSTOMER_DISPLAY_ACTIVE_TABLE_KEY, '0');
+    activeCashierTableId = 0;
     qs('bill-payment-qr-wrap')?.classList.add('hidden');
     qs('payment-modal').classList.add('hidden');
   });
