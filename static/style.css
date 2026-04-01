@@ -54,8 +54,8 @@ h1,h2,h3,h4,p{margin:0}
 .floor-map-area{overflow:auto;padding-right:6px}
 .table-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(calc(190px * var(--table-scale)),1fr));gap:12px}
 .table-card{border:1px solid #e5e7eb;background:#fff;border-radius:18px;padding:14px;cursor:pointer;text-align:left;transition:.25s;box-shadow:var(--shadow-soft)}
-.table-card.status-pending_order,
-.table-card.status-accepted_order{border:2px solid #fb923c;background:#fff7ed}
+.table-card.status-pending_order{border:2px solid #fb923c;background:#fff7ed}
+.table-card.status-accepted_order{border:2px solid #22c55e;background:#f0fdf4}
 .table-card:hover{transform:translateY(-2px)}
 .table-card.is-selected{outline:2px solid #7c3aed;outline-offset:2px}
 .table-card.is-ordering{background:linear-gradient(180deg,#f5f3ff,#ffffff);border-color:#a78bfa}
@@ -89,6 +89,7 @@ h1,h2,h3,h4,p{margin:0}
 input,select{width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:#fff}
 .btn-soft,.btn-primary,.btn-secondary{border:none;border-radius:11px;padding:10px 12px;cursor:pointer}
 .btn-soft{background:#eef2ff;color:#1f2937}
+.btn-close-x{background:#fee2e2!important;color:#b91c1c!important;font-weight:800}
 .btn-primary{background:linear-gradient(100deg,var(--primary),var(--primary-2));color:#fff}
 .btn-secondary{background:#d1fae5;color:#065f46}
 .order-list,#menu-list,#checkout-list,#bill-items,#table-qr-list{display:grid;gap:8px;margin-top:8px}

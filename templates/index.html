@@ -21,7 +21,7 @@
           <div id="store-logo" class="logo-slot hero-logo">LOGO</div>
         </div>
         <div>
-          <p class="muted-light">POS ร้านอาหารตามสั่ง</p>
+          <p class="muted-light">FAKDU</p>
           <h1 id="header-store-name">FAKDU</h1>
         </div>
       </div>
@@ -240,7 +240,7 @@
   </div>
   <div id="receipt-preview-modal" class="modal hidden">
     <div class="modal-card compact">
-      <div class="section-head"><h3>ตัวอย่างใบเสร็จ</h3><button id="close-receipt-preview" class="btn-soft">ปิด</button></div>
+      <div class="section-head"><h3>ตัวอย่างใบเสร็จ</h3><button id="close-receipt-preview" class="btn-soft btn-close-x">✖</button></div>
       <div id="receipt-preview" class="receipt-preview" data-paper-size="58">
         <div class="receipt-brand">FAKDU POS</div>
         <div class="receipt-title">ใบเสร็จรับเงิน / Receipt</div>
@@ -259,14 +259,14 @@
 
   <div id="insight-modal" class="modal hidden">
     <div class="modal-card compact">
-      <div class="section-head"><h3>Sales Insight</h3><button id="close-insight-modal" class="btn-soft">ปิด</button></div>
+      <div class="section-head"><h3>Sales Insight</h3><button id="close-insight-modal" class="btn-soft btn-close-x">✖</button></div>
       <div id="insight-content" class="order-list"></div>
     </div>
   </div>
 
   <div id="table-order-modal" class="modal hidden">
     <div class="modal-card wide-modal">
-      <div class="section-head"><h3 id="order-meta-table">Table</h3><button id="close-table-order-modal" class="btn-soft">ปิด</button></div>
+      <div class="section-head"><h3 id="order-meta-table">Table</h3><button id="close-table-order-modal" class="btn-soft btn-close-x">✖</button></div>
       <div id="order-meta-status" class="muted"></div>
       <div class="order-panel-layout two-col-layout">
         <section class="order-panel">
@@ -293,7 +293,7 @@
     <div class="modal-card cart-modal-card">
       <div class="section-head">
         <h3 id="order-item-detail-title">เลือกตัวเลือก</h3>
-        <button id="close-order-item-detail-modal" class="btn-soft" type="button">ปิด</button>
+        <button id="close-order-item-detail-modal" class="btn-soft btn-close-x" type="button">✖</button>
       </div>
       <div class="order-list">
         <div id="order-item-addon-checkboxes" class="addon-check-list"></div>
@@ -306,7 +306,7 @@
 
   <div id="payment-modal" class="modal hidden">
     <div class="modal-card bill-modal-card">
-      <div class="section-head"><h3 id="bill-title">ชำระเงิน</h3><button id="close-payment-modal" class="btn-soft">ปิด</button></div>
+      <div class="section-head"><h3 id="bill-title">ชำระเงิน</h3><button id="close-payment-modal" class="btn-soft btn-close-x">✖</button></div>
       <div id="bill-items" class="bill-items-clean"></div>
       <div class="bill-foot"><strong>รวม <span id="bill-total">0</span> บาท</strong></div>
       <div class="bill-payment-qr">
@@ -321,7 +321,7 @@
 
   <div id="qr-modal" class="modal hidden">
     <div class="modal-card compact centered-modal">
-      <div class="section-head"><h3 id="qr-modal-title">QR</h3><button id="close-qr-modal" class="btn-soft">ปิด</button></div>
+      <div class="section-head"><h3 id="qr-modal-title">QR</h3><button id="close-qr-modal" class="btn-soft btn-close-x">✖</button></div>
       <img id="client-qr-image" class="qr-preview large" alt="QR" />
       <a id="qr-modal-link" class="muted" target="_blank" rel="noopener noreferrer"></a>
       <div class="btn-row">
@@ -333,7 +333,7 @@
 
   <div id="forgot-admin-modal" class="modal hidden">
     <div class="modal-card compact">
-      <div class="section-head"><h3>กู้คืนรหัส Admin</h3><button id="close-forgot-admin-modal" class="btn-soft">ปิด</button></div>
+      <div class="section-head"><h3>กู้คืนรหัส Admin</h3><button id="close-forgot-admin-modal" class="btn-soft btn-close-x">✖</button></div>
       <div class="order-list">
         <input id="forgot-phone" placeholder="เบอร์โทรที่ตั้งไว้" />
         <select id="forgot-color"></select>
@@ -346,7 +346,7 @@
 
   <div id="menu-modal" class="modal hidden">
     <div class="modal-card">
-      <div class="section-head"><h3>Add Menu</h3><button id="close-menu-modal" class="btn-soft">ปิด</button></div>
+      <div class="section-head"><h3>Add Menu</h3><button id="close-menu-modal" class="btn-soft btn-close-x">✖</button></div>
       <div class="form-grid three-col">
         <input id="menu-name" placeholder="ชื่อเมนู" />
         <input id="menu-price" type="number" min="1" placeholder="ราคา" />
