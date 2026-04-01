@@ -46,10 +46,6 @@ const TABLE_STATUS_META = {
   checkout_requested: { label: 'เรียกเช็คบิล', className: 'status-checkout_requested' },
   closed: { label: 'ปิดบิล', className: 'status-closed' },
 };
-const VISUAL_MENU_LABELS = [
-  { matcher: /เนื้อใบพายพรีเมียม/iu, symbol: '🥩✨' },
-  { matcher: /หนูสันคอสไลน์/iu, symbol: '🐷🥓' },
-];
 
 async function api(path, options = {}) {
   const url = path.startsWith('http') ? path : `${window.location.origin}${path}`;
@@ -246,12 +242,26 @@ function buildAddonText(item) {
 }
 
 function menuVisualLabel(name = '') {
-  const hit = VISUAL_MENU_LABELS.find((entry) => entry.matcher.test(String(name)));
-  return hit ? hit.symbol : String(name || '');
+  return String(name || '');
 }
 
 function inlineCartToggleLabel() {
-  return isInlineCartOpen ? '🧺 ▾' : '🧺 ▸';
+  return isInlineCartOpen ? 'ซ่อนตะกร้า' : 'ดูตะกร้า';
+}
+
+function renderInlineCartToggleButton() {
+  const toggleBtn = document.getElementById('toggle-current-cart');
+  if (!toggleBtn) return;
+  toggleBtn.innerHTML = `<i class="fa-solid fa-basket-shopping"></i><span>${inlineCartToggleLabel()}</span>`;
+}
+
+function menuThumbMarkup(item) {
+  if (item.image) return `<img src="${item.image}" alt="${item.name}" loading="lazy" decoding="async" />`;
+  return `
+    <div class="menu-thumb-placeholder" aria-hidden="true">
+      <i class="fa-regular fa-image"></i>
+    </div>
+  `;
 }
 
 
@@ -314,7 +324,7 @@ function renderMenu() {
     card.className = 'menu-mobile-card menu-tap-card';
     card.type = 'button';
     card.innerHTML = `
-      <div class="menu-thumb">${item.image ? `<img src="${item.image}" alt="${item.name}" loading="lazy" decoding="async" />` : '🍜'}</div>
+      <div class="menu-thumb">${menuThumbMarkup(item)}</div>
       <div class="menu-mobile-meta">
         <strong>${menuVisualLabel(item.name)}</strong>
         <small>${money(item.price)} บาท</small>
@@ -366,7 +376,6 @@ function updateCartItemQty(index, diff) {
 function renderCart() {
   const list = document.getElementById('cart-list');
   const inlineList = document.getElementById('inline-cart-panel');
-  const toggleBtn = document.getElementById('toggle-current-cart');
   const totalNode = document.getElementById('cart-total');
   list.innerHTML = '';
   if (inlineList) inlineList.innerHTML = '';
@@ -375,7 +384,7 @@ function renderCart() {
     list.innerHTML = '<div class="empty">ยังไม่มีรายการ</div>';
     if (inlineList) inlineList.innerHTML = '<div class="empty">ยังไม่มีรายการในตะกร้า</div>';
     totalNode.textContent = 'รวม 0 บาท';
-    if (toggleBtn) toggleBtn.textContent = inlineCartToggleLabel();
+    renderInlineCartToggleButton();
     updateFloatingCart();
     refreshSubmitState();
     return;
@@ -416,7 +425,7 @@ function renderCart() {
     inlineTotal.textContent = `รวม ${money(total)} บาท`;
     inlineList.appendChild(inlineTotal);
   }
-  if (toggleBtn) toggleBtn.textContent = inlineCartToggleLabel();
+  renderInlineCartToggleButton();
   updateFloatingCart();
   refreshSubmitState();
 }
@@ -629,8 +638,7 @@ function setLockedTableUI() {
 }
 
 function bind() {
-  const cartToggleBtn = document.getElementById('toggle-current-cart');
-  if (cartToggleBtn) cartToggleBtn.textContent = inlineCartToggleLabel();
+  renderInlineCartToggleButton();
   document.getElementById('floating-cart-btn').addEventListener('click', () => {
     document.getElementById('cart-modal').classList.remove('hidden');
   });

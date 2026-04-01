@@ -1273,3 +1273,71 @@ body{
 .menu-bell-btn i{
   font-size:1rem;
 }
+
+/* rebalance: icon + text actions */
+.icon-text-btn{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+}
+.icon-text-btn .nav-btn-label{
+  display:inline;
+  font-size:.88rem;
+  font-weight:700;
+}
+.desktop-shell .main-tab{
+  display:flex;
+  flex-direction:row;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  min-height:52px !important;
+  padding:10px 12px !important;
+}
+.desktop-shell .main-tab small{
+  display:inline;
+}
+.mobile-tab{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  font-size:.92rem;
+}
+.staff-nav-btn{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  font-size:1rem;
+  font-weight:700;
+}
+.menu-bell-btn{
+  width:auto;
+  padding:0 12px;
+}
+.menu-mobile-meta strong{
+  font-size:1rem;
+  font-weight:800;
+  line-height:1.35;
+}
+.menu-thumb{
+  background:#f1f5f9;
+  border:1px solid #dbe2ea;
+}
+.menu-thumb-placeholder{
+  width:100%;
+  height:100%;
+  display:grid;
+  place-items:center;
+  color:#94a3b8;
+  background:#f1f5f9;
+}
+.menu-thumb-placeholder i{
+  font-size:1.35rem;
+}
+.floating-cart-btn{
+  bottom:calc(env(safe-area-inset-bottom, 0px) + 12px);
+  padding:14px 16px calc(env(safe-area-inset-bottom, 0px) + 14px);
+}
