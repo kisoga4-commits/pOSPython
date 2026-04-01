@@ -566,7 +566,7 @@ function renderDeskSummary() {
   totalNode.textContent = `รวม ${money(total)} บาท`;
   const hasCustomerNewOrder = getTableOrders(selectedTableId).some((o) => o.source === 'customer' && o.status === 'request_pending');
   if (acceptBtn) {
-    acceptBtn.disabled = !hasCustomerNewOrder || total <= 0;
+    acceptBtn.disabled = !hasCustomerNewOrder;
     acceptBtn.textContent = hasCustomerNewOrder ? '✅ ยืนยันรับออร์เดอร์ (Accept Order)' : '✅ รับออเดอร์แล้ว';
   }
 }
