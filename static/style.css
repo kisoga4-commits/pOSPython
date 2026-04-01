@@ -768,3 +768,13 @@ main{display:grid;gap:10px}
   #backstore .panel-block,
   #system .panel-block{margin-top:8px}
 }
+
+/* touch-first polish for linked customer/staff phones */
+.customer-app .btn-soft,
+.customer-app .btn-primary,
+.customer-app .btn-danger,
+.customer-app .subtab,
+.staff-nav-btn{min-height:48px}
+.customer-app .menu-mobile-card{border-radius:18px;padding:10px}
+.customer-app .cart-qty-btn{min-width:40px;min-height:40px}
+.staff-bottom-nav{padding-bottom:calc(env(safe-area-inset-bottom, 0px) + 8px)}
