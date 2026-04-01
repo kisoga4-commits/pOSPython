@@ -41,7 +41,9 @@ const qrApiBase = 'https://api.qrserver.com/v1/create-qr-code/';
 let networkBaseUrl = document.body.dataset.localBaseUrl || '';
 const scannerMode = document.body.dataset.scannerMode === '1';
 const kioskMode = document.body.dataset.kioskMode === '1';
-const tableParam = Number(new URLSearchParams(window.location.search).get('table') || 0);
+const urlParams = new URLSearchParams(window.location.search);
+const tableParam = Number(urlParams.get('table') || 0);
+const scannerScreenParam = urlParams.get('screen') || 'customer';
 const scannerAllowedScreens = new Set(['customer', 'cashier']);
 const hostOnlyScreens = new Set(['backstore', 'system']);
 const adminOnlyScreens = new Set(['backstore', 'system']);
@@ -67,7 +69,7 @@ function resolveRuntimeHost() {
   return `${window.location.protocol}//${host}:${window.location.port || '5000'}`;
 }
 
-function customerScanUrl(tableId) { return `${resolveRuntimeHost()}/customer?table=${tableId}`; }
+function customerScanUrl(tableId) { return `${resolveRuntimeHost()}/scan/customer/${tableId}`; }
 function buildQrImageUrl(text) { return `${qrApiBase}?size=320x320&margin=8&data=${encodeURIComponent(text)}`; }
 
 function openAppWindow(url, windowName) {
@@ -1757,6 +1759,9 @@ function blinkTableCard(tableId) {
   await refreshAdminSession();
   await loadNetworkBaseUrl();
   await loadData();
-  if (scannerMode) showScreen('customer');
+  if (scannerMode) {
+    const scannerDefaultScreen = scannerAllowedScreens.has(scannerScreenParam) ? scannerScreenParam : 'customer';
+    showScreen(scannerDefaultScreen);
+  }
   setInterval(poll, 3000);
 })();
