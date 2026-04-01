@@ -50,6 +50,7 @@ if (!isAdminLoggedIn && localStorage.getItem(ADMIN_SESSION_KEY) === '1') {
   localStorage.removeItem(ADMIN_SESSION_KEY);
 }
 const tableParam = Number(new URLSearchParams(window.location.search).get('table') || 0);
+const TABLE_SUFFIX_LENGTH = 4;
 const scannerAllowedScreens = new Set(['customer', 'cashier']);
 const mobileAllowedScreens = new Set(['customer', 'cashier']);
 const viewportQuery = window.matchMedia('(max-width: 768px)');
@@ -71,7 +72,24 @@ function resolveRuntimeHost() {
   return networkBaseUrl || window.location.origin;
 }
 
-function customerScanUrl(tableId) { return `${resolveRuntimeHost()}/customer?table=${tableId}`; }
+function parseCombinedTableParam(rawValue) {
+  const token = String(rawValue || '').trim();
+  if (!token || token.length <= TABLE_SUFFIX_LENGTH) return { tableId: 0, suffix: '', token: '' };
+  const suffix = token.slice(-TABLE_SUFFIX_LENGTH);
+  const tablePart = token.slice(0, -TABLE_SUFFIX_LENGTH);
+  if (!/^\d+$/.test(tablePart) || !/^[A-Za-z0-9]{4}$/.test(suffix)) return { tableId: 0, suffix: '', token: '' };
+  const tableId = Number(tablePart);
+  if (!Number.isInteger(tableId) || tableId < 1) return { tableId: 0, suffix: '', token: '' };
+  return { tableId, suffix, token: `${tableId}${suffix}` };
+}
+function customerScanUrl(table) {
+  const tableId = Number(table?.id || 0);
+  const suffix = String(table?.suffix || '').trim();
+  const token = `${tableId}${suffix}`;
+  const parsed = parseCombinedTableParam(token);
+  if (!parsed.token) return `${resolveRuntimeHost()}/customer`;
+  return `${resolveRuntimeHost()}/customer?t=${encodeURIComponent(parsed.token)}`;
+}
 function buildQrImageUrl(text) { return `${qrApiBase}?size=320x320&margin=8&data=${encodeURIComponent(text)}`; }
 function playAlert(id) {
   if (!uiSoundEnabled) return;
@@ -1367,7 +1385,8 @@ function renderSelectedTableQR(tableId) {
     link.href = '';
     return;
   }
-  const url = customerScanUrl(Number(tableId));
+  const table = (db.tables || []).find((entry) => Number(entry.id) === Number(tableId));
+  const url = customerScanUrl(table);
   image.src = buildQrImageUrl(url);
   link.textContent = url;
   link.href = url;

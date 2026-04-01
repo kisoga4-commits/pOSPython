@@ -14,7 +14,21 @@ let liveLoadQueued = false;
 let lastMenuRenderKey = '';
 let lastCategoryKey = '';
 const params = new URLSearchParams(window.location.search);
-const lockedTableId = Number(params.get('table') || document.body.dataset.tableId || 0);
+const TABLE_SUFFIX_LENGTH = 4;
+function parseCombinedTableParam(rawValue) {
+  const token = String(rawValue || '').trim();
+  if (!token || token.length <= TABLE_SUFFIX_LENGTH) return { tableId: 0, suffix: '', token: '' };
+  const suffix = token.slice(-TABLE_SUFFIX_LENGTH);
+  const tablePart = token.slice(0, -TABLE_SUFFIX_LENGTH);
+  if (!/^\d+$/.test(tablePart) || !/^[A-Za-z0-9]{4}$/.test(suffix)) return { tableId: 0, suffix: '', token: '' };
+  const tableId = Number(tablePart);
+  if (!Number.isInteger(tableId) || tableId < 1) return { tableId: 0, suffix: '', token: '' };
+  return { tableId, suffix, token: `${tableId}${suffix}` };
+}
+const parsedToken = parseCombinedTableParam(params.get('t') || document.body.dataset.tableToken || '');
+const fallbackTableId = Number(params.get('table') || document.body.dataset.tableId || 0);
+const lockedTableId = parsedToken.tableId || fallbackTableId;
+const lockedTableToken = parsedToken.token || '';
 const masterBaseUrl = window.location.origin;
 let liveEventSource = null;
 const cartStorageKey = `customer_cart_table_${lockedTableId || 'unknown'}`;
@@ -517,7 +531,7 @@ async function loadLive() {
   }
   liveLoadInFlight = true;
   try {
-    const data = await api(`/api/customer/live?since=${version}&table_id=${encodeURIComponent(lockedTableId)}`);
+    const data = await api(`/api/customer/live?since=${version}&table_id=${encodeURIComponent(lockedTableId)}&table_token=${encodeURIComponent(lockedTableToken)}`);
     if (!data.changed) {
       if (!menu.length) {
         const cachedMenu = await window.posDB.loadMenu();
@@ -587,7 +601,7 @@ function scheduleLoadLive() {
 async function validateCartAgainstTableStatus() {
   if (!lockedTableId) return;
   try {
-    const data = await api(`/api/customer/live?since=0&table_id=${encodeURIComponent(lockedTableId)}`);
+    const data = await api(`/api/customer/live?since=0&table_id=${encodeURIComponent(lockedTableId)}&table_token=${encodeURIComponent(lockedTableToken)}`);
     const table = (data.tables || []).find((item) => Number(item.id) === Number(lockedTableId));
     if (!table) return;
     const isFreshTable = ['available', 'closed'].includes(table.status);
@@ -683,6 +697,7 @@ function bind() {
       client_order_id: `mobile-${lockedTableId}-${Date.now()}`,
       target: 'table',
       target_id: lockedTableId,
+      table_token: lockedTableToken,
       cart: payloadCart,
       total_price: calculateCartTotal(cart),
       source: 'customer',
@@ -751,7 +766,7 @@ function bind() {
 }
 
 (function init() {
-  if (!lockedTableId) {
+  if (!lockedTableId || !lockedTableToken) {
     document.getElementById('message').textContent = 'Invalid table access. กรุณาเข้าผ่าน QR Code เท่านั้น';
     document.getElementById('submit-order').disabled = true;
     refreshSubmitState();

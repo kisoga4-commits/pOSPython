@@ -1,6 +1,8 @@
 import json
 import os
+import secrets
 import sqlite3
+import string
 from copy import deepcopy
 from datetime import datetime
 from threading import Lock
@@ -8,6 +10,8 @@ from threading import Lock
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 DB_FILE = os.path.join(BASE_DIR, "pos_local.sqlite3")
 _db_lock = Lock()
+TABLE_SUFFIX_LENGTH = 4
+TABLE_SUFFIX_ALPHABET = string.ascii_letters + string.digits
 
 
 def now_iso() -> str:
@@ -19,6 +23,29 @@ def normalize_table_status(status: str) -> str:
     normalized = mapping.get(str(status), str(status))
     valid = {"available", "pending_order", "accepted_order", "checkout_requested", "closed"}
     return normalized if normalized in valid else "available"
+
+
+def generate_table_suffix() -> str:
+    return "".join(secrets.choice(TABLE_SUFFIX_ALPHABET) for _ in range(TABLE_SUFFIX_LENGTH))
+
+
+def _is_valid_table_suffix(value) -> bool:
+    text = str(value or "")
+    return len(text) == TABLE_SUFFIX_LENGTH and all(ch in TABLE_SUFFIX_ALPHABET for ch in text)
+
+
+def _ensure_table_suffixes(tables: list[dict]) -> list[dict]:
+    used = set()
+    normalized = []
+    for table in tables:
+        suffix = str(table.get("suffix", ""))
+        if not _is_valid_table_suffix(suffix) or suffix in used:
+            suffix = generate_table_suffix()
+            while suffix in used:
+                suffix = generate_table_suffix()
+        used.add(suffix)
+        normalized.append({**table, "suffix": suffix})
+    return normalized
 
 
 def default_db() -> dict:
@@ -41,6 +68,7 @@ def default_db() -> dict:
                 "call_staff_ack_at": "",
                 "last_order_event": "",
                 "last_order_event_at": "",
+                "suffix": generate_table_suffix(),
             }
             for i in range(1, table_count + 1)
         ],
@@ -96,6 +124,14 @@ def ensure_db_exists() -> None:
                     "INSERT INTO app_state(state_key, state_json, updated_at) VALUES(?, ?, ?)",
                     ("main", payload, now_iso()),
                 )
+            else:
+                current = json.loads(row[0])
+                normalized = _normalize_db(current)
+                if normalized != current:
+                    conn.execute(
+                        "UPDATE app_state SET state_json = ?, updated_at = ? WHERE state_key = ?",
+                        (json.dumps(normalized, ensure_ascii=False), now_iso(), "main"),
+                    )
             conn.commit()
 
 
@@ -104,7 +140,7 @@ def _normalize_db(data: dict) -> dict:
     merged = deepcopy(base)
     merged.update(data or {})
     merged["settings"] = {**base["settings"], **(data or {}).get("settings", {})}
-    merged["tables"] = [
+    merged["tables"] = _ensure_table_suffixes([
         {
             **table,
             "status": normalize_table_status(table.get("status", "available")),
@@ -116,7 +152,7 @@ def _normalize_db(data: dict) -> dict:
             "last_order_event_at": table.get("last_order_event_at", ""),
         }
         for table in merged.get("tables", [])
-    ]
+    ])
     merged["menu"] = [
         {**item, "image": item.get("image", "")}
         for item in merged.get("menu", [])
@@ -176,6 +212,7 @@ def reset_tables(data: dict) -> dict:
             "call_staff_ack_at": "",
             "last_order_event": "",
             "last_order_event_at": "",
+            "suffix": generate_table_suffix(),
         }
         for i in range(1, table_count + 1)
     ]
