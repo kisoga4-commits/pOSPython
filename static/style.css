@@ -40,8 +40,8 @@ h1,h2,h3,h4,p{margin:0}
 .network-dot.online{background:#22c55e;box-shadow:0 0 0 4px rgba(34,197,94,.25),0 0 14px rgba(34,197,94,.8)}
 .network-dot.offline{background:#ef4444;box-shadow:0 0 0 4px rgba(239,68,68,.22),0 0 14px rgba(239,68,68,.7)}
 
-.tab-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-.main-tab{border:1px solid #e9d5ff;background:linear-gradient(180deg,#fff,#faf5ff);border-radius:18px;padding:12px 10px;font-weight:700;cursor:pointer;transition:.2s;display:grid;justify-items:center;gap:6px;box-shadow:0 10px 20px rgba(124,58,237,.08)}
+.tab-bar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;padding:10px;background:linear-gradient(120deg,#ffffff,#f5f3ff);border:1px solid #e9d5ff}
+.main-tab{border:1px solid #e9d5ff;background:linear-gradient(180deg,#fff,#faf5ff);border-radius:18px;padding:12px 10px;font-weight:700;cursor:pointer;transition:.2s;display:grid;justify-items:center;gap:6px;box-shadow:0 10px 20px rgba(124,58,237,.08);min-width:0}
 .main-tab svg{width:34px;height:34px}
 .main-tab small{font-size:.74rem;color:#6b7280}
 .main-tab:hover{transform:translateY(-1px)}
@@ -259,6 +259,7 @@ input,select{width:100%;padding:10px;border-radius:10px;border:1px solid var(--l
 .menu-mobile-card{grid-template-columns:120px 1fr}
 .table-qr-preview{margin-top:10px;padding:10px;border:1px solid var(--line);border-radius:12px;background:#f8fafc}
 .btn-danger{background:#fee2e2;color:#b91c1c;border:none}
+.icon-delete{display:inline-grid;place-items:center;min-width:34px;height:34px;border-radius:999px;padding:0;font-size:1.15rem;font-weight:800;line-height:1;color:#dc2626;background:#fee2e2}
 .clear-cart-btn{width:100%;margin-top:8px}
 .blink-red{animation:blink-red 0.45s linear infinite!important}
 @keyframes blink-red{0%,100%{background:#fff;border-color:inherit}50%{background:#fee2e2;border-color:#ef4444}}
@@ -276,7 +277,7 @@ input,select{width:100%;padding:10px;border-radius:10px;border:1px solid var(--l
 .addon-check-item input{width:auto}
 
 .app-shell.desktop-shell{padding:8px}
-.desktop-shell .tab-bar{grid-template-columns:repeat(2,1fr)}
+.desktop-shell .tab-bar{grid-template-columns:repeat(4,minmax(0,1fr))}
 .staff-split-layout{grid-template-columns:1fr}
 .staff-cart-pane{position:relative;top:auto}
 

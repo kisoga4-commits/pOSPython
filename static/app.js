@@ -203,38 +203,42 @@ function renderOrderCart() {
   orderCart.forEach((item, idx) => {
     const row = document.createElement('div');
     row.className = 'list-card';
-    row.innerHTML = `<strong>${item.name}</strong> · ${money(item.price)} บาท <button class="btn-soft">ลบ</button>`;
+    row.innerHTML = `<strong>${item.name}</strong> · ${money(item.price)} บาท <button class="btn-soft btn-danger icon-delete" aria-label="ลบรายการ" type="button">✕</button>`;
     row.querySelector('button').addEventListener('click', () => { orderCart.splice(idx, 1); renderOrderCart(); });
     list.appendChild(row);
   });
   qs('order-cart-total').textContent = `รวม ${money(orderCart.reduce((s, i) => s + Number(i.price || 0), 0))} บาท`;
 }
 
+function summarizeItems(items = []) {
+  const itemMap = new Map();
+  items.forEach((item) => {
+    const key = `${item.name}|${item.addon || ''}|${item.note || ''}|${Number(item.price || 0)}`;
+    if (!itemMap.has(key)) {
+      itemMap.set(key, { ...item, qty: 0 });
+    }
+    const current = itemMap.get(key);
+    current.qty += Math.max(1, Number(item.qty || 1));
+  });
+  return Array.from(itemMap.values());
+}
+
 function renderExistingOrders(tableId) {
   const list = qs('order-existing-list');
   list.innerHTML = '';
   const orders = getTableOrders(tableId);
-  const total = orders.flatMap((o) => o.items || []).reduce((sum, item) => sum + Number(item.price || 0), 0);
+  const rawItems = orders.flatMap((o) => o.items || []);
+  const total = rawItems.reduce((sum, item) => sum + (Number(item.price || 0) * Math.max(1, Number(item.qty || 1))), 0);
+  const stackedItems = summarizeItems(rawItems);
   if (!orders.length) {
     list.innerHTML = '<div class="empty">ยังไม่มีรายการที่สั่งแล้ว</div>';
   }
-  orders.forEach((order) => {
-    (order.items || []).forEach((item, idx) => {
-      const locked = ['preparing', 'served'].includes(order.status) || order.source === 'customer';
-      const row = document.createElement('div');
-      row.className = 'list-card';
-      row.innerHTML = `<strong>${item.name}</strong> • ${money(item.price)} บาท ${locked ? '<span class="pill">sent</span>' : '<button class="btn-soft">ลบ</button>'}`;
-      const btn = row.querySelector('button');
-      if (btn) {
-        btn.addEventListener('click', async () => {
-          playUISound();
-          await api('/api/order/item', { method: 'DELETE', body: JSON.stringify({ order_id: order.id, item_index: idx }) });
-          await loadData();
-          renderExistingOrders(tableId);
-        });
-      }
-      list.appendChild(row);
-    });
+  stackedItems.forEach((item) => {
+    const row = document.createElement('div');
+    row.className = 'list-card';
+    const qtyText = Math.max(1, Number(item.qty || 1)) > 1 ? ` x${Math.max(1, Number(item.qty || 1))}` : '';
+    row.innerHTML = `<strong>${item.name}${qtyText}</strong> • ${money(item.price)} บาท <span class="pill">sent</span>`;
+    list.appendChild(row);
   });
   qs('order-existing-total').textContent = `ยอดรวมตอนนี้ ${money(total)} บาท`;
 }
