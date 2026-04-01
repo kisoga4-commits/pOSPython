@@ -9,6 +9,10 @@ let isInlineCartOpen = false;
 let activeCategory = 'ทั้งหมด';
 let submitState = 'idle';
 let lastSubmittedOrderId = '';
+let liveLoadInFlight = false;
+let liveLoadQueued = false;
+let lastMenuRenderKey = '';
+let lastCategoryKey = '';
 const params = new URLSearchParams(window.location.search);
 const lockedTableId = Number(params.get('table') || document.body.dataset.tableId || 0);
 const masterBaseUrl = window.location.origin;
@@ -41,7 +45,7 @@ async function api(path, options = {}) {
 function connectLiveEvents() {
   if (liveEventSource || !window.EventSource || !lockedTableId) return;
   liveEventSource = new EventSource(`/api/events?table_id=${encodeURIComponent(lockedTableId)}`);
-  liveEventSource.addEventListener('update', () => loadLive());
+  liveEventSource.addEventListener('update', () => scheduleLoadLive());
   liveEventSource.onerror = () => {
     if (liveEventSource) liveEventSource.close();
     liveEventSource = null;
@@ -49,40 +53,35 @@ function connectLiveEvents() {
   };
 }
 
-function boostPlaySound(soundId, gain = 1.6) {
-  const baseAudio = document.getElementById(soundId);
-  if (!baseAudio) return;
-  const sourceUrl = baseAudio.currentSrc || baseAudio.src;
-  if (!sourceUrl) return;
-  const contextClass = window.AudioContext || window.webkitAudioContext;
-  if (!contextClass) {
-    baseAudio.currentTime = 0;
-    baseAudio.volume = 1;
-    baseAudio.play().catch(() => {});
+function playUISound(soundId, options = {}) {
+  const audio = document.getElementById(soundId);
+  if (!audio) return;
+  const volume = Math.max(0, Math.min(1, Number(options.volume ?? 1)));
+  const playbackRate = Math.max(0.8, Math.min(1.2, Number(options.playbackRate ?? 1)));
+  const canReplayElement = audio.paused || audio.ended || audio.readyState < 2;
+  if (canReplayElement) {
+    audio.currentTime = 0;
+    audio.volume = volume;
+    audio.playbackRate = playbackRate;
+    audio.play().catch(() => {});
     return;
   }
-  const audioContext = new contextClass();
-  const audioClone = new Audio(sourceUrl);
-  audioClone.crossOrigin = 'anonymous';
-  const source = audioContext.createMediaElementSource(audioClone);
-  const gainNode = audioContext.createGain();
-  gainNode.gain.value = gain;
-  source.connect(gainNode);
-  gainNode.connect(audioContext.destination);
-  audioClone.currentTime = 0;
-  audioClone.play().catch(() => {});
+  const clone = audio.cloneNode(true);
+  clone.volume = volume;
+  clone.playbackRate = playbackRate;
+  clone.play().catch(() => {});
 }
 
 function playAddToCartSound() {
-  boostPlaySound('add-to-cart-sound', 1.8);
+  playUISound('add-to-cart-sound', { volume: 1 });
 }
 
 function playConfirmSound() {
-  boostPlaySound('customer-confirm-sound', 1.8);
+  playUISound('customer-confirm-sound', { volume: 1 });
 }
 
 function playOrderSubmitSound() {
-  boostPlaySound('customer-confirm-sound', 2.3);
+  playUISound('customer-confirm-sound', { volume: 1, playbackRate: 1.05 });
 }
 
 function getStatusMeta(status) {
@@ -258,11 +257,17 @@ function refreshSubmitState() {
 function renderMenu() {
   const list = document.getElementById('menu-list');
   const tabs = document.getElementById('customer-category-tabs');
-  list.innerHTML = '';
   const availableMenu = [...menu];
   const categories = ['ทั้งหมด', ...new Set(availableMenu.map((item) => item.category || 'ทั่วไป'))];
+  const categoryKey = categories.join('|');
+  const menuRenderKey = `${activeCategory}::${availableMenu.map((item) => `${item.id || item.item_id || item.name}-${item.price}-${item.image || ''}-${item.category || ''}`).join('~')}`;
+  const shouldRenderTabs = categoryKey !== lastCategoryKey;
+  if (menuRenderKey === lastMenuRenderKey && categoryKey === lastCategoryKey) return;
+  lastMenuRenderKey = menuRenderKey;
+  lastCategoryKey = categoryKey;
+  list.innerHTML = '';
   if (!categories.includes(activeCategory)) activeCategory = 'ทั้งหมด';
-  if (tabs) {
+  if (tabs && shouldRenderTabs) {
     tabs.innerHTML = '';
     categories.forEach((category) => {
       const btn = document.createElement('button');
@@ -499,6 +504,11 @@ function renderExistingOrders() {
 }
 
 async function loadLive() {
+  if (liveLoadInFlight) {
+    liveLoadQueued = true;
+    return;
+  }
+  liveLoadInFlight = true;
   try {
     const data = await api(`/api/customer/live?since=${version}&table_id=${encodeURIComponent(lockedTableId)}`);
     if (!data.changed) {
@@ -511,7 +521,9 @@ async function loadLive() {
       }
       return;
     }
-    menu = data.menu || [];
+    const incomingMenu = data.menu || [];
+    const menuChanged = JSON.stringify(incomingMenu) !== JSON.stringify(menu);
+    menu = incomingMenu;
     currentSettings = data.settings || {};
     currentTables = data.tables || [];
     const tableOrders = (data.orders || []).filter((order) => Number(order.target_id) === Number(lockedTableId));
@@ -533,19 +545,36 @@ async function loadLive() {
       }
     }
     version = data.version || version;
-    await window.posDB.saveMenu(menu);
+    if (menuChanged) {
+      await window.posDB.saveMenu(menu);
+      renderMenu();
+    }
     setLockedTableUI();
     updateTableStatus(data.tables || []);
     updateOrderAckIndicator(data.orders || []);
-    renderMenu();
   } catch (error) {
     const cachedMenu = await window.posDB.loadMenu();
     if (cachedMenu.length) {
+      const cacheChanged = JSON.stringify(cachedMenu) !== JSON.stringify(menu);
       menu = cachedMenu;
-      renderMenu();
+      if (cacheChanged) renderMenu();
       document.getElementById('message').textContent = 'กำลังแสดงเมนูจากเครื่อง (Offline)';
     }
+  } finally {
+    liveLoadInFlight = false;
+    if (liveLoadQueued) {
+      liveLoadQueued = false;
+      loadLive();
+    }
   }
+}
+
+function scheduleLoadLive() {
+  if (liveLoadInFlight) {
+    liveLoadQueued = true;
+    return;
+  }
+  loadLive();
 }
 
 async function validateCartAgainstTableStatus() {
@@ -711,6 +740,6 @@ function bind() {
   loadCartFromSession();
   renderCart();
   window.posSync.startSync(masterBaseUrl);
-  validateCartAgainstTableStatus().then(() => loadLive()).then(setLockedTableUI);
+  validateCartAgainstTableStatus().then(() => scheduleLoadLive()).then(setLockedTableUI);
   connectLiveEvents();
 })();
