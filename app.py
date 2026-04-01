@@ -432,11 +432,16 @@ def api_checkout():
 
     db = load_db()
     pending_items = []
+    had_pending_requests = False
     for order in db["orders"]:
         if order["target"] == target and order["target_id"] == target_id and order["status"] == "accepted":
             order["status"] = "completed"
             order["updated_at"] = local_now()
             pending_items.extend(order["items"])
+        elif order["target"] == target and order["target_id"] == target_id and order["status"] == "request_pending":
+            order["status"] = "cancelled"
+            order["updated_at"] = local_now()
+            had_pending_requests = True
 
     if not pending_items:
         return jsonify({"error": "nothing_to_checkout"}), 409
@@ -459,6 +464,11 @@ def api_checkout():
                 table["status"] = "available"
                 table["items"] = []
                 table["call_staff_status"] = "idle"
+                table["call_staff_requested_at"] = ""
+                table["call_staff_ack_at"] = ""
+                if had_pending_requests:
+                    table["last_order_event"] = "checkout_cleared_pending"
+                    table["last_order_event_at"] = local_now()
                 break
 
     db = save_db(db)

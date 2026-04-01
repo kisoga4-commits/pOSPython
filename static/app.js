@@ -11,6 +11,7 @@ let lastPendingTableIds = new Set();
 let lastCheckoutRequestIds = new Set();
 let activeOrderItemDraft = null;
 let acceptRequestInFlight = false;
+const requestActionInFlight = new Set();
 let salesPeriod = 'day';
 let salesFilterRange = null;
 let activeMenuCategory = 'ทั้งหมด';
@@ -540,6 +541,51 @@ function renderExistingOrders(tableId) {
   totalNode.textContent = `ยอดรวมตอนนี้ ${money(total)} บาท`;
 }
 
+function renderPendingRequestActions(tableId) {
+  const list = qs('order-request-list');
+  if (!list) return;
+  const pendingRequests = getTablePendingRequests(tableId)
+    .slice()
+    .sort((a, b) => String(a.created_at || '').localeCompare(String(b.created_at || '')));
+  list.innerHTML = '';
+  if (!pendingRequests.length) {
+    list.innerHTML = '<div class="empty">ไม่มีคำขอค้างจากลูกค้า</div>';
+    return;
+  }
+  pendingRequests.forEach((requestOrder) => {
+    const row = document.createElement('div');
+    row.className = 'list-card';
+    const orderItems = summarizeItems(requestOrder.items || []);
+    const itemText = orderItems.length
+      ? orderItems.map((item) => `${item.name}${Math.max(1, Number(item.qty || 1)) > 1 ? ` x${Math.max(1, Number(item.qty || 1))}` : ''}`).join(', ')
+      : 'ไม่มีรายการ';
+    const inFlight = requestActionInFlight.has(requestOrder.id);
+    row.innerHTML = `
+      <strong>คำขอ #${requestOrder.id}</strong>
+      <div class="muted">${itemText}</div>
+      <div class="btn-row">
+        <button class="btn-primary js-accept-request" data-order-id="${requestOrder.id}" ${inFlight ? 'disabled' : ''}>✅ รับคำขอ</button>
+        <button class="btn-soft js-reject-request" data-order-id="${requestOrder.id}" ${inFlight ? 'disabled' : ''}>❌ ปฏิเสธ</button>
+      </div>`;
+    list.appendChild(row);
+  });
+}
+
+async function handlePendingRequestAction(orderId, action) {
+  if (!orderId || requestActionInFlight.has(orderId)) return;
+  requestActionInFlight.add(orderId);
+  renderPendingRequestActions(selectedTableId);
+  const endpoint = action === 'accept' ? '/api/table/accept' : '/api/table/reject';
+  try {
+    const res = await api(endpoint, { method: 'POST', body: JSON.stringify({ order_id: orderId }) });
+    if (res.error) return;
+    await loadData();
+  } finally {
+    requestActionInFlight.delete(orderId);
+    renderPendingRequestActions(selectedTableId);
+  }
+}
+
 function renderDeskSummary() {
   const metaNode = qs('desk-selected-table');
   const statusNode = qs('desk-selected-status');
@@ -599,6 +645,7 @@ function selectTable(tableId) {
   renderOrderMenuChoices();
   renderOrderCart();
   renderExistingOrders(tableId);
+  renderPendingRequestActions(tableId);
   renderDeskSummary();
   qs('table-order-modal').classList.remove('hidden');
 }
@@ -1220,6 +1267,18 @@ function bind() {
   });
 
   qs('desk-open-order-modal')?.addEventListener('click', () => { if (selectedTableId) selectTable(selectedTableId); });
+  qs('order-request-list')?.addEventListener('click', async (event) => {
+    const button = event.target.closest('button[data-order-id]');
+    if (!button) return;
+    const orderId = button.dataset.orderId;
+    if (button.classList.contains('js-accept-request')) {
+      await handlePendingRequestAction(orderId, 'accept');
+      return;
+    }
+    if (button.classList.contains('js-reject-request')) {
+      await handlePendingRequestAction(orderId, 'reject');
+    }
+  });
   qs('open-sales-insight')?.addEventListener('click', () => {
     const sales = db.sales || [];
     const sum = (days) => {
@@ -1346,8 +1405,16 @@ async function poll() {
     const checkoutSet = new Set((info.tables || []).filter((t) => t.call_staff_status === 'requested').map((t) => t.id));
     const hasNewPending = [...pendingSet].some((id) => !lastPendingTableIds.has(id));
     const hasNewCheckoutRequest = [...checkoutSet].some((id) => !lastCheckoutRequestIds.has(id));
-    if (hasNewPending) playAlert('new-order-sound');
-    if (hasNewCheckoutRequest) playAlert('checkout-request-sound');
+    if (hasNewPending) {
+      playAlert('new-order-sound');
+      qs('table-grid')?.classList.add('blink-pending');
+      setTimeout(() => qs('table-grid')?.classList.remove('blink-pending'), 10000);
+    }
+    if (hasNewCheckoutRequest) {
+      playAlert('checkout-request-sound');
+      qs('table-grid')?.classList.add('blink-red');
+      setTimeout(() => qs('table-grid')?.classList.remove('blink-red'), 10000);
+    }
     lastPendingTableIds = pendingSet;
     lastCheckoutRequestIds = checkoutSet;
     await loadData();
