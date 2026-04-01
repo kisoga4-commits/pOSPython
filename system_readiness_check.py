@@ -15,8 +15,16 @@ from __future__ import annotations
 import os
 import tempfile
 
-import db
-from app import app
+try:
+    import db
+    from app import app
+except ModuleNotFoundError as exc:
+    missing = getattr(exc, "name", None) or str(exc)
+    print(
+        "Dependency missing for smoke check: "
+        f"{missing}. Please install requirements with `python3 -m pip install -r requirements.txt`."
+    )
+    raise SystemExit(2) from exc
 
 
 def assert_status(response, expected: int, label: str) -> None:
