@@ -5,10 +5,11 @@ import importlib.util
 import re
 import json
 import hashlib
+import time
 from datetime import datetime
 from collections import defaultdict
 
-from flask import Flask, abort, jsonify, redirect, render_template, request, url_for
+from flask import Flask, Response, abort, jsonify, redirect, render_template, request, stream_with_context, url_for
 
 from db import ensure_db_exists, load_db, reset_tables, save_db
 
@@ -27,6 +28,21 @@ log.setLevel(logging.ERROR)
 
 app = Flask(__name__)
 ASSET_VERSION = "20260401-offline-lan-sync-v2"
+
+
+@app.after_request
+def add_cors_headers(response):
+    response.headers["Access-Control-Allow-Origin"] = request.headers.get("Origin", "*")
+    response.headers["Vary"] = "Origin"
+    response.headers["Access-Control-Allow-Methods"] = "GET,POST,PATCH,DELETE,OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type,X-POS-Role"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    return response
+
+
+@app.route("/api/<path:_any_path>", methods=["OPTIONS"])
+def api_options(_any_path: str):
+    return ("", 204)
 
 
 def bootstrap() -> None:
@@ -868,6 +884,30 @@ def api_table_statuses():
         "version": db.get("meta", {}).get("version", 0),
         "updated_at": db.get("meta", {}).get("updated_at"),
     })
+
+
+@app.route("/api/events", methods=["GET"])
+@require_license
+def api_events():
+    table_id = request.args.get("table_id", type=int)
+
+    @stream_with_context
+    def generate_events():
+        last_version = -1
+        for _ in range(1800):
+            db = load_db()
+            current_version = db.get("meta", {}).get("version", 0)
+            if current_version != last_version:
+                payload = {"version": current_version, "updated_at": db.get("meta", {}).get("updated_at")}
+                if table_id is not None:
+                    payload["table_id"] = table_id
+                yield f"event: update\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
+                last_version = current_version
+            else:
+                yield "event: heartbeat\ndata: {}\n\n"
+            time.sleep(1.5)
+
+    return Response(generate_events(), mimetype="text/event-stream")
 
 
 @app.route("/api/staff/live", methods=["GET"])

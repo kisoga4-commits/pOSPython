@@ -77,6 +77,7 @@ function summarizeItems(items = []) {
 const ACTIVE_TABLE_KEY = 'customer_display_active_table';
 let settings = {};
 let tableId = Number(document.body.dataset.tableId || localStorage.getItem(ACTIVE_TABLE_KEY) || 0);
+let liveEventSource = null;
 
 async function loadSettings() {
   const data = await api('/api/data');
@@ -147,6 +148,17 @@ async function refreshBill() {
   renderBill(bill);
 }
 
+function connectLiveEvents() {
+  if (liveEventSource || !window.EventSource) return;
+  liveEventSource = new EventSource('/api/events');
+  liveEventSource.addEventListener('update', () => refreshBill());
+  liveEventSource.onerror = () => {
+    if (liveEventSource) liveEventSource.close();
+    liveEventSource = null;
+    setTimeout(connectLiveEvents, 2500);
+  };
+}
+
 function bindAutoTableSync() {
   window.addEventListener('storage', (event) => {
     if (event.key !== ACTIVE_TABLE_KEY) return;
@@ -165,7 +177,7 @@ async function init() {
   bindAutoTableSync();
   updateTableHeader();
   await refreshBill();
-  setInterval(refreshBill, 2000);
+  connectLiveEvents();
 }
 
 init();

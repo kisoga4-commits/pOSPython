@@ -39,6 +39,7 @@ const money = (n) => Number(n || 0).toLocaleString('th-TH', { minimumFractionDig
 const unitLabel = () => (db?.settings?.serviceMode === 'queue' ? 'คิว' : 'โต๊ะ');
 const qrApiBase = 'https://api.qrserver.com/v1/create-qr-code/';
 let networkBaseUrl = document.body.dataset.localBaseUrl || '';
+let liveEventSource = null;
 const scannerMode = document.body.dataset.scannerMode === '1';
 const ADMIN_SESSION_KEY = 'admin_logged_in';
 const adminAllowedScreens = new Set(['customer', 'cashier', 'backstore', 'system']);
@@ -54,21 +55,16 @@ const scannerAllowedScreens = new Set(['customer', 'cashier']);
 async function loadNetworkBaseUrl() {
   const network = await api('/api/system/network');
   if (!network.error && network.base_url) {
-    networkBaseUrl = network.base_url;
+    networkBaseUrl = window.location.origin;
     return;
   }
   if (!networkBaseUrl) {
-    const ip = document.body.dataset.localIp || window.location.hostname;
-    networkBaseUrl = `${window.location.protocol}//${ip}:${window.location.port || '5000'}`;
+    networkBaseUrl = window.location.origin;
   }
 }
 
 function resolveRuntimeHost() {
-  if (networkBaseUrl) return networkBaseUrl;
-  const runtimeHost = window.location.hostname;
-  const fallbackHost = document.body.dataset.localIp || runtimeHost;
-  const host = (!runtimeHost || runtimeHost === 'localhost' || runtimeHost === '127.0.0.1') ? fallbackHost : runtimeHost;
-  return `${window.location.protocol}//${host}:${window.location.port || '5000'}`;
+  return networkBaseUrl || window.location.origin;
 }
 
 function customerScanUrl(tableId) { return `${resolveRuntimeHost()}/customer?table=${tableId}`; }
@@ -174,11 +170,6 @@ function showScreen(id) {
 function applyRoleUI() {
   const tabBar = document.querySelector('.tab-bar');
   const tabButtons = [...document.querySelectorAll('[data-screen]')];
-
-  if (tableParam > 0) {
-    window.location.replace(`/customer?table=${encodeURIComponent(tableParam)}`);
-    return;
-  }
 
   const allowed = isAdminLoggedIn ? adminAllowedScreens : nonAdminAllowedScreens;
   tabButtons.forEach((button) => {
@@ -1696,6 +1687,17 @@ async function poll() {
   }
 }
 
+function connectLiveEvents() {
+  if (liveEventSource || !window.EventSource) return;
+  liveEventSource = new EventSource('/api/events');
+  liveEventSource.addEventListener('update', () => poll());
+  liveEventSource.onerror = () => {
+    if (liveEventSource) liveEventSource.close();
+    liveEventSource = null;
+    setTimeout(connectLiveEvents, 2500);
+  };
+}
+
 const tableBlinkTimers = new Map();
 function blinkTableCard(tableId) {
   const card = document.querySelector(`.table-card[data-table-id="${tableId}"]`);
@@ -1716,5 +1718,9 @@ function blinkTableCard(tableId) {
   await loadNetworkBaseUrl();
   await loadData();
   showScreen('customer');
-  setInterval(poll, 3000);
+  if (tableParam > 0) {
+    selectedTableId = tableParam;
+    showScreen('customer');
+  }
+  connectLiveEvents();
 })();
