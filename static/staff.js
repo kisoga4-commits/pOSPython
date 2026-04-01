@@ -42,10 +42,39 @@ function playCheckoutSound() {
 }
 
 function playCallStaffSound() {
-  const audio = document.getElementById('call-staff-sound');
-  if (!audio) return;
-  audio.currentTime = 0;
-  audio.play().catch(() => {});
+  const immediateAlert = new Audio('/static/alert.mp3');
+  immediateAlert.play().catch(() => {
+    const audio = document.getElementById('call-staff-sound');
+    if (!audio) return;
+    audio.currentTime = 0;
+    audio.play().catch(() => {});
+  });
+}
+
+function cartIdentity(item) {
+  const addonKey = (item.addons || []).map((addon) => addon.name || addon).join('|');
+  return `${item.id || item.name}__${addonKey}__${item.note || ''}`;
+}
+
+function stackItems(items = []) {
+  const itemMap = new Map();
+  items.forEach((item) => {
+    const key = cartIdentity(item);
+    if (!itemMap.has(key)) {
+      itemMap.set(key, { ...item, qty: 0 });
+    }
+    const current = itemMap.get(key);
+    current.qty += Math.max(1, Number(item.qty || 1));
+  });
+  return [...itemMap.values()];
+}
+
+function applyRoleRestrictions() {
+  const allowedTabsForStaff = new Set(['customer', 'checkout']);
+  document.querySelectorAll('[data-staff-tab]').forEach((tabButton) => {
+    const visible = authState?.role !== 'staff' || allowedTabsForStaff.has(tabButton.dataset.staffTab);
+    tabButton.classList.toggle('hidden', !visible);
+  });
 }
 
 function loadAuthState() {
@@ -74,6 +103,7 @@ function updateAuthUI() {
     appScreen.classList.remove('hidden');
     nav.classList.remove('hidden');
     logoutBtn.classList.remove('hidden');
+    applyRoleRestrictions();
   } else {
     loginScreen.classList.remove('hidden');
     appScreen.classList.add('hidden');
@@ -117,10 +147,10 @@ function tableCard(table, orders = [], actions = []) {
   if (orders.length) {
     const orderSummary = document.createElement('div');
     orderSummary.className = 'table-order-summary';
-    orders.slice(0, 4).forEach((item) => {
+    stackItems(orders).slice(0, 4).forEach((item) => {
       const hasAddon = Array.isArray(item.addons) ? item.addons.length > 0 : Boolean(item.addon);
       const row = document.createElement('small');
-      row.innerHTML = `• ${item.name}${hasAddon ? '<span class="addon-flag">➕ Add-on</span>' : ''}`;
+      row.innerHTML = `• ${item.name} x${Math.max(1, Number(item.qty || 1))}${hasAddon ? '<span class="addon-flag">➕ Add-on</span>' : ''}`;
       orderSummary.appendChild(row);
     });
     card.appendChild(orderSummary);

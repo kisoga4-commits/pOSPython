@@ -152,13 +152,15 @@ def _create_order(payload: dict) -> dict:
     order_id = f"ORD-{int(datetime.now().timestamp())}-{len(db['orders']) + 1}"
     source = payload.get("source", "customer")
     initial_status = "new" if source == "customer" else "preparing"
-    normalized_cart = _normalize_cart_items(cart)
+    normalized_cart = _normalize_cart_items(cart, db.get("menu", []))
+    total_price = sum(float(item.get("price", 0)) for item in normalized_cart)
 
     new_order = {
         "id": order_id,
         "target": target,
         "target_id": target_id,
         "items": normalized_cart,
+        "total_price": total_price,
         "status": initial_status,
         "created_at": local_now(),
         "updated_at": local_now(),
@@ -181,8 +183,37 @@ def _create_order(payload: dict) -> dict:
     return {"status": "success", "order": new_order, "version": db["meta"]["version"]}
 
 
-def _normalize_cart_items(raw_cart: list) -> list:
+def _parse_addon_option_price(raw_option: str) -> tuple[str, float]:
+    option = str(raw_option or "").strip()
+    if not option:
+        return "", 0.0
+    if "(+" in option and option.endswith(")"):
+        try:
+            name = option[: option.rfind("(+")].strip()
+            amount = option[option.rfind("(+") + 2 : -1].strip()
+            return (name or option, float(amount))
+        except ValueError:
+            return option, 0.0
+    return option, 0.0
+
+
+def _build_menu_lookup(menu: list) -> dict:
+    lookup = {}
+    for item in menu:
+        if not isinstance(item, dict):
+            continue
+        item_id = item.get("id")
+        item_name = str(item.get("name", "")).strip()
+        if item_id is not None:
+            lookup[f"id:{item_id}"] = item
+        if item_name:
+            lookup[f"name:{item_name.lower()}"] = item
+    return lookup
+
+
+def _normalize_cart_items(raw_cart: list, menu: list) -> list:
     normalized = []
+    menu_lookup = _build_menu_lookup(menu)
     for item in raw_cart:
         if not isinstance(item, dict):
             continue
@@ -190,10 +221,27 @@ def _normalize_cart_items(raw_cart: list) -> list:
             qty = max(1, int(item.get("qty", 1) or 1))
         except (TypeError, ValueError):
             qty = 1
+        menu_item = None
+        item_id = item.get("id")
+        item_name = str(item.get("name", "")).strip()
+        if item_id is not None:
+            menu_item = menu_lookup.get(f"id:{item_id}")
+        if menu_item is None and item_name:
+            menu_item = menu_lookup.get(f"name:{item_name.lower()}")
+
+        menu_base_price = float((menu_item or {}).get("price", 0) or 0)
+        fallback_price = float(item.get("base_price", item.get("price", 0)) or 0)
+        base_price = menu_base_price if menu_item is not None else fallback_price
+        menu_addon_prices = {}
+        for option in (menu_item or {}).get("addons", []) or []:
+            addon_name, addon_price = _parse_addon_option_price(option)
+            if addon_name:
+                menu_addon_prices[addon_name] = addon_price
+
         base = {
             "id": item.get("id"),
-            "name": str(item.get("name", "")).strip() or "Unknown Item",
-            "price": float(item.get("price", 0) or 0),
+            "name": item_name or "Unknown Item",
+            "price": base_price,
             "note": str(item.get("note", "")).strip(),
             "addon": str(item.get("addon", "")).strip(),
         }
@@ -205,16 +253,22 @@ def _normalize_cart_items(raw_cart: list) -> list:
                     addon_name = str(addon.get("name", "")).strip()
                     if not addon_name:
                         continue
+                    menu_addon_price = menu_addon_prices.get(addon_name)
                     packed_addons.append({
                         "name": addon_name,
-                        "price": float(addon.get("price", 0) or 0),
+                        "price": menu_addon_price if menu_addon_price is not None else float(addon.get("price", 0) or 0),
                     })
                 elif isinstance(addon, str) and addon.strip():
-                    packed_addons.append({"name": addon.strip(), "price": 0.0})
+                    addon_name = addon.strip()
+                    packed_addons.append({
+                        "name": addon_name,
+                        "price": menu_addon_prices.get(addon_name, 0.0),
+                    })
             if packed_addons:
                 base["addons"] = packed_addons
                 if not base["addon"]:
                     base["addon"] = ", ".join(addon["name"] for addon in packed_addons)
+                base["price"] = base_price + sum(float(addon.get("price", 0) or 0) for addon in packed_addons)
 
         for _ in range(qty):
             normalized.append({**base, "qty": 1})

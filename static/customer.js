@@ -53,6 +53,10 @@ function parseAddonOption(rawOption = '') {
   };
 }
 
+function calculateCartTotal(items = cart) {
+  return items.reduce((sum, item) => sum + (Number(item.price || 0) * Number(item.qty || 1)), 0);
+}
+
 function cartIdentity(item) {
   const addonKey = (item.addons || []).map((addon) => addon.name).join('|');
   return `${item.id || item.name}__${addonKey}__${(item.note || '').trim()}`;
@@ -125,7 +129,7 @@ function showAddedFeedback() {
 
 function updateFloatingCart() {
   const count = cart.reduce((sum, item) => sum + Number(item.qty || 1), 0);
-  const total = cart.reduce((sum, item) => sum + (Number(item.price || 0) * Number(item.qty || 1)), 0);
+  const total = calculateCartTotal(cart);
   document.getElementById('floating-cart-count').textContent = `${count} ชิ้น`;
   document.getElementById('floating-cart-total').textContent = `฿${money(total)}`;
   const badge = document.getElementById('table-badge');
@@ -232,7 +236,7 @@ function renderCart() {
     row.querySelector('[data-action="plus"]').addEventListener('click', () => updateCartItemQty(idx, 1));
     list.appendChild(row);
   });
-  const total = cart.reduce((sum, item) => sum + (Number(item.price || 0) * Number(item.qty || 1)), 0);
+  const total = calculateCartTotal(cart);
   totalNode.textContent = `รวม ${money(total)} บาท`;
   updateFloatingCart();
 }
@@ -363,7 +367,8 @@ function bind() {
     const payloadCart = cart.map((item) => ({
       id: item.id,
       name: item.name,
-      price: Number(item.base_price || item.price || 0),
+      price: Number(item.price || 0),
+      base_price: Number(item.base_price || item.price || 0),
       addon: item.addon || '',
       addons: (item.addons || []).map((addonItem) => ({
         name: addonItem.name,
@@ -371,6 +376,7 @@ function bind() {
       })),
       note: item.note || '',
       qty: Math.max(1, Number(item.qty || 1)),
+      line_total: Number(item.price || 0) * Math.max(1, Number(item.qty || 1)),
     }));
 
     const pendingPayload = {
@@ -378,6 +384,7 @@ function bind() {
       target: 'table',
       target_id: lockedTableId,
       cart: payloadCart,
+      total_price: calculateCartTotal(cart),
       source: 'customer',
     };
 
