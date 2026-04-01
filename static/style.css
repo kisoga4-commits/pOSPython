@@ -202,10 +202,11 @@ input,select{width:100%;padding:10px;border-radius:10px;border:1px solid var(--l
 .sales-overview-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}
 .sales-range-row{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:center}
 .menu-category-tabs{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(110px,1fr));
+  display:flex;
+  overflow-x:auto;
   gap:8px;
   margin:8px 0 10px;
+  padding-bottom:4px;
 }
 .menu-category-tabs .subtab{
   white-space:nowrap;
@@ -232,8 +233,9 @@ input,select{width:100%;padding:10px;border-radius:10px;border:1px solid var(--l
 .sales-row-card{padding:14px;border-radius:16px;box-shadow:0 10px 24px rgba(2,6,23,.06)}
 .sales-row-head{display:flex;justify-content:space-between;align-items:center}
 .sales-pay-icon{font-size:1.35rem}
-.sales-row-foot{display:flex;justify-content:flex-end;color:#4c1d95}
+.sales-row-foot{display:flex;justify-content:flex-end;align-items:center;color:#4c1d95;gap:8px}
 .sales-tab-panel{margin-top:10px}
+.js-accept-request,.js-reject-request{min-width:48px;min-height:48px;font-size:1.1rem}
 .checkout-meta-row{display:flex;gap:8px;flex-wrap:wrap}
 .checkout-item-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
 .checkout-item-thumb{width:34px;height:34px;border-radius:10px;object-fit:cover;background:#e2e8f0;display:grid;place-items:center}
