@@ -975,8 +975,10 @@ main{display:grid;gap:10px}
   border:1px solid #fed7aa;
   border-radius:14px;
   padding:8px;
+  overflow-x:auto;
+  overscroll-behavior-x:contain;
 }
-.backstore-menu-tabs .subtab{padding:8px 12px;border-radius:10px}
+.backstore-menu-tabs .subtab{padding:8px 12px;border-radius:10px;flex:0 0 auto}
 .backstore-menu-tabs .subtab.is-active{
   background:linear-gradient(120deg,#f97316,#fb923c);
   color:#fff;
@@ -989,6 +991,12 @@ main{display:grid;gap:10px}
 .menu-admin-row .btn-row{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .menu-admin-row .btn-soft{min-height:36px;padding:6px 9px}
 .history-danger-zone{margin-top:12px;justify-content:flex-end}
+#backstore .menu-config-row{
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;
+  align-items:stretch;
+}
+#backstore .menu-config-row > *{min-width:0}
+#backstore .menu-config-row button{white-space:nowrap}
 
 .sales-comparison-card{padding:10px 12px;border-radius:12px;display:grid;gap:4px}
 .sales-comparison-card.is-up{background:#ecfdf3;border:1px solid #86efac}
@@ -1008,6 +1016,7 @@ main{display:grid;gap:10px}
 .sales-modal-list li span{font-size:.82rem;color:#7c2d12;text-align:right}
 @media (max-width:860px){
   .sales-modal-grid{grid-template-columns:1fr}
+  #backstore .menu-config-row{grid-template-columns:1fr}
 }
 
 /* mobile UX compaction without changing desktop behavior */
@@ -1382,6 +1391,7 @@ body{
   grid-template-columns:repeat(2,minmax(0,1fr));
   gap:10px;
   margin-bottom:12px;
+  width:100%;
 }
 .backstore-mode-card{
   border:1px solid #ddd6fe;
@@ -1394,6 +1404,7 @@ body{
   text-align:left;
   cursor:pointer;
   transition:.18s ease;
+  min-width:0;
 }
 .backstore-mode-card i{
   width:36px;
@@ -1409,6 +1420,7 @@ body{
 .backstore-mode-copy{
   display:grid;
   gap:2px;
+  min-width:0;
 }
 .backstore-mode-copy strong{
   font-size:.93rem;
@@ -1416,6 +1428,7 @@ body{
 .backstore-mode-copy small{
   color:#64748b;
   font-size:.78rem;
+  overflow-wrap:anywhere;
 }
 .backstore-mode-card.is-active{
   border-color:#a78bfa;
@@ -1426,6 +1439,7 @@ body{
   grid-template-columns:repeat(2,minmax(0,1fr));
   gap:10px;
   margin-bottom:12px;
+  width:100%;
 }
 .quick-link-btn{
   border:1px solid #dbeafe;
@@ -1450,9 +1464,11 @@ body{
 .quick-link-btn span{
   display:grid;
   gap:2px;
+  min-width:0;
 }
 .quick-link-btn small{
   color:#64748b;
+  overflow-wrap:anywhere;
 }
 .quick-link-btn.warning{
   border-color:#fed7aa;
