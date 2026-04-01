@@ -2,6 +2,7 @@ import logging
 import base64
 import io
 import importlib.util
+import re
 from datetime import datetime
 from collections import defaultdict
 
@@ -190,7 +191,16 @@ def _parse_addon_option_price(raw_option: str) -> tuple[str, float]:
     if "(+" in option and option.endswith(")"):
         try:
             name = option[: option.rfind("(+")].strip()
-            amount = option[option.rfind("(+") + 2 : -1].strip()
+            amount = option[option.rfind("(+") + 2 : -1].strip().replace(",", ".")
+            return (name or option, float(amount))
+        except ValueError:
+            return option, 0.0
+
+    plus_match = re.match(r"^(.*)\+\s*([\d]+(?:[.,][\d]+)?)\s*(?:บาท|baht|฿)?\s*$", option, flags=re.IGNORECASE)
+    if plus_match:
+        name = plus_match.group(1).strip()
+        amount = plus_match.group(2).replace(",", ".").strip()
+        try:
             return (name or option, float(amount))
         except ValueError:
             return option, 0.0
