@@ -623,8 +623,11 @@ input,select{
 .zoom-bar input{padding:0}
 .full-width-pane{width:100%}
 .addon-check-list{display:grid;gap:8px}
-.addon-check-item{display:flex;align-items:center;gap:8px}
+.addon-check-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid #e5e7eb;border-radius:12px;background:#fff;cursor:pointer;touch-action:manipulation}
+.addon-check-item.is-selected{border-color:#a78bfa;background:#f5f3ff}
 .addon-check-item input{width:auto}
+.item-qty-control{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 0 4px;font-weight:700}
+.item-qty-stepper{display:flex;align-items:center;gap:6px}
 
 .app-shell.desktop-shell{padding:8px}
 .desktop-shell .tab-bar{grid-template-columns:repeat(4,minmax(0,1fr))}
@@ -806,6 +809,7 @@ main{display:grid;gap:10px}
 .customer-app .btn-danger,
 .customer-app .subtab,
 .staff-nav-btn{min-height:48px}
+.customer-app button{touch-action:manipulation}
 .customer-app .menu-mobile-card{border-radius:18px;padding:10px}
 .customer-app .cart-qty-btn{min-width:40px;min-height:40px}
 .staff-bottom-nav{padding-bottom:calc(env(safe-area-inset-bottom, 0px) + 8px)}

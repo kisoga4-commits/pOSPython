@@ -4,6 +4,7 @@ let version = 0;
 let currentSettings = {};
 let currentTables = [];
 let activeItemDraft = null;
+let activeItemQty = 1;
 let toastTimer = null;
 let isInlineCartOpen = false;
 let activeCategory = 'ทั้งหมด';
@@ -305,13 +306,26 @@ function renderMenu() {
 
 function openItemDetailModal(item, addonOptions) {
   activeItemDraft = item;
+  activeItemQty = 1;
   document.getElementById('item-detail-title').textContent = menuVisualLabel(item.name);
+  document.getElementById('item-qty-value').textContent = String(activeItemQty);
   const addonWrap = document.getElementById('item-addon-checkboxes');
   addonWrap.innerHTML = '';
   addonOptions.forEach((option) => {
     const row = document.createElement('label');
     row.className = 'addon-check-item';
     row.innerHTML = `<input type="checkbox" value="${option}" /> <span>${option}</span>`;
+    const checkbox = row.querySelector('input[type="checkbox"]');
+    row.addEventListener('click', (event) => {
+      if (event.target.tagName.toLowerCase() !== 'input' && checkbox) {
+        event.preventDefault();
+        checkbox.checked = !checkbox.checked;
+        checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    });
+    checkbox.addEventListener('change', () => {
+      row.classList.toggle('is-selected', checkbox.checked);
+    });
     addonWrap.appendChild(row);
   });
   document.getElementById('item-detail-modal').classList.remove('hidden');
@@ -320,6 +334,7 @@ function openItemDetailModal(item, addonOptions) {
 function closeItemDetailModal() {
   document.getElementById('item-detail-modal').classList.add('hidden');
   activeItemDraft = null;
+  activeItemQty = 1;
 }
 
 function updateCartItemQty(index, diff) {
@@ -601,8 +616,16 @@ function bind() {
     if (!activeItemDraft) return;
     const checked = [...document.querySelectorAll('#item-addon-checkboxes input[type="checkbox"]:checked')].map((node) => node.value.trim()).filter(Boolean);
     const selectedAddons = checked.map((label) => parseAddonOption(label));
-    addToCart(activeItemDraft, { addons: selectedAddons, qty: 1 });
+    addToCart(activeItemDraft, { addons: selectedAddons, qty: activeItemQty });
     closeItemDetailModal();
+  });
+  document.getElementById('item-qty-minus')?.addEventListener('click', () => {
+    activeItemQty = Math.max(1, Number(activeItemQty || 1) - 1);
+    document.getElementById('item-qty-value').textContent = String(activeItemQty);
+  });
+  document.getElementById('item-qty-plus')?.addEventListener('click', () => {
+    activeItemQty = Math.min(20, Number(activeItemQty || 1) + 1);
+    document.getElementById('item-qty-value').textContent = String(activeItemQty);
   });
 
   document.getElementById('submit-order').addEventListener('click', async () => {
