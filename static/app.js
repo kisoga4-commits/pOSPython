@@ -474,7 +474,7 @@ function renderDeskSummary() {
     });
   }
   totalNode.textContent = `รวม ${money(total)} บาท`;
-  const hasCustomerNewOrder = getTableOrders(selectedTableId).some((o) => o.source === 'customer' && o.status === 'pending');
+  const hasCustomerNewOrder = getTableOrders(selectedTableId).some((o) => o.source === 'customer' && o.status === 'request_pending');
   if (acceptBtn) {
     acceptBtn.disabled = !hasCustomerNewOrder || total <= 0;
     acceptBtn.textContent = hasCustomerNewOrder ? '✅ ยืนยันรับออร์เดอร์ (Accept Order)' : '✅ รับออเดอร์แล้ว';
@@ -593,7 +593,7 @@ function buildPromptPayQrImage(promptPayId, amount, dynamic) {
 function renderCashier() {
   const wrap = qs('checkout-list');
   wrap.innerHTML = '';
-  const queues = db.tables.filter((t) => t.status === 'checkout_requested');
+  const queues = db.tables.filter((t) => getTableOrders(t.id).some((o) => o.status === 'accepted'));
   qs('checkout-count').textContent = `${queues.length} รายการ`;
   if (!queues.length) {
     wrap.innerHTML = '<div class="empty">ยังไม่มีคิวใช้งาน</div>';
@@ -1091,7 +1091,11 @@ function bind() {
 
   qs('desk-accept-order')?.addEventListener('click', async () => {
     if (!selectedTableId) return;
-    await api('/api/table/accept', { method: 'POST', body: JSON.stringify({ table_id: selectedTableId }) });
+    const candidate = getTableOrders(selectedTableId)
+      .filter((order) => order.source === 'customer' && order.status === 'request_pending')
+      .sort((a, b) => String(a.created_at || '').localeCompare(String(b.created_at || '')))[0];
+    if (!candidate?.id) return;
+    await api('/api/table/accept', { method: 'POST', body: JSON.stringify({ order_id: candidate.id }) });
     await loadData();
   });
 
@@ -1219,7 +1223,7 @@ async function poll() {
   updateNetworkStatus(true);
   if (info.changed) {
     const pendingSet = new Set((info.tables || []).filter((t) => t.status === 'pending_order').map((t) => t.id));
-    const checkoutSet = new Set((info.tables || []).filter((t) => t.status === 'checkout_requested').map((t) => t.id));
+    const checkoutSet = new Set((info.tables || []).filter((t) => t.call_staff_status === 'requested').map((t) => t.id));
     const hasNewPending = [...pendingSet].some((id) => !lastPendingTableIds.has(id));
     const hasNewCheckoutRequest = [...checkoutSet].some((id) => !lastCheckoutRequestIds.has(id));
     if (hasNewPending) playAlert('new-order-sound');

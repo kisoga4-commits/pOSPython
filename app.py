@@ -3,6 +3,8 @@ import base64
 import io
 import importlib.util
 import re
+import json
+import hashlib
 from datetime import datetime
 from collections import defaultdict
 
@@ -201,9 +203,25 @@ def _create_order(payload: dict) -> dict:
     db = load_db()
     order_id = f"ORD-{int(datetime.now().timestamp())}-{len(db['orders']) + 1}"
     source = payload.get("source", "customer")
-    initial_status = "pending" if source == "customer" else "accepted"
+    initial_status = "request_pending" if source == "customer" else "accepted"
     normalized_cart = _normalize_cart_items(cart, db.get("menu", []))
     total_price = sum(float(item.get("price", 0)) * max(1, int(item.get("qty", 1) or 1)) for item in normalized_cart)
+    request_fingerprint = hashlib.sha256(json.dumps({
+        "target": target,
+        "target_id": target_id,
+        "items": normalized_cart,
+        "source": source,
+    }, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
+    if source == "customer":
+        for order in reversed(db["orders"]):
+            if (
+                order.get("target") == target
+                and order.get("target_id") == target_id
+                and order.get("source") == "customer"
+                and order.get("request_fingerprint") == request_fingerprint
+                and order.get("status") in {"request_pending", "accepted"}
+            ):
+                return {"status": "success", "order": order, "version": db["meta"]["version"], "deduplicated": True}
 
     new_order = {
         "id": order_id,
@@ -216,6 +234,8 @@ def _create_order(payload: dict) -> dict:
         "updated_at": local_now(),
         "source": source,
         "note": payload.get("note", ""),
+        "client_order_id": payload.get("client_order_id"),
+        "request_fingerprint": request_fingerprint,
     }
     db["orders"].append(new_order)
 
@@ -226,7 +246,7 @@ def _create_order(payload: dict) -> dict:
                     table["status"] = "pending_order"
                 else:
                     table["status"] = "accepted_order"
-                table["items"].extend(normalized_cart)
+                    table["items"].extend(normalized_cart)
                 break
 
     db = save_db(db)
@@ -370,7 +390,7 @@ def api_checkout():
     db = load_db()
     pending_items = []
     for order in db["orders"]:
-        if order["target"] == target and order["target_id"] == target_id and order["status"] != "completed":
+        if order["target"] == target and order["target_id"] == target_id and order["status"] == "accepted":
             order["status"] = "completed"
             order["updated_at"] = local_now()
             pending_items.extend(order["items"])
@@ -395,6 +415,7 @@ def api_checkout():
             if table["id"] == target_id:
                 table["status"] = "available"
                 table["items"] = []
+                table["call_staff_status"] = "idle"
                 break
 
     db = save_db(db)
@@ -407,7 +428,7 @@ def api_bill(target: str, target_id: int):
     db = load_db()
     orders = [
         order for order in db["orders"]
-        if order["target"] == target and order["target_id"] == target_id and order["status"] != "cancelled"
+        if order["target"] == target and order["target_id"] == target_id and order["status"] in {"accepted", "completed"}
     ]
     items = []
     first_created = None
@@ -524,29 +545,142 @@ def api_menu_upload_image():
 @require_license
 def api_table_accept():
     payload = read_json()
+    order_id = payload.get("order_id")
+    if not isinstance(order_id, str) or not order_id.strip():
+        return jsonify({"error": "invalid order_id"}), 400
+
+    db = load_db()
+    touched_order = None
+    table_id = None
+    for order in db["orders"]:
+        if order["id"] != order_id:
+            continue
+        if order["status"] == "accepted":
+            return jsonify({"status": "already_confirmed", "version": db["meta"]["version"]})
+        if order["status"] != "request_pending":
+            return jsonify({"error": "request_not_pending"}), 409
+        if order["target"] != "table" or not isinstance(order.get("target_id"), int):
+            return jsonify({"error": "invalid_target"}), 400
+        table_id = order["target_id"]
+        order["status"] = "accepted"
+        order["updated_at"] = local_now()
+        touched_order = order
+        break
+
+    if touched_order is None:
+        return jsonify({"error": "order_not_found"}), 404
+
+    has_pending_request = False
+    accepted_items = []
+    for order in db["orders"]:
+        if order.get("target") != "table" or order.get("target_id") != table_id:
+            continue
+        if order.get("status") == "request_pending":
+            has_pending_request = True
+        if order.get("status") in {"accepted", "completed"}:
+            accepted_items.extend(order.get("items", []))
+
+    for table in db["tables"]:
+        if table["id"] == table_id:
+            table["status"] = "pending_order" if has_pending_request else "accepted_order"
+            table["items"] = accepted_items
+            table["last_order_event"] = "accepted"
+            table["last_order_event_at"] = local_now()
+            break
+
+    db = save_db(db)
+    return jsonify({"status": "success", "order_id": order_id, "version": db["meta"]["version"]})
+
+
+@app.route("/api/table/reject", methods=["POST"])
+@require_license
+def api_table_reject():
+    payload = read_json()
+    order_id = payload.get("order_id")
+    if not isinstance(order_id, str) or not order_id.strip():
+        return jsonify({"error": "invalid order_id"}), 400
+
+    db = load_db()
+    table_id = None
+    touched = False
+    for order in db["orders"]:
+        if order["id"] != order_id:
+            continue
+        if order["status"] == "cancelled":
+            return jsonify({"status": "already_rejected", "version": db["meta"]["version"]})
+        if order["status"] != "request_pending":
+            return jsonify({"error": "request_not_pending"}), 409
+        order["status"] = "cancelled"
+        order["updated_at"] = local_now()
+        table_id = order.get("target_id")
+        touched = True
+        break
+
+    if not touched:
+        return jsonify({"error": "order_not_found"}), 404
+
+    pending_exists = any(
+        order.get("target") == "table" and order.get("target_id") == table_id and order.get("status") == "request_pending"
+        for order in db["orders"]
+    )
+    accepted_exists = any(
+        order.get("target") == "table" and order.get("target_id") == table_id and order.get("status") in {"accepted", "completed"}
+        for order in db["orders"]
+    )
+    for table in db["tables"]:
+        if table["id"] == table_id:
+            if pending_exists:
+                table["status"] = "pending_order"
+            elif accepted_exists:
+                table["status"] = "accepted_order"
+            else:
+                table["status"] = "available"
+                table["items"] = []
+            table["last_order_event"] = "rejected"
+            table["last_order_event_at"] = local_now()
+            break
+
+    db = save_db(db)
+    return jsonify({"status": "success", "order_id": order_id, "version": db["meta"]["version"]})
+
+
+@app.route("/api/table/call-staff", methods=["POST"])
+@require_license
+def api_table_call_staff():
+    payload = read_json()
     table_id = payload.get("table_id")
     if not isinstance(table_id, int):
         return jsonify({"error": "invalid table_id"}), 400
 
     db = load_db()
-    touched = False
-    for order in db["orders"]:
-        if order["target"] == "table" and order["target_id"] == table_id and order["status"] == "pending":
-            order["status"] = "accepted"
-            order["updated_at"] = local_now()
-            touched = True
-
     for table in db["tables"]:
         if table["id"] == table_id:
-            table["status"] = "accepted_order"
-            touched = True
-            break
+            table["call_staff_status"] = "requested"
+            table["call_staff_requested_at"] = local_now()
+            table["call_staff_ack_at"] = ""
+            db = save_db(db)
+            return jsonify({"status": "success", "version": db["meta"]["version"]})
+    return jsonify({"error": "table not found"}), 404
 
-    if not touched:
-        return jsonify({"error": "table not found or no pending order"}), 404
 
-    db = save_db(db)
-    return jsonify({"status": "success", "version": db["meta"]["version"]})
+@app.route("/api/table/call-staff/ack", methods=["POST"])
+@require_license
+def api_table_call_staff_ack():
+    payload = read_json()
+    table_id = payload.get("table_id")
+    if not isinstance(table_id, int):
+        return jsonify({"error": "invalid table_id"}), 400
+
+    db = load_db()
+    for table in db["tables"]:
+        if table["id"] == table_id:
+            if table.get("call_staff_status") == "acknowledged":
+                return jsonify({"status": "already_acknowledged", "version": db["meta"]["version"]})
+            table["call_staff_status"] = "acknowledged"
+            table["call_staff_ack_at"] = local_now()
+            db = save_db(db)
+            return jsonify({"status": "success", "version": db["meta"]["version"]})
+    return jsonify({"error": "table not found"}), 404
 
 
 @app.route("/api/table/checkout-request", methods=["POST"])
@@ -613,7 +747,7 @@ def api_restore():
 @require_license
 def api_kitchen_orders():
     db = load_db()
-    statuses = set(request.args.get("status", "pending,accepted").split(","))
+    statuses = set(request.args.get("status", "request_pending,accepted").split(","))
     orders = [o for o in db["orders"] if o["status"] in statuses]
     return jsonify({"orders": orders, "version": db["meta"]["version"], "updated_at": db["meta"]["updated_at"]})
 
@@ -624,7 +758,7 @@ def api_order_status():
     payload = read_json()
     order_id = payload.get("order_id")
     status = payload.get("status")
-    if status not in {"pending", "accepted", "completed", "cancelled"}:
+    if status not in {"request_pending", "accepted", "completed", "cancelled"}:
         return jsonify({"error": "invalid status"}), 400
 
     db = load_db()
@@ -655,7 +789,7 @@ def api_staff_live():
     if db["meta"]["version"] <= since:
         return jsonify({"changed": False, "version": db["meta"]["version"]})
 
-    orders = [o for o in db["orders"] if o["status"] in {"pending", "accepted", "completed"}]
+    orders = [o for o in db["orders"] if o["status"] in {"request_pending", "accepted", "completed", "cancelled"}]
     return jsonify({
         "changed": True,
         "orders": orders,
@@ -682,6 +816,12 @@ def api_customer_live():
         "changed": True,
         "menu": db["menu"],
         "tables": tables,
+        "orders": [
+            order for order in db["orders"]
+            if order.get("target") == "table"
+            and (table_id is None or order.get("target_id") == table_id)
+            and order.get("source") == "customer"
+        ],
         "settings": db["settings"],
         "version": db["meta"]["version"],
     })

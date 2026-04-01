@@ -7,6 +7,8 @@ let activeItemDraft = null;
 let toastTimer = null;
 let isInlineCartOpen = false;
 let activeCategory = 'ทั้งหมด';
+let submitState = 'idle';
+let lastSubmittedOrderId = '';
 const params = new URLSearchParams(window.location.search);
 const lockedTableId = Number(params.get('table') || document.body.dataset.tableId || 0);
 let masterBaseUrl = document.body.dataset.localBaseUrl || `${window.location.protocol}//${window.location.host}`;
@@ -76,7 +78,7 @@ function playConfirmSound() {
 }
 
 function playOrderSubmitSound() {
-  boostPlaySound('customer-confirm-sound', 2);
+  boostPlaySound('customer-confirm-sound', 2.3);
 }
 
 function getStatusMeta(status) {
@@ -379,6 +381,9 @@ function updateTableStatus(tables = []) {
   note.textContent = table.status === 'pending_order'
     ? 'ส่งออร์เดอร์แล้ว · รอพนักงานกดรับ'
     : (table.status === 'accepted_order' ? 'พนักงานรับออร์เดอร์แล้ว · กำลังเตรียมอาหาร' : `สถานะล่าสุด: ${meta.label}`);
+  if (table.last_order_event === 'rejected') {
+    note.textContent = 'พนักงานปฏิเสธคำขอล่าสุด กรุณาส่งใหม่อีกครั้ง';
+  }
   if (['available', 'closed'].includes(table.status) && cart.length) {
     clearCart();
     document.getElementById('message').textContent = 'โต๊ะนี้ถูกเคลียร์แล้ว ล้างตะกร้าให้อัตโนมัติ';
@@ -443,6 +448,21 @@ async function loadLive() {
     menu = data.menu || [];
     currentSettings = data.settings || {};
     currentTables = data.tables || [];
+    const tableOrders = (data.orders || []).filter((order) => Number(order.target_id) === Number(lockedTableId));
+    const lastOrder = [...tableOrders].sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')))[0];
+    const msg = document.getElementById('message');
+    if (lastOrder && lastOrder.id === lastSubmittedOrderId) {
+      if (lastOrder.status === 'request_pending') {
+        submitState = 'waiting_confirm';
+        msg.textContent = 'ส่งคำขอแล้ว · รอร้านยืนยัน';
+      } else if (lastOrder.status === 'accepted') {
+        submitState = 'confirmed';
+        msg.textContent = 'พนักงานยืนยันคำขอแล้ว';
+      } else if (lastOrder.status === 'cancelled') {
+        submitState = 'rejected';
+        msg.textContent = 'คำขอถูกปฏิเสธ กรุณาตรวจรายการแล้วส่งใหม่';
+      }
+    }
     version = data.version || version;
     await window.posDB.saveMenu(menu);
     setLockedTableUI();
@@ -519,7 +539,9 @@ function bind() {
   });
 
   document.getElementById('submit-order').addEventListener('click', async () => {
-    if (!lockedTableId || !cart.length) return;
+    if (!lockedTableId || !cart.length || submitState === 'sending') return;
+    submitState = 'sending';
+    document.getElementById('message').textContent = 'กำลังส่งคำขอ...';
 
     const payloadCart = cart.map((item) => {
       const quantity = Math.max(1, Number(item.qty || item.quantity || 1));
@@ -545,7 +567,7 @@ function bind() {
     });
 
     const pendingPayload = {
-      client_order_id: `mobile-${Date.now()}`,
+      client_order_id: `mobile-${lockedTableId}-${Date.now()}`,
       target: 'table',
       target_id: lockedTableId,
       cart: payloadCart,
@@ -560,7 +582,9 @@ function bind() {
       });
 
       if (res.status === 'success') {
-        document.getElementById('message').textContent = 'ส่งออเดอร์เรียบร้อย';
+        lastSubmittedOrderId = res.order?.id || '';
+        submitState = 'waiting_confirm';
+        document.getElementById('message').textContent = 'ส่งคำขอสำเร็จ · รอร้านยืนยัน';
         playOrderSubmitSound();
         clearCart();
         document.getElementById('cart-modal').classList.add('hidden');
@@ -568,9 +592,11 @@ function bind() {
         return;
       }
       document.getElementById('message').textContent = res.error || 'ส่งไม่สำเร็จ';
+      submitState = 'idle';
     } catch (error) {
       await window.posDB.enqueuePendingOrder(pendingPayload);
-      document.getElementById('message').textContent = 'บันทึกคำสั่งซื้อไว้แล้ว จะซิงก์อัตโนมัติเมื่อเชื่อมต่อ LAN ได้';
+      submitState = 'waiting_confirm';
+      document.getElementById('message').textContent = 'บันทึกคำขอไว้แล้ว จะซิงก์อัตโนมัติเมื่อเชื่อมต่อ LAN ได้';
       clearCart();
       document.getElementById('cart-modal').classList.add('hidden');
     }
@@ -587,11 +613,11 @@ function bind() {
 
   document.getElementById('call-staff-bill').addEventListener('click', async () => {
     if (!lockedTableId) return;
-    const res = await api('/api/table/checkout-request', {
+    const res = await api('/api/table/call-staff', {
       method: 'POST',
       body: JSON.stringify({ table_id: lockedTableId }),
     });
-    document.getElementById('message').textContent = res.status === 'success' ? 'ส่งสัญญาณเรียกพนักงานแล้ว' : (res.error || 'ทำรายการไม่สำเร็จ');
+    document.getElementById('message').textContent = res.status === 'success' ? 'เรียกพนักงานแล้ว กรุณารอสักครู่' : (res.error || 'ทำรายการไม่สำเร็จ');
     playConfirmSound();
     await loadLive();
   });
