@@ -16,7 +16,7 @@ const userRole = localStorage.getItem('user_role') || '';
 const TABLE_STATUS_META = {
   available: { label: 'ว่าง', className: 'status-available' },
   pending_order: { label: 'กำลังสั่ง', className: 'status-pending_order' },
-  accepted_order: { label: 'กำลังทำ', className: 'status-accepted_order' },
+  accepted_order: { label: 'มีลูกค้า', className: 'status-accepted_order' },
   checkout_requested: { label: 'รอเช็คบิล', className: 'status-checkout_requested' },
   closed: { label: 'ปิดบิล', className: 'status-closed' },
 };
@@ -27,11 +27,56 @@ const VISUAL_MENU_LABELS = [
 
 async function api(path, options = {}) {
   const url = path.startsWith('http') ? path : `${masterBaseUrl}${path}`;
-  const res = await fetch(url, {
-    headers: { 'Content-Type': 'application/json' },
-    ...options,
-  });
-  return res.json();
+  try {
+    const res = await fetch(url, {
+      headers: { 'Content-Type': 'application/json' },
+      ...options,
+    });
+    return res.json();
+  } catch (networkError) {
+    if (path.startsWith('http') || !masterBaseUrl) throw networkError;
+    const fallbackRes = await fetch(path, {
+      headers: { 'Content-Type': 'application/json' },
+      ...options,
+    });
+    return fallbackRes.json();
+  }
+}
+
+function boostPlaySound(soundId, gain = 1.6) {
+  const baseAudio = document.getElementById(soundId);
+  if (!baseAudio) return;
+  const sourceUrl = baseAudio.currentSrc || baseAudio.src;
+  if (!sourceUrl) return;
+  const contextClass = window.AudioContext || window.webkitAudioContext;
+  if (!contextClass) {
+    baseAudio.currentTime = 0;
+    baseAudio.volume = 1;
+    baseAudio.play().catch(() => {});
+    return;
+  }
+  const audioContext = new contextClass();
+  const audioClone = new Audio(sourceUrl);
+  audioClone.crossOrigin = 'anonymous';
+  const source = audioContext.createMediaElementSource(audioClone);
+  const gainNode = audioContext.createGain();
+  gainNode.gain.value = gain;
+  source.connect(gainNode);
+  gainNode.connect(audioContext.destination);
+  audioClone.currentTime = 0;
+  audioClone.play().catch(() => {});
+}
+
+function playAddToCartSound() {
+  boostPlaySound('add-to-cart-sound', 1.8);
+}
+
+function playConfirmSound() {
+  boostPlaySound('customer-confirm-sound', 1.8);
+}
+
+function playOrderSubmitSound() {
+  boostPlaySound('customer-confirm-sound', 2);
 }
 
 function getStatusMeta(status) {
@@ -137,14 +182,6 @@ function clearCart(closeModal = false) {
   if (closeModal) document.getElementById('cart-modal').classList.add('hidden');
 }
 
-
-function playAddToCartSound() {
-  const sound = document.getElementById('add-to-cart-sound');
-  if (!sound) return;
-  sound.currentTime = 0;
-  sound.volume = 1;
-  sound.play().catch(() => {});
-}
 
 function showAddedFeedback() {
   const cartButton = document.getElementById('floating-cart-btn');
@@ -393,7 +430,16 @@ function renderExistingOrders() {
 async function loadLive() {
   try {
     const data = await api(`/api/customer/live?since=${version}&table_id=${encodeURIComponent(lockedTableId)}`);
-    if (!data.changed) return;
+    if (!data.changed) {
+      if (!menu.length) {
+        const cachedMenu = await window.posDB.loadMenu();
+        if (cachedMenu.length) {
+          menu = cachedMenu;
+          renderMenu();
+        }
+      }
+      return;
+    }
     menu = data.menu || [];
     currentSettings = data.settings || {};
     currentTables = data.tables || [];
@@ -515,6 +561,7 @@ function bind() {
 
       if (res.status === 'success') {
         document.getElementById('message').textContent = 'ส่งออเดอร์เรียบร้อย';
+        playOrderSubmitSound();
         clearCart();
         document.getElementById('cart-modal').classList.add('hidden');
         await loadLive();
@@ -545,12 +592,7 @@ function bind() {
       body: JSON.stringify({ table_id: lockedTableId }),
     });
     document.getElementById('message').textContent = res.status === 'success' ? 'ส่งสัญญาณเรียกพนักงานแล้ว' : (res.error || 'ทำรายการไม่สำเร็จ');
-    const sound = document.getElementById('customer-confirm-sound');
-    if (sound) {
-      sound.currentTime = 0;
-      sound.volume = 1;
-      sound.play().catch(() => {});
-    }
+    playConfirmSound();
     await loadLive();
   });
 }

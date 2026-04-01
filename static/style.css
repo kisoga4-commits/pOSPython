@@ -67,9 +67,9 @@ h1,h2,h3,h4,p{margin:0}
 .table-head-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
 .status-chip,.status-badge{padding:4px 8px;border-radius:999px;font-size:.75rem;font-weight:600}
 .status-online{background:#dcfce7;color:#166534;border:1px solid #86efac;padding:8px 12px}
-.status-chip.available,.status-available{background:#f3f4f6}
-.status-chip.pending,.status-pending_order{background:#ffedd5;color:#9a3412}
-.status-chip.accepted,.status-accepted_order{background:#dcfce7;color:#166534}
+.status-chip.available,.status-available{background:#ffffff;color:#374151;border:1px solid #d1d5db}
+.status-chip.pending,.status-pending_order{background:#ffedd5;color:#9a3412;border:1px solid #fdba74}
+.status-chip.accepted,.status-accepted_order{background:#dcfce7;color:#166534;border:1px solid #86efac}
 .status-chip.checkout,.status-checkout_requested{background:#fee2e2;color:#991b1b}
 .table-card.checkout,.checkout-card.checkout,.table-card.status-checkout_requested{border:4px solid #ef4444;background:linear-gradient(180deg,#fff1f2,#ffffff);animation:blink-red 0.8s linear infinite}
 
@@ -620,6 +620,7 @@ input,select{
 .brand-copy{display:grid;gap:2px}
 .table-order-summary{margin-top:8px;display:grid;gap:4px}
 .addon-flag{display:inline-flex;background:#fde68a;color:#92400e;border-radius:999px;padding:2px 6px;font-size:.72rem;font-weight:700;margin-left:6px}
+.dot-notify.notify-additional{background:#dcfce7;color:#166534;border:1px solid #86efac}
 
 .bill-modal-card{max-width:620px}
 .bill-items-clean{max-height:220px;overflow:auto;padding:8px;border-radius:14px;background:#f8fafc;border:1px solid #e5e7eb}
@@ -778,4 +779,3 @@ main{display:grid;gap:10px}
 .customer-app .menu-mobile-card{border-radius:18px;padding:10px}
 .customer-app .cart-qty-btn{min-width:40px;min-height:40px}
 .staff-bottom-nav{padding-bottom:calc(env(safe-area-inset-bottom, 0px) + 8px)}
-
