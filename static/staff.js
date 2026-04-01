@@ -31,6 +31,7 @@ function playNewOrderSound() {
   const audio = document.getElementById('new-order-sound');
   if (!audio) return;
   audio.currentTime = 0;
+  audio.volume = 1;
   audio.play().catch(() => {});
 }
 
@@ -38,6 +39,7 @@ function playCheckoutSound() {
   const audio = document.getElementById('checkout-request-sound');
   if (!audio) return;
   audio.currentTime = 0;
+  audio.volume = 1;
   audio.play().catch(() => {});
 }
 
@@ -135,6 +137,12 @@ function tableCard(table, orders = [], actions = [], options = {}) {
     notify.textContent = '🔔 ลูกค้าสั่งจาก QR';
     card.appendChild(notify);
   }
+  if (table.has_additional_order) {
+    const addMoreNotify = document.createElement('div');
+    addMoreNotify.className = 'dot-notify notify-additional';
+    addMoreNotify.textContent = '🆕 โต๊ะนี้มีการสั่งเพิ่ม';
+    card.appendChild(addMoreNotify);
+  }
   if (actions.length) {
     const actionWrap = document.createElement('div');
     actionWrap.className = 'btn-row';
@@ -175,6 +183,8 @@ function renderCustomerTab() {
   customerTables.forEach((table) => {
     const tableOrders = state.orders.filter((order) => order.target === 'table' && order.target_id === table.id && order.status !== 'cancelled');
     const hasCustomerNewOrder = tableOrders.some((order) => order.source === 'customer' && order.status === 'pending');
+    const hasAcceptedBefore = tableOrders.some((order) => order.status === 'accepted' || order.status === 'completed');
+    table.has_additional_order = hasCustomerNewOrder && hasAcceptedBefore;
     const tableTotal = tableOrders.flatMap((order) => order.items || []).reduce((sum, item) => {
       const qty = Math.max(1, Number(item.qty || 1));
       return sum + (Number(item.price || 0) * qty);
