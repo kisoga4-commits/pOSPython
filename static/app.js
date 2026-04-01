@@ -143,8 +143,18 @@ function setSystemCheckState(state, note = '') {
   if (noteEl && note) noteEl.textContent = note;
 }
 
+function switchBackstoreTab(tabName = 'menu') {
+  const selected = tabName === 'sales' ? 'sales' : 'menu';
+  document.querySelectorAll('[data-backstore-tab]').forEach((btn) => {
+    const isActive = btn.dataset.backstoreTab === selected;
+    btn.classList.toggle('is-active', isActive);
+    btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+  });
+  ['menu', 'sales'].forEach((name) => qs(`backstore-${name}`)?.classList.toggle('hidden', name !== selected));
+}
+
 async function checkSystemHealth() {
-  setSystemCheckState('checking', 'กำลังตรวจสอบการเชื่อมต่อจาก /api/ping และ /api/system/network ...');
+  setSystemCheckState('checking', 'กำลังตรวจสอบการเชื่อมต่อ...');
   const [ping, network] = await Promise.all([
     safeApi('/api/ping'),
     safeApi('/api/system/network'),
@@ -166,12 +176,12 @@ async function checkSystemHealth() {
   if (hostCheck) hostCheck.textContent = network.is_host_request ? `ใช่ (${network.request_ip || '-'})` : `ไม่ใช่ (${network.request_ip || '-'})`;
   if (!online) {
     const fallbackReason = ping.error === 'network_unreachable' || network.error === 'network_unreachable'
-      ? 'ไม่สามารถติดต่อเครือข่ายได้ (fallback mode)'
-      : 'เซิร์ฟเวอร์ตอบกลับไม่สมบูรณ์ (fallback mode)';
+      ? 'ไม่สามารถติดต่อเครือข่ายได้'
+      : 'เซิร์ฟเวอร์ตอบกลับไม่สมบูรณ์';
     setSystemCheckState('offline', fallbackReason);
     return;
   }
-  setSystemCheckState('online', 'ข้อมูลล่าสุดจากเซิร์ฟเวอร์พร้อมใช้งาน');
+  setSystemCheckState('online', 'สถานะระบบล่าสุดพร้อมใช้งาน');
 }
 
 function showScreen(id) {
@@ -1433,10 +1443,8 @@ function bind() {
     }
     selectTable(selectedTableId);
   });
-  document.querySelectorAll('[data-backstore-tab]').forEach((btn) => btn.addEventListener('click', () => {
-    document.querySelectorAll('[data-backstore-tab]').forEach((s) => s.classList.toggle('is-active', s === btn));
-    ['menu', 'sales'].forEach((name) => qs(`backstore-${name}`).classList.toggle('hidden', name !== btn.dataset.backstoreTab));
-  }));
+  document.querySelectorAll('[data-backstore-tab]').forEach((btn) => btn.addEventListener('click', () => switchBackstoreTab(btn.dataset.backstoreTab)));
+  switchBackstoreTab('menu');
   document.querySelectorAll('[data-sales-tab]').forEach((btn) => btn.addEventListener('click', () => {
     document.querySelectorAll('[data-sales-tab]').forEach((s) => s.classList.toggle('is-active', s === btn));
     ['history', 'best'].forEach((name) => qs(`sales-tab-${name}`)?.classList.toggle('hidden', name !== btn.dataset.salesTab));

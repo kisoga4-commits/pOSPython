@@ -73,9 +73,21 @@
 
       <section id="backstore" class="screen section-card hidden">
         <div class="section-head"><h2>หลังร้าน</h2></div>
-        <div class="subtabs">
-          <button class="subtab is-active" data-backstore-tab="menu">ตั้งค่าร้าน/เมนู</button>
-          <button class="subtab" data-backstore-tab="sales">ดูยอดขาย</button>
+        <div class="backstore-mode-switch" role="tablist" aria-label="โหมดหลังร้าน">
+          <button class="backstore-mode-card is-active" data-backstore-tab="menu" type="button" role="tab" aria-selected="true">
+            <i class="fa-solid fa-store"></i>
+            <span class="backstore-mode-copy">
+              <strong>จัดการร้าน</strong>
+              <small>เมนู หมวดหมู่ และรูปสินค้า</small>
+            </span>
+          </button>
+          <button class="backstore-mode-card" data-backstore-tab="sales" type="button" role="tab" aria-selected="false">
+            <i class="fa-solid fa-chart-line"></i>
+            <span class="backstore-mode-copy">
+              <strong>สรุปยอดขาย</strong>
+              <small>ดูรายวัน รายสัปดาห์ รายเดือน</small>
+            </span>
+          </button>
         </div>
 
         <div id="backstore-menu" class="panel-block">
@@ -184,7 +196,7 @@
         <div id="system-qr" class="panel-block system-panel">
           <section class="qr-section">
             <h3>QR สำหรับโต๊ะลูกค้า (Customer Table QRs)</h3>
-            <p class="muted">เลือกโต๊ะจาก Dropdown แล้วจะแสดง QR เฉพาะโต๊ะนั้น</p>
+            <p class="muted">เลือกโต๊ะเพื่อดู QR</p>
             <div class="form-grid single-row">
               <select id="table-qr-select">
                 <option value="">-- เลือกโต๊ะ --</option>
