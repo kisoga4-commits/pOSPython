@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Authorize Staff Device</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version }}" />
+</head>
+<body class="customer-app">
+  <main class="mobile-shell app-mobile delivery-app-shell">
+    <section class="mobile-panel compact-panel">
+      <h3>Staff Device Authorization</h3>
+      <p>กดปุ่มด้านล่างเพื่อผูกมือถือเครื่องนี้เป็น Staff Phone (ไม่ใช้รหัสผ่าน)</p>
+      <button id="authorize-staff-btn" class="btn-primary" type="button">✅ Authorize this device</button>
+      <p id="authorize-note" class="muted"></p>
+    </section>
+  </main>
+  <script>
+    document.getElementById('authorize-staff-btn').addEventListener('click', () => {
+      localStorage.setItem('user_role', 'staff');
+      document.getElementById('authorize-note').textContent = 'อุปกรณ์นี้ถูกตั้งค่าเป็น Staff แล้ว กำลังพาไปหน้า Dashboard...';
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 350);
+    });
+  </script>
+</body>
+</html>
