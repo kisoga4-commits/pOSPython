@@ -943,8 +943,7 @@ function buildSalesBuckets(range, sales, granularity) {
   return [...bucketMap.values()];
 }
 
-function renderSalesChart(points = []) {
-  const chart = qs('sales-chart');
+function renderSalesChart(points = [], chart = qs('sales-chart')) {
   if (!chart) return;
   if (!points.length || points.every((point) => point.value <= 0)) {
     chart.innerHTML = '<div class="empty">ยังไม่มียอดขายในช่วงนี้ • ระบบจะแสดงกราฟทันทีเมื่อมีรายการใหม่</div>';
@@ -985,6 +984,69 @@ function renderSalesChart(points = []) {
       ${coords.filter((_, index) => index % labelStep === 0 || index === coords.length - 1).map((point) => `<text x="${point.x.toFixed(2)}" y="${(height - 16).toFixed(2)}" text-anchor="middle" class="sales-chart-x">${point.label}</text>`).join('')}
     </svg>
   `;
+}
+
+function summarizeBestMenuFromSales(sales = [], limit = 5) {
+  const itemMap = new Map();
+  sales.forEach((sale) => {
+    summarizeItems(sale.items || []).forEach((item) => {
+      const key = String(item.name || '').trim();
+      if (!key) return;
+      itemMap.set(key, (itemMap.get(key) || 0) + Number(item.qty || 1));
+    });
+  });
+  return [...itemMap.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([name, qty]) => ({ name, qty }));
+}
+
+function openSalesPeriodModal(range, salesInRange) {
+  const modal = qs('sales-period-modal');
+  const title = qs('sales-period-modal-title');
+  const content = qs('sales-period-modal-content');
+  if (!modal || !title || !content) return;
+  const total = salesInRange.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
+  const cashTotal = salesInRange
+    .filter((sale) => sale.payment_method === 'cash')
+    .reduce((sum, sale) => sum + Number(sale.total || 0), 0);
+  const qrTotal = salesInRange
+    .filter((sale) => sale.payment_method === 'qr')
+    .reduce((sum, sale) => sum + Number(sale.total || 0), 0);
+  const granularity = chooseChartGranularity(range);
+  const points = buildSalesBuckets(range, salesInRange, granularity);
+  const bestItems = summarizeBestMenuFromSales(salesInRange, 6);
+  const historyRows = salesInRange
+    .slice()
+    .sort((a, b) => salesDate(b) - salesDate(a))
+    .slice(0, 12)
+    .map((sale) => {
+      const paidText = new Date(sale.paid_at || sale.timestamp || Date.now()).toLocaleString('th-TH');
+      return `<li><strong>${unitLabel()} ${sale.target_id}</strong><span>฿${money(sale.total)} • ${paidText}</span></li>`;
+    })
+    .join('');
+  title.textContent = `เปรียบเทียบยอดขาย • ${range.label}`;
+  content.innerHTML = `
+    <div class="sales-overview-grid">
+      <div class="list-card sales-kpi total"><strong>🧾 ยอดรวม</strong><div>฿${money(total)}</div></div>
+      <div class="list-card sales-kpi"><strong>💵 เงินสด</strong><div>฿${money(cashTotal)}</div></div>
+      <div class="list-card sales-kpi"><strong>📱 โอน/QR</strong><div>฿${money(qrTotal)}</div></div>
+      <div class="list-card sales-kpi"><strong>จำนวนบิล</strong><div>${salesInRange.length}</div></div>
+    </div>
+    <div id="sales-period-modal-chart" class="sales-chart"></div>
+    <div class="sales-modal-grid">
+      <section class="list-card">
+        <h4>🧾 ประวัติในช่วงนี้</h4>
+        <ul class="sales-modal-list">${historyRows || '<li>ยังไม่มีบิลในช่วงนี้</li>'}</ul>
+      </section>
+      <section class="list-card">
+        <h4>🔥 เมนูขายดีในช่วงนี้</h4>
+        <ul class="sales-modal-list">${bestItems.length ? bestItems.map((item) => `<li><strong>${item.name}</strong><span>x${item.qty}</span></li>`).join('') : '<li>ยังไม่มีรายการขาย</li>'}</ul>
+      </section>
+    </div>
+  `;
+  renderSalesChart(points, qs('sales-period-modal-chart'));
+  modal.classList.remove('hidden');
 }
 
 function renderSales() {
@@ -1271,6 +1333,9 @@ function bind() {
       salesFilterRange = null;
       document.querySelectorAll('[data-sales-period]').forEach((node) => node.classList.toggle('is-active', node === btn));
       renderSales();
+      const range = periodRange(salesPeriod, new Date());
+      const inRange = (db.sales || []).filter((sale) => salesDate(sale) >= range.start && salesDate(sale) <= range.end);
+      openSalesPeriodModal(range, inRange);
     });
   });
   qs('close-sales-period-modal')?.addEventListener('click', () => qs('sales-period-modal')?.classList.add('hidden'));
@@ -1293,6 +1358,8 @@ function bind() {
       label: `ช่วงวันที่ ${fromRaw} ถึง ${toRaw}`,
     };
     renderSales();
+    const inRange = (db.sales || []).filter((sale) => salesDate(sale) >= salesFilterRange.start && salesDate(sale) <= salesFilterRange.end);
+    openSalesPeriodModal(salesFilterRange, inRange);
   });
   qs('paper-size')?.addEventListener('change', updateReceiptPreview);
   qs('store-name')?.addEventListener('input', updateReceiptPreview);
