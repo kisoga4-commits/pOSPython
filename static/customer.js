@@ -283,15 +283,26 @@ function renderExistingOrders() {
     return;
   }
 
+  const itemMap = new Map();
   items.forEach((item) => {
+    const key = `${item.name}|${item.addon || ''}|${item.note || ''}|${Number(item.price || 0)}`;
+    if (!itemMap.has(key)) {
+      itemMap.set(key, { ...item, qty: 0 });
+    }
+    const current = itemMap.get(key);
+    current.qty += Math.max(1, Number(item.qty || 1));
+  });
+
+  Array.from(itemMap.values()).forEach((item) => {
     const row = document.createElement('div');
     row.className = 'list-item';
     const hasAddon = (Array.isArray(item.addons) && item.addons.length) || Boolean(item.addon);
-    row.innerHTML = `${item.name}${hasAddon ? ' <span class="addon-flag">➕</span>' : ''} · ${money(item.price)} บาท ${item.addon ? `· ${item.addon}` : ''} ${item.note ? `· ${item.note}` : ''}`;
+    const qty = Math.max(1, Number(item.qty || 1));
+    row.innerHTML = `${item.name}${qty > 1 ? `x${qty}` : ''}${hasAddon ? ' <span class="addon-flag">➕</span>' : ''} · ${money(item.price)} บาท ${item.addon ? `· ${item.addon}` : ''} ${item.note ? `· ${item.note}` : ''}`;
     list.appendChild(row);
   });
 
-  const total = items.reduce((sum, item) => sum + Number(item.price || 0), 0);
+  const total = items.reduce((sum, item) => sum + (Number(item.price || 0) * Math.max(1, Number(item.qty || 1))), 0);
   totalNode.textContent = `ยอดรวมปัจจุบัน ${money(total)} บาท`;
   timeNode.textContent = `อัปเดตล่าสุด ${new Date().toLocaleTimeString('th-TH', { hour12: false })}`;
 }
