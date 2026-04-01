@@ -407,7 +407,9 @@ function updateTableStatus(tables = []) {
     ? 'ส่งออร์เดอร์แล้ว · รอพนักงานกดรับ'
     : (table.status === 'accepted_order' ? 'พนักงานรับออร์เดอร์แล้ว · กำลังเตรียมอาหาร' : `สถานะล่าสุด: ${meta.label}`);
   if (table.call_staff_status === 'requested') {
-    note.textContent = 'ร้านรับรู้การเรียกพนักงานแล้ว · กรุณารอสักครู่';
+    note.textContent = 'ส่งคำขอเรียกพนักงานแล้ว · รอร้านรับทราบ';
+  } else if (table.call_staff_status === 'acknowledged') {
+    note.textContent = 'ร้านรับทราบการเรียกพนักงานแล้ว · กรุณารอสักครู่';
   }
   if (table.last_order_event === 'rejected') {
     note.textContent = 'พนักงานปฏิเสธคำขอล่าสุด กรุณาส่งใหม่อีกครั้ง';
