@@ -70,6 +70,13 @@ def _safe_parse_iso_datetime(value: str):
         return None
 
 
+def _safe_parse_int(value, default: int = 0) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
 @app.route("/")
 def index():
     scanner_mode = request.args.get("mode") == "scanner" or not is_server_request()
@@ -986,7 +993,7 @@ def api_staff_bootstrap():
 @require_license
 @require_roles("owner", "staff")
 def api_staff_stream():
-    since = int(request.args.get("since", "0"))
+    since = _safe_parse_int(request.args.get("since", "0"), default=0)
 
     @stream_with_context
     def generate_staff_events():
@@ -1030,7 +1037,7 @@ def api_staff_live():
 @app.route("/api/customer/live", methods=["GET"])
 @require_license
 def api_customer_live():
-    since = int(request.args.get("since", "0"))
+    since = _safe_parse_int(request.args.get("since", "0"), default=0)
     table_id = request.args.get("table_id", type=int)
     db = load_db()
     if table_id is not None and not any(table.get("id") == table_id for table in db.get("tables", [])):
