@@ -19,51 +19,33 @@
           <small class="mobile-subtitle">พนักงาน</small>
         </div>
       </div>
-      <button id="staff-logout-btn" class="btn-soft logout-btn hidden" type="button">🚪 Logout</button>
+      <button id="staff-logout-btn" class="btn-soft logout-btn hidden" type="button">🚪 Remove Staff Role</button>
     </header>
 
     <section id="staff-login-screen" class="mobile-panel staff-login-screen">
-      <h3>เข้าสู่ระบบพนักงาน</h3>
-      <div class="login-form">
-        <label>
-          ชื่อผู้ใช้
-          <input id="staff-username" type="text" placeholder="staff" />
-        </label>
-        <label>
-          บทบาท
-          <select id="staff-role">
-            <option value="staff">Staff</option>
-            <option value="admin">Admin</option>
-          </select>
-        </label>
-        <label>
-          รหัสผ่าน/PIN (Admin)
-          <input id="staff-pin" type="password" placeholder="admin" />
-        </label>
-        <button id="staff-login-btn" class="btn-primary" type="button">เข้าสู่ระบบ</button>
-        <p id="staff-login-message" class="muted"></p>
-      </div>
+      <h3>ยังไม่ได้ยืนยันอุปกรณ์พนักงาน</h3>
+      <p>กรุณาเข้าเส้นทางลับ <strong>/authorize-staff</strong> จากเครื่องนี้ เพื่อเปิดโหมด Staff Device</p>
     </section>
 
     <section id="staff-app-screen" class="mobile-content staff-mobile hidden">
       <section id="staff-tab-customer" class="mobile-panel">
         <div class="section-head">
-          <h3>🔔 ลูกค้า (Tables)</h3>
+          <h3>👥 ลูกค้า (Tables)</h3>
         </div>
         <div id="staff-customer-list" class="order-list"></div>
       </section>
 
       <section id="staff-tab-checkout" class="mobile-panel hidden">
         <div class="section-head">
-          <h3>🧾 เช็คบิล (Billing)</h3>
+          <h3>💵 เช็คบิล (Billing)</h3>
         </div>
         <div id="staff-checkout-list" class="order-list"></div>
       </section>
     </section>
 
     <nav id="staff-bottom-nav" class="staff-bottom-nav hidden">
-      <button class="staff-nav-btn is-active" data-staff-tab="customer" type="button">🔔</button>
-      <button class="staff-nav-btn" data-staff-tab="checkout" type="button">🧾</button>
+      <button class="staff-nav-btn is-active" data-staff-tab="customer" type="button">👥</button>
+      <button class="staff-nav-btn" data-staff-tab="checkout" type="button">💵</button>
     </nav>
   </main>
   <audio id="new-order-sound" src="{{ url_for('static', filename='sounds/new_order.mp3') }}"></audio>

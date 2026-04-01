@@ -138,6 +138,14 @@ def staff_scan_page():
     )
 
 
+@app.route("/authorize-staff")
+def authorize_staff_page():
+    local_ip = get_local_ip()
+    port = request.environ.get("SERVER_PORT", "5000")
+    local_base_url = f"{request.scheme}://{local_ip}:{port}"
+    return render_template("authorize_staff.html", asset_version=ASSET_VERSION, local_base_url=local_base_url)
+
+
 @app.route("/api/license", methods=["GET"])
 def api_license_status():
     return jsonify({"licensed": True, "machine_id": "DISABLED"})
@@ -175,7 +183,7 @@ def _create_order(payload: dict) -> dict:
     db = load_db()
     order_id = f"ORD-{int(datetime.now().timestamp())}-{len(db['orders']) + 1}"
     source = payload.get("source", "customer")
-    initial_status = "new" if source == "customer" else "preparing"
+    initial_status = "pending" if source == "customer" else "accepted"
     normalized_cart = _normalize_cart_items(cart, db.get("menu", []))
     total_price = sum(float(item.get("price", 0)) * max(1, int(item.get("qty", 1) or 1)) for item in normalized_cart)
 
@@ -344,8 +352,8 @@ def api_checkout():
     db = load_db()
     pending_items = []
     for order in db["orders"]:
-        if order["target"] == target and order["target_id"] == target_id and order["status"] != "served":
-            order["status"] = "served"
+        if order["target"] == target and order["target_id"] == target_id and order["status"] != "completed":
+            order["status"] = "completed"
             order["updated_at"] = local_now()
         if order["target"] == target and order["target_id"] == target_id:
             pending_items.extend(order["items"])
@@ -425,7 +433,7 @@ def api_order_item():
             return jsonify({"error": "item not found"}), 404
 
         if request.method == "DELETE":
-            if order.get("status") in {"preparing", "served"}:
+            if order.get("status") in {"accepted", "completed"}:
                 return jsonify({"error": "submitted_order_locked"}), 403
             if str(order.get("source", "customer")) == "customer":
                 return jsonify({"error": "customer_order_locked"}), 403
@@ -501,8 +509,8 @@ def api_table_accept():
     db = load_db()
     touched = False
     for order in db["orders"]:
-        if order["target"] == "table" and order["target_id"] == table_id and order["status"] == "new":
-            order["status"] = "preparing"
+        if order["target"] == "table" and order["target_id"] == table_id and order["status"] == "pending":
+            order["status"] = "accepted"
             order["updated_at"] = local_now()
             touched = True
 
@@ -583,7 +591,7 @@ def api_restore():
 @require_license
 def api_kitchen_orders():
     db = load_db()
-    statuses = set(request.args.get("status", "new,preparing").split(","))
+    statuses = set(request.args.get("status", "pending,accepted").split(","))
     orders = [o for o in db["orders"] if o["status"] in statuses]
     return jsonify({"orders": orders, "version": db["meta"]["version"], "updated_at": db["meta"]["updated_at"]})
 
@@ -594,7 +602,7 @@ def api_order_status():
     payload = read_json()
     order_id = payload.get("order_id")
     status = payload.get("status")
-    if status not in {"new", "preparing", "served", "cancelled"}:
+    if status not in {"pending", "accepted", "completed", "cancelled"}:
         return jsonify({"error": "invalid status"}), 400
 
     db = load_db()
@@ -607,6 +615,16 @@ def api_order_status():
     return jsonify({"error": "order not found"}), 404
 
 
+@app.route("/api/table/statuses", methods=["GET"])
+def api_table_statuses():
+    db = load_db()
+    return jsonify({
+        "tables": db.get("tables", []),
+        "version": db.get("meta", {}).get("version", 0),
+        "updated_at": db.get("meta", {}).get("updated_at"),
+    })
+
+
 @app.route("/api/staff/live", methods=["GET"])
 @require_license
 def api_staff_live():
@@ -615,7 +633,7 @@ def api_staff_live():
     if db["meta"]["version"] <= since:
         return jsonify({"changed": False, "version": db["meta"]["version"]})
 
-    orders = [o for o in db["orders"] if o["status"] in {"new", "preparing", "served"}]
+    orders = [o for o in db["orders"] if o["status"] in {"pending", "accepted", "completed"}]
     return jsonify({
         "changed": True,
         "orders": orders,

@@ -4,7 +4,7 @@ let lastCheckoutIds = new Set();
 let state = { tables: [], orders: [] };
 let serviceMode = 'table';
 const blinkTimers = new Map();
-const STAFF_AUTH_KEY = 'fakdu_staff_auth';
+const USER_ROLE_KEY = 'user_role';
 let authState = null;
 
 const TABLE_STATUS_META = {
@@ -87,15 +87,9 @@ function applyRoleRestrictions() {
 }
 
 function loadAuthState() {
-  try {
-    const raw = localStorage.getItem(STAFF_AUTH_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (!parsed?.username || !parsed?.role) return null;
-    return parsed;
-  } catch (error) {
-    return null;
-  }
+  const role = localStorage.getItem(USER_ROLE_KEY);
+  if (role === 'staff') return { role: 'staff' };
+  return null;
 }
 
 function updateAuthUI() {
@@ -107,7 +101,7 @@ function updateAuthUI() {
   const online = navigator.onLine;
   dot.classList.toggle('online', online);
   dot.classList.toggle('offline', !online);
-  if (authState) {
+  if (authState?.role === 'staff') {
     loginScreen.classList.add('hidden');
     appScreen.classList.remove('hidden');
     nav.classList.remove('hidden');
@@ -181,7 +175,7 @@ function renderCustomerTab() {
 
   customerTables.forEach((table) => {
     const tableOrders = state.orders.filter((order) => order.target === 'table' && order.target_id === table.id && order.status !== 'cancelled');
-    const hasCustomerNewOrder = tableOrders.some((order) => order.source === 'customer' && order.status === 'new');
+    const hasCustomerNewOrder = tableOrders.some((order) => order.source === 'customer' && order.status === 'pending');
     const tableTotal = tableOrders.flatMap((order) => order.items || []).reduce((sum, item) => {
       const qty = Math.max(1, Number(item.qty || 1));
       return sum + (Number(item.price || 0) * qty);
@@ -189,7 +183,7 @@ function renderCustomerTab() {
     const actions = [];
     if (hasCustomerNewOrder && tableTotal > 0) {
       actions.push({
-        label: 'รับออร์เดอร์',
+        label: '✅ ยืนยันรับออร์เดอร์ (Accept Order)',
         className: 'btn-primary',
         onClick: async () => {
           playCallStaffSound();
@@ -308,28 +302,13 @@ function blinkTableCard(tableId) {
   authState = loadAuthState();
   updateAuthUI();
   bindTabs();
-  document.getElementById('staff-login-btn').addEventListener('click', () => {
-    const username = document.getElementById('staff-username').value.trim() || 'staff';
-    const role = document.getElementById('staff-role').value;
-    const pin = document.getElementById('staff-pin').value;
-    const message = document.getElementById('staff-login-message');
-    if (role === 'admin' && pin !== 'admin') {
-      message.textContent = 'PIN Admin ไม่ถูกต้อง';
-      return;
-    }
-    authState = { username, role };
-    localStorage.setItem(STAFF_AUTH_KEY, JSON.stringify(authState));
-    message.textContent = '';
-    updateAuthUI();
-    loadLive();
-  });
   document.getElementById('staff-logout-btn').addEventListener('click', () => {
-    localStorage.removeItem(STAFF_AUTH_KEY);
+    localStorage.removeItem(USER_ROLE_KEY);
     authState = null;
     updateAuthUI();
   });
   window.addEventListener('online', updateAuthUI);
   window.addEventListener('offline', updateAuthUI);
   if (authState) loadLive();
-  setInterval(loadLive, 2000);
+  setInterval(loadLive, 3000);
 })();
