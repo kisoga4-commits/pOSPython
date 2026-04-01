@@ -156,8 +156,14 @@ def customer_display_page():
 
 @app.route("/scan/staff")
 def staff_scan_page():
+    local_ip = get_local_ip()
+    port = request.environ.get("SERVER_PORT", "5000")
+    local_base_url = f"{request.scheme}://{local_ip}:{port}"
     return render_template(
-        "staff.html",
+        "index.html",
+        local_ip=local_ip,
+        local_base_url=local_base_url,
+        scanner_mode=True,
         asset_version=ASSET_VERSION,
     )
 
