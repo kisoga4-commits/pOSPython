@@ -20,7 +20,9 @@ function buildQrImageUrl(rawText) {
 }
 
 function buildDynamicPromptPayImage(promptPayId, amount) {
-  return window.PromptPayQR?.buildPromptPayApiUrl(promptPayId, amount) || '';
+  const payload = window.PromptPayQR?.buildPromptPayPayload(promptPayId, amount, true) || '';
+  if (!payload) return '';
+  return buildQrImageUrl(payload);
 }
 
 function resolvePaymentQrImage(cfg, amount) {
