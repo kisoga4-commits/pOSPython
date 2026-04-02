@@ -85,6 +85,15 @@ def _safe_parse_int(value, default: int = 0) -> int:
         return default
 
 
+def _safe_parse_float(value, default: float = 0.0) -> float:
+    try:
+        if isinstance(value, str):
+            value = value.replace(",", ".").strip()
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def parse_table_token(raw_value: str) -> tuple[int, str]:
     token = str(raw_value or "").strip()
     if len(token) < 5:
@@ -150,7 +159,7 @@ def _build_promptpay_payload(promptpay_id: str, amount: float = 0.0, dynamic: bo
     payload += _promptpay_tlv("52", "0000")
     payload += _promptpay_tlv("53", "764")
     payload += _promptpay_tlv("58", "TH")
-    safe_amount = float(amount or 0)
+    safe_amount = _safe_parse_float(amount, default=0.0)
     if dynamic and safe_amount > 0:
         payload += _promptpay_tlv("54", f"{safe_amount:.2f}")
     payload += "6304"
@@ -420,7 +429,10 @@ def _create_order(payload: dict) -> dict:
     normalized_cart = _normalize_cart_items(cart, db.get("menu", []))
     if not normalized_cart:
         raise ValueError("cart has no valid items")
-    total_price = sum(float(item.get("price", 0)) * max(1, int(item.get("qty", 1) or 1)) for item in normalized_cart)
+    total_price = sum(
+        _safe_parse_float(item.get("price", 0), default=0.0) * max(1, int(item.get("qty", 1) or 1))
+        for item in normalized_cart
+    )
     if total_price <= 0:
         raise ValueError("cart total must be greater than 0")
     request_fingerprint = hashlib.sha256(json.dumps({
@@ -518,7 +530,7 @@ def _compress_table_items(items: list) -> list:
         note = str(item.get("note", "")).strip()
         key = (
             item.get("item_id") or item.get("id") or str(item.get("name", "")).strip(),
-            float(item.get("price", 0) or 0),
+            _safe_parse_float(item.get("price", 0), default=0.0),
             addon,
             note,
         )
@@ -584,8 +596,8 @@ def _normalize_cart_items(raw_cart: list, menu: list) -> list:
         if menu_item is None and item_name:
             menu_item = menu_lookup.get(f"name:{item_name.lower()}")
 
-        menu_base_price = float((menu_item or {}).get("price", 0) or 0)
-        fallback_price = float(item.get("base_price", item.get("price", 0)) or 0)
+        menu_base_price = _safe_parse_float((menu_item or {}).get("price", 0), default=0.0)
+        fallback_price = _safe_parse_float(item.get("base_price", item.get("price", 0)), default=0.0)
         base_price = menu_base_price if menu_item is not None else fallback_price
         menu_addon_prices = {}
         for option in (menu_item or {}).get("addons", []) or []:
@@ -614,7 +626,11 @@ def _normalize_cart_items(raw_cart: list, menu: list) -> list:
                     menu_addon_price = menu_addon_prices.get(addon_name)
                     packed_addons.append({
                         "name": addon_name,
-                        "price": menu_addon_price if menu_addon_price is not None else float(addon.get("price", 0) or 0),
+                        "price": (
+                            menu_addon_price
+                            if menu_addon_price is not None
+                            else _safe_parse_float(addon.get("price", 0), default=0.0)
+                        ),
                     })
                 elif isinstance(addon, str) and addon.strip():
                     addon_name = addon.strip()
@@ -626,7 +642,9 @@ def _normalize_cart_items(raw_cart: list, menu: list) -> list:
                 base["addons"] = packed_addons
                 if not base["addon"]:
                     base["addon"] = ", ".join(addon["name"] for addon in packed_addons)
-                base["price"] = base_price + sum(float(addon.get("price", 0) or 0) for addon in packed_addons)
+                base["price"] = base_price + sum(
+                    _safe_parse_float(addon.get("price", 0), default=0.0) for addon in packed_addons
+                )
         normalized.append({**base, "qty": qty})
     return normalized
 
@@ -682,7 +700,10 @@ def api_checkout():
     if not pending_items:
         return jsonify({"error": "nothing_to_checkout"}), 409
 
-    total = sum(float(item.get("price", 0)) * max(1, int(item.get("qty", 1) or 1)) for item in pending_items)
+    total = sum(
+        _safe_parse_float(item.get("price", 0), default=0.0) * max(1, int(item.get("qty", 1) or 1))
+        for item in pending_items
+    )
     sale_record = {
         "id": f"SALE-{int(datetime.now().timestamp())}",
         "target": target,
@@ -730,7 +751,7 @@ def api_bill(target: str, target_id: int):
                 "order_id": order["id"],
                 "item_index": idx,
                 "name": item.get("name", "-"),
-                "price": float(item.get("price", 0)),
+                "price": _safe_parse_float(item.get("price", 0), default=0.0),
                 "qty": max(1, int(item.get("qty", 1) or 1)),
                 "image": item.get("image", ""),
                 "addon": item.get("addon", ""),
