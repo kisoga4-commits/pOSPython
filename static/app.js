@@ -941,7 +941,9 @@ async function syncCustomerDisplayActiveTable(tableId) {
 }
 
 function buildDynamicPromptPayImage(promptPayId, amount) {
-  return window.PromptPayQR?.buildPromptPayApiUrl(promptPayId, amount) || '';
+  const payload = window.PromptPayQR?.buildPromptPayPayload(promptPayId, amount, true) || '';
+  if (!payload) return '';
+  return buildQrImageUrl(payload);
 }
 
 function resolvePaymentQrImage(settings, totalAmount) {
@@ -1353,7 +1355,6 @@ function renderPaymentReadiness() {
   const settings = db.settings || {};
   const hasPromptPay = Boolean(String(settings.promptPay || '').trim());
   const hasQrImage = Boolean(String(settings.qrImage || '').trim());
-  const onlineReady = navigator.onLine && Boolean(resolveRuntimeHost());
   const dynamicEnabled = Boolean(settings.dynamicPromptPay);
 
   const rows = [
@@ -1364,7 +1365,6 @@ function renderPaymentReadiness() {
       okText: dynamicEnabled ? 'ไม่จำเป็นเมื่อใช้ Dynamic' : 'มีไฟล์แล้ว',
       warnText: 'ยังไม่อัปโหลดรูป',
     },
-    { label: 'สแกนแบบมีเน็ต', ok: onlineReady, okText: 'ออนไลน์', warnText: 'ออฟไลน์ (ตรวจเน็ตอีกครั้ง)' },
     { label: 'Dynamic PromptPay', ok: dynamicEnabled, okText: 'เปิดใช้งาน', warnText: 'ปิดใช้งาน' },
   ];
   wrap.innerHTML = rows
