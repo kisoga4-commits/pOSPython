@@ -6,6 +6,7 @@ import re
 import json
 import hashlib
 import time
+from urllib.parse import quote
 from datetime import datetime
 from collections import defaultdict
 
@@ -28,7 +29,7 @@ log.setLevel(logging.ERROR)
 
 app = Flask(__name__)
 
-ASSET_VERSION = "20260402-image-promptpay-fix-v1"
+ASSET_VERSION = "20260402-ui-sync-perf-fix-v2"
 
 
 
@@ -95,6 +96,82 @@ def parse_table_token(raw_value: str) -> tuple[int, str]:
 
 def encode_table_token(table_id: int, suffix: str) -> str:
     return f"{int(table_id)}{str(suffix)}"
+
+
+def _promptpay_tlv(tag: str, value: str) -> str:
+    value_text = str(value or "")
+    return f"{tag}{len(value_text):02d}{value_text}"
+
+
+def _sanitize_promptpay(raw_value: str) -> tuple[str, str]:
+    digits = re.sub(r"\D", "", str(raw_value or ""))
+    if not digits:
+        return "", ""
+    if len(digits) == 13 and digits.startswith("0066"):
+        return "mobile", digits
+    if len(digits) == 10 and digits.startswith("0"):
+        return "mobile", f"0066{digits[1:]}"
+    if len(digits) == 9:
+        return "mobile", f"0066{digits}"
+    if len(digits) == 11 and digits.startswith("66"):
+        return "mobile", f"0066{digits[2:]}"
+    if len(digits) == 13:
+        return "tax_id", digits
+    return "", ""
+
+
+def _crc16_ccitt(text: str) -> str:
+    crc = 0xFFFF
+    for char in text:
+        crc ^= ord(char) << 8
+        for _ in range(8):
+            if crc & 0x8000:
+                crc = ((crc << 1) ^ 0x1021) & 0xFFFF
+            else:
+                crc = (crc << 1) & 0xFFFF
+    return f"{crc:04X}"
+
+
+def _build_promptpay_payload(promptpay_id: str, amount: float = 0.0, dynamic: bool = True) -> str:
+    identity_type, normalized = _sanitize_promptpay(promptpay_id)
+    if not normalized:
+        return ""
+    proxy_id = "02" if identity_type == "tax_id" else "01"
+    merchant_info = _promptpay_tlv("00", "A000000677010111") + _promptpay_tlv(proxy_id, normalized)
+    payload = ""
+    payload += _promptpay_tlv("00", "01")
+    payload += _promptpay_tlv("01", "12" if dynamic else "11")
+    payload += _promptpay_tlv("29", merchant_info)
+    payload += _promptpay_tlv("52", "0000")
+    payload += _promptpay_tlv("53", "764")
+    payload += _promptpay_tlv("58", "TH")
+    safe_amount = float(amount or 0)
+    if dynamic and safe_amount > 0:
+        payload += _promptpay_tlv("54", f"{safe_amount:.2f}")
+    payload += "6304"
+    return payload + _crc16_ccitt(payload)
+
+
+def _build_qr_image_url(payload_text: str) -> str:
+    safe_payload = str(payload_text or "").strip() or "promptpay-not-configured"
+    return f"https://api.qrserver.com/v1/create-qr-code/?size=512x512&margin=12&ecc=H&data={quote(safe_payload, safe='')}"
+
+
+def _resolve_payment_qr_image(settings: dict, amount: float) -> tuple[str, str]:
+    cfg = settings or {}
+    promptpay_id = str(cfg.get("promptPay", "")).strip()
+    uploaded_qr = str(cfg.get("qrImage", "")).strip()
+    if cfg.get("dynamicPromptPay") and promptpay_id:
+        payload = _build_promptpay_payload(promptpay_id, amount=amount, dynamic=True)
+        if payload:
+            return _build_qr_image_url(payload), "dynamic_promptpay"
+    if uploaded_qr:
+        return uploaded_qr, "uploaded_image"
+    if promptpay_id:
+        payload = _build_promptpay_payload(promptpay_id, amount=0, dynamic=False)
+        if payload:
+            return _build_qr_image_url(payload), "static_promptpay"
+    return _build_qr_image_url("promptpay-not-configured"), "fallback"
 
 
 def build_table_token(table: dict) -> str:
@@ -599,12 +676,15 @@ def api_bill(target: str, target_id: int):
                 "addon": item.get("addon", ""),
             })
     total = sum(i["price"] * i["qty"] for i in items)
+    payment_qr, payment_qr_source = _resolve_payment_qr_image(db.get("settings", {}), total)
     return jsonify({
         "target": target,
         "target_id": target_id,
         "items": items,
         "total": total,
         "opened_at": first_created,
+        "payment_qr": payment_qr,
+        "payment_qr_source": payment_qr_source,
         "version": db["meta"]["version"],
     })
 
@@ -669,10 +749,10 @@ def api_menu_upload_image():
     offset_x = max(0, (image.width - crop_edge) // 2)
     offset_y = max(0, (image.height - crop_edge) // 2)
     image = image.crop((offset_x, offset_y, offset_x + crop_edge, offset_y + crop_edge))
-    image = image.resize((300, 300), Image.Resampling.LANCZOS)
+    image = image.resize((240, 240), Image.Resampling.LANCZOS)
 
     out = io.BytesIO()
-    image.save(out, format="WEBP", optimize=True, quality=70, method=6)
+    image.save(out, format="WEBP", optimize=True, quality=62, method=6)
     compressed = base64.b64encode(out.getvalue()).decode("utf-8")
     return jsonify({"status": "success", "image": f"data:image/webp;base64,{compressed}"})
 
@@ -968,6 +1048,8 @@ def _project_staff_state(db: dict) -> dict:
         "tables": table_projection,
         "orders": order_projection,
         "service_mode": db.get("settings", {}).get("serviceMode", "table"),
+        "store_name": db.get("settings", {}).get("storeName", "FAKDU"),
+        "logo_image": db.get("settings", {}).get("logoImage", ""),
         "version": db.get("meta", {}).get("version", 0),
         "updated_at": db.get("meta", {}).get("updated_at"),
     }

@@ -931,7 +931,7 @@ async function openBill(targetId) {
     qs('bill-items').appendChild(lockNote);
   }
   qs('bill-total').textContent = money(bill.total);
-  const paymentImage = resolvePaymentQrImage(db.settings, Number(bill.total || 0));
+  const paymentImage = String(bill.payment_qr || '').trim() || resolvePaymentQrImage(db.settings, Number(bill.total || 0));
   if (paymentImage) {
     qs('bill-payment-qr-image').src = paymentImage;
     qs('bill-payment-qr-wrap').classList.remove('hidden');

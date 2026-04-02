@@ -9,6 +9,7 @@ let authState = null;
 let liveEventSource = null;
 let callStaffAlertUntil = 0;
 let renderFrameId = 0;
+const actionInFlight = new Set();
 
 if (document.body?.dataset.autoStaff === '1') {
   localStorage.setItem(USER_ROLE_KEY, 'staff');
@@ -81,6 +82,16 @@ function applyBranding(settings = {}) {
   if (logoSlot) {
     const logoImage = String(settings.logoImage || '').trim();
     logoSlot.innerHTML = logoImage ? `<img src="${logoImage}" alt="${storeName} logo" />` : '📱';
+  }
+}
+
+async function runTableActionOnce(key, task) {
+  if (!key || actionInFlight.has(key)) return;
+  actionInFlight.add(key);
+  try {
+    await task();
+  } finally {
+    actionInFlight.delete(key);
   }
 }
 
@@ -275,47 +286,43 @@ function renderCustomerTab() {
     const pendingRequests = tableOrders.filter((order) => order.source === 'customer' && order.status === 'request_pending');
     const hasAcceptedBefore = tableOrders.some((order) => order.status === 'accepted');
     table.has_additional_order = pendingRequests.length > 0 && hasAcceptedBefore;
-    const tableTotal = tableOrders.flatMap((order) => order.items || []).reduce((sum, item) => {
-      const qty = Math.max(1, Number(item.qty || 1));
-      return sum + (Number(item.price || 0) * qty);
-    }, 0);
     const actions = [];
     if (table.call_staff_status === 'requested') {
       actions.push({
         label: '🔕 รับรู้การเรียกพนักงาน',
         className: 'btn-primary',
-        onClick: async () => {
+        onClick: () => runTableActionOnce(`ack-${table.id}`, async () => {
           await api('/api/table/call-staff/ack', {
             method: 'POST',
             body: JSON.stringify({ table_id: table.id }),
           });
           await loadLive();
-        },
+        }),
       });
     }
     pendingRequests.forEach((requestOrder) => {
       actions.push({
         label: `✅ ยืนยันคำขอ ${requestOrder.id}`,
         className: 'btn-primary',
-        onClick: async () => {
+        onClick: () => runTableActionOnce(`accept-${requestOrder.id}`, async () => {
           playCallStaffSound();
           await api('/api/table/accept', {
             method: 'POST',
             body: JSON.stringify({ order_id: requestOrder.id }),
           });
           await loadLive();
-        },
+        }),
       });
       actions.push({
         label: `❌ ปฏิเสธ ${requestOrder.id}`,
         className: 'btn-soft',
-        onClick: async () => {
+        onClick: () => runTableActionOnce(`reject-${requestOrder.id}`, async () => {
           await api('/api/table/reject', {
             method: 'POST',
             body: JSON.stringify({ order_id: requestOrder.id }),
           });
           await loadLive();
-        },
+        }),
       });
     });
     const tableItems = tableOrders.flatMap((order) => order.items || []);
@@ -349,37 +356,37 @@ function renderCheckoutTab() {
     const actions = [{
       label: '💵 ปิดบิลเงินสด',
       className: 'btn-secondary',
-      onClick: async () => {
+      onClick: () => runTableActionOnce(`cash-${table.id}`, async () => {
         playCallStaffSound();
         await api('/api/checkout', {
           method: 'POST',
           body: JSON.stringify({ target: 'table', target_id: table.id, payment_method: 'cash' }),
         });
         await loadLive();
-      },
+      }),
     }, {
       label: '📱 ปิดบิล QR',
       className: 'btn-secondary',
-      onClick: async () => {
+      onClick: () => runTableActionOnce(`qr-${table.id}`, async () => {
         playCallStaffSound();
         await api('/api/checkout', {
           method: 'POST',
           body: JSON.stringify({ target: 'table', target_id: table.id, payment_method: 'qr' }),
         });
         await loadLive();
-      },
+      }),
     }];
     if (table.call_staff_status === 'requested') {
       actions.unshift({
         label: '🔕 รับรู้การเรียกพนักงาน',
         className: 'btn-primary',
-        onClick: async () => {
+        onClick: () => runTableActionOnce(`ack-${table.id}`, async () => {
           await api('/api/table/call-staff/ack', {
             method: 'POST',
             body: JSON.stringify({ table_id: table.id }),
           });
           await loadLive();
-        },
+        }),
       });
     }
     list.appendChild(tableCard(table, expandedItems, actions, { showQty: false }));
@@ -399,11 +406,11 @@ function bindTabs() {
 
 async function loadLive() {
   if (!authState) return;
-  const [data, rawData] = await Promise.all([
-    api('/api/staff/bootstrap'),
-    api('/api/data'),
-  ]);
-  applyBranding(rawData?.settings || {});
+  const data = await api('/api/staff/bootstrap');
+  applyBranding({
+    storeName: data?.snapshot?.store_name || 'FAKDU',
+    logoImage: data?.snapshot?.logo_image || '',
+  });
   applySnapshot(data.snapshot || {});
 }
 
