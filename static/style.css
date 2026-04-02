@@ -1040,6 +1040,98 @@ main{display:grid;gap:10px}
   padding-right:4px;
 }
 
+/* adaptive 3xN / 4xN grids for split display + customer table + staff mobile */
+#menu-list,
+#customer-facing-items,
+#checkout-list,
+#staff-customer-list,
+#staff-checkout-list{
+  display:grid;
+  gap:10px;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  align-content:start;
+}
+#menu-list[data-grid-size="4"],
+#customer-facing-items[data-grid-size="4"],
+#checkout-list[data-grid-size="4"],
+#staff-customer-list[data-grid-size="4"],
+#staff-checkout-list[data-grid-size="4"]{
+  grid-template-columns:repeat(4,minmax(0,1fr));
+}
+
+#menu-list .menu-mobile-card,
+#customer-facing-items .bill-row-item,
+#checkout-list .checkout-card,
+#staff-customer-list .mobile-table-card,
+#staff-checkout-list .mobile-table-card{
+  height:100%;
+  min-width:0;
+}
+
+#menu-list .menu-mobile-card{
+  grid-template-columns:84px minmax(0,1fr);
+}
+
+#customer-facing-items .bill-row-item{
+  display:grid;
+  grid-template-columns:44px minmax(0,1fr) auto;
+  gap:8px;
+  align-items:center;
+}
+
+#customer-facing-items .bill-row-item strong,
+#menu-list .menu-mobile-meta strong{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+#staff-customer-list .table-order-summary,
+#staff-checkout-list .table-order-summary{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:6px;
+  max-height:none;
+}
+
+#staff-customer-list .summary-item,
+#staff-checkout-list .summary-item{
+  min-width:0;
+}
+
+.table-order-thumb,
+.checkout-item-thumb,
+.menu-thumb img{
+  object-fit:cover;
+}
+
+@media (max-width: 1024px){
+  #menu-list,
+  #customer-facing-items,
+  #checkout-list,
+  #staff-customer-list,
+  #staff-checkout-list{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  #menu-list[data-grid-size="4"],
+  #customer-facing-items[data-grid-size="4"],
+  #checkout-list[data-grid-size="4"],
+  #staff-customer-list[data-grid-size="4"],
+  #staff-checkout-list[data-grid-size="4"]{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+
+@media (max-width: 680px){
+  #menu-list,
+  #customer-facing-items,
+  #checkout-list,
+  #staff-customer-list,
+  #staff-checkout-list{
+    grid-template-columns:1fr;
+  }
+}
+
 .item-detail-qty-row{
   display:flex;
   justify-content:space-between;

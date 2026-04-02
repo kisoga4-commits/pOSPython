@@ -245,9 +245,11 @@ function renderCustomerTab() {
   ));
 
   if (!customerTables.length) {
+    list.dataset.gridSize = '3';
     list.innerHTML = '<div class="empty-state">ยังไม่มีโต๊ะรอดำเนินการ</div>';
     return;
   }
+  list.dataset.gridSize = customerTables.length > 9 ? '4' : '3';
 
   customerTables.forEach((table) => {
     const tableOrders = state.orders.filter((order) => order.target === 'table' && order.target_id === table.id && order.status !== 'cancelled');
@@ -311,9 +313,11 @@ function renderCheckoutTab() {
   ));
 
   if (!checkoutTables.length) {
+    list.dataset.gridSize = '3';
     list.innerHTML = '<div class="empty-state">ยังไม่มีโต๊ะรอเช็คบิล</div>';
     return;
   }
+  list.dataset.gridSize = checkoutTables.length > 9 ? '4' : '3';
 
   checkoutTables.forEach((table) => {
     const tableItems = state.orders

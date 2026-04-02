@@ -16,7 +16,13 @@ async function api(path, options = {}) {
 }
 
 function sanitizePromptPay(raw) {
-  return String(raw || '').replace(/\D/g, '');
+  const digits = String(raw || '').replace(/\D/g, '');
+  if (!digits) return '';
+  if (digits.length === 10 && digits.startsWith('0')) return digits;
+  if (digits.length === 9) return `0${digits}`;
+  if (digits.length === 11 && digits.startsWith('66')) return `0${digits.slice(2)}`;
+  if (digits.length === 13) return digits;
+  return digits;
 }
 
 function crc16ccitt(input) {
@@ -40,11 +46,12 @@ function buildPromptPayPayload(promptPayId, amount = 0, dynamic = true) {
   const id = sanitizePromptPay(promptPayId);
   if (!id) return '';
   const formattedId = id.length === 10 && id.startsWith('0') ? `0066${id.slice(1)}` : id;
-  const merchantInfo = `0016A000000677010111${tlv('01', formattedId)}`;
+  const merchantInfo = `${tlv('00', 'A000000677010111')}${tlv('01', formattedId)}`;
   let payload = '';
   payload += tlv('00', '01');
   payload += tlv('01', dynamic ? '12' : '11');
   payload += tlv('29', merchantInfo);
+  payload += tlv('52', '0000');
   payload += tlv('58', 'TH');
   payload += tlv('53', '764');
   if (dynamic && amount > 0) payload += tlv('54', Number(amount).toFixed(2));
@@ -85,6 +92,13 @@ function summarizeItems(items = []) {
   return Array.from(itemMap.values());
 }
 
+function getAdaptiveGridSize(count) {
+  const total = Math.max(0, Number(count || 0));
+  if (total <= 3) return 3;
+  if (total <= 9) return 3;
+  return 4;
+}
+
 const ACTIVE_TABLE_KEY = 'customer_display_active_table';
 let settings = {};
 let tableId = Number(document.body.dataset.tableId || localStorage.getItem(ACTIVE_TABLE_KEY) || 0);
@@ -110,6 +124,7 @@ function renderBill(bill) {
   const qrWrap = qs('customer-facing-qr-wrap');
   list.innerHTML = '';
   const groupedItems = summarizeItems(bill.items || []);
+  list.dataset.gridSize = String(getAdaptiveGridSize(groupedItems.length));
   if (!groupedItems.length) {
     list.innerHTML = '<div class="empty">ยังไม่มีรายการที่ต้องชำระ<br/>รอการเช็คบิลถัดไป</div>';
     qs('customer-facing-total').textContent = money(0);
@@ -124,7 +139,7 @@ function renderBill(bill) {
     row.className = 'list-card bill-row-item';
     const qty = Math.max(1, Number(item.qty || 1));
     const thumb = item.image ? `<img src="${item.image}" alt="${item.name}" class="checkout-item-thumb" />` : '<span class="checkout-item-thumb fallback">🍽️</span>';
-    row.innerHTML = `<div style="display:flex;align-items:center;gap:8px"><span>${thumb}</span><strong>${item.name}${qty > 1 ? ` x${qty}` : ''}</strong></div><span>฿${money(item.price * qty)}</span>`;
+    row.innerHTML = `${thumb}<strong>${item.name}${qty > 1 ? ` x${qty}` : ''}</strong><span>฿${money(item.price * qty)}</span>`;
     list.appendChild(row);
   });
   qs('customer-facing-total').textContent = money(bill.total);
