@@ -25,6 +25,11 @@ h1,h2,h3,h4,p{margin:0}
 .app-shell{max-width:1500px;margin:auto;padding:18px}
 .section-card,.mobile-panel,.mobile-header{background:var(--card);border:1px solid rgba(229,231,235,.9);border-radius:20px;box-shadow:var(--shadow-soft);backdrop-filter:blur(2px)}
 .section-card{padding:14px;margin-top:12px}
+.screen,
+.panel-block{
+  content-visibility:auto;
+  contain-intrinsic-size: 700px;
+}
 .hidden-overflow{overflow:hidden}
 
 .modern-header{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;background:linear-gradient(120deg,rgba(255,255,255,.96),rgba(243,232,255,.96));border:1px solid #ede9fe;border-radius:24px;box-shadow:var(--shadow)}
@@ -113,6 +118,14 @@ h1,h2,h3,h4,p{margin:0}
 .menu-choice.visual{display:grid;gap:8px;align-content:start}
 .menu-choice-thumb{height:72px;border-radius:10px;background:linear-gradient(120deg,#ede9fe,#cffafe);display:grid;place-items:center;font-size:1.5rem;overflow:hidden}
 .menu-choice-thumb img,.menu-thumb img{width:100%;height:120px;object-fit:cover;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1)}
+.table-item-thumb,
+.checkout-item-thumb,
+.menu-grid-thumb,
+.menu-admin-grid-thumb{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
 .quick-add-box{display:grid;gap:8px;margin-top:8px}
 input,select{width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:#fff}
 .btn-soft,.btn-primary,.btn-secondary{border:none;border-radius:11px;padding:10px 12px;cursor:pointer}

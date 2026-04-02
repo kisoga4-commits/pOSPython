@@ -663,14 +663,14 @@ def api_menu_upload_image():
     except Exception:
         return jsonify({"error": "decode_failed"}), 400
 
-    max_width = 500
+    max_width = 420
     if image.width > max_width:
         ratio = max_width / float(image.width)
         new_size = (max_width, int(image.height * ratio))
         image = image.resize(new_size, Image.Resampling.LANCZOS)
 
     out = io.BytesIO()
-    image.save(out, format="WEBP", optimize=True, quality=62, method=6)
+    image.save(out, format="WEBP", optimize=True, quality=56, method=6)
     compressed = base64.b64encode(out.getvalue()).decode("utf-8")
     return jsonify({"status": "success", "image": f"data:image/webp;base64,{compressed}"})
 
