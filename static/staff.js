@@ -8,6 +8,7 @@ const USER_ROLE_KEY = 'user_role';
 let authState = null;
 let liveEventSource = null;
 let callStaffAlertUntil = 0;
+let renderFrameId = 0;
 
 if (document.body?.dataset.autoStaff === '1') {
   localStorage.setItem(USER_ROLE_KEY, 'staff');
@@ -99,6 +100,22 @@ function stackItems(items = []) {
     current.qty += Math.max(1, Number(item.qty || 1));
   });
   return [...itemMap.values()];
+}
+
+function applyAdaptiveGridData(node, count) {
+  if (!node) return;
+  const total = Math.max(0, Number(count || 0));
+  node.dataset.gridSize = total > 9 ? '4' : '3';
+  node.dataset.overflowBlur = total > 16 ? '1' : '0';
+}
+
+function queueRenderTabs() {
+  if (renderFrameId) cancelAnimationFrame(renderFrameId);
+  renderFrameId = requestAnimationFrame(() => {
+    renderFrameId = 0;
+    renderCustomerTab();
+    renderCheckoutTab();
+  });
 }
 
 function applyRoleRestrictions() {
@@ -227,7 +244,9 @@ function tableCard(table, orders = [], actions = [], options = {}) {
       const row = document.createElement('small');
       row.className = 'summary-item';
       const qty = Math.max(1, Number(item.qty || 1));
-      const thumb = item.image ? `<img src="${item.image}" alt="${item.name}" class="table-order-thumb" />` : '<span class="table-order-thumb">🍽️</span>';
+      const thumb = item.image
+        ? `<img src="${item.image}" alt="${item.name}" class="table-order-thumb" loading="lazy" decoding="async" fetchpriority="low" />`
+        : '<span class="table-order-thumb">🍽️</span>';
       row.innerHTML = `${thumb}<span>${item.name}${showQty && qty > 1 ? ` x${qty}` : ''}${hasAddon ? '<span class="addon-flag">➕</span>' : ''}</span>`;
       orderSummary.appendChild(row);
     });
@@ -245,11 +264,11 @@ function renderCustomerTab() {
   ));
 
   if (!customerTables.length) {
-    list.dataset.gridSize = '3';
+    applyAdaptiveGridData(list, 0);
     list.innerHTML = '<div class="empty-state">ยังไม่มีโต๊ะรอดำเนินการ</div>';
     return;
   }
-  list.dataset.gridSize = customerTables.length > 9 ? '4' : '3';
+  applyAdaptiveGridData(list, customerTables.length);
 
   customerTables.forEach((table) => {
     const tableOrders = state.orders.filter((order) => order.target === 'table' && order.target_id === table.id && order.status !== 'cancelled');
@@ -313,11 +332,11 @@ function renderCheckoutTab() {
   ));
 
   if (!checkoutTables.length) {
-    list.dataset.gridSize = '3';
+    applyAdaptiveGridData(list, 0);
     list.innerHTML = '<div class="empty-state">ยังไม่มีโต๊ะรอเช็คบิล</div>';
     return;
   }
-  list.dataset.gridSize = checkoutTables.length > 9 ? '4' : '3';
+  applyAdaptiveGridData(list, checkoutTables.length);
 
   checkoutTables.forEach((table) => {
     const tableItems = state.orders
@@ -440,8 +459,7 @@ function refreshRealtimeIndicators() {
   });
   lastPendingIds = pendingNow;
   lastCheckoutIds = checkoutNow;
-  renderCustomerTab();
-  renderCheckoutTab();
+  queueRenderTabs();
 }
 
 function blinkTableCard(tableId) {

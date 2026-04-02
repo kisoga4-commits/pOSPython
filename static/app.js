@@ -56,6 +56,43 @@ if (!isAdminLoggedIn && localStorage.getItem(ADMIN_SESSION_KEY) === '1') {
 const tableParam = Number(new URLSearchParams(window.location.search).get('table') || 0);
 const scannerAllowedScreens = new Set(['customer', 'cashier']);
 
+function createThumbMarkup(src, alt, className, fallbackClass = '') {
+  if (!src) return `<span class="${className} ${fallbackClass}">🍽️</span>`;
+  const safeAlt = String(alt || 'item');
+  return `<img src="${src}" alt="${safeAlt}" class="${className}" loading="lazy" decoding="async" fetchpriority="low" />`;
+}
+
+function applyAdaptiveGridData(node, count) {
+  if (!node) return;
+  const total = Math.max(0, Number(count || 0));
+  node.dataset.gridSize = total > 9 ? '4' : '3';
+  node.dataset.overflowBlur = total > 16 ? '1' : '0';
+}
+
+async function compressImageFileClient(file, options = {}) {
+  if (!file || !file.type?.startsWith('image/')) return '';
+  if (typeof createImageBitmap !== 'function') {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result || '');
+      reader.readAsDataURL(file);
+    });
+  }
+  const maxWidth = Number(options.maxWidth || 1280);
+  const quality = Number(options.quality || 0.78);
+  const imageBitmap = await createImageBitmap(file);
+  const ratio = imageBitmap.width > maxWidth ? maxWidth / imageBitmap.width : 1;
+  const width = Math.max(1, Math.round(imageBitmap.width * ratio));
+  const height = Math.max(1, Math.round(imageBitmap.height * ratio));
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext('2d', { alpha: false });
+  context.drawImage(imageBitmap, 0, 0, width, height);
+  imageBitmap.close();
+  return canvas.toDataURL('image/jpeg', quality);
+}
+
 async function loadNetworkBaseUrl() {
   const network = await api('/api/system/network');
   if (!network.error && network.base_url) {
@@ -423,7 +460,7 @@ function renderTables() {
       ? `<div class="table-head-row"><strong>${unitLabel()} ${table.id}</strong><span class="status-chip ${meta.tone}">${meta.icon}</span></div>
          <div class="table-image-grid">${stackedItems.slice(-4).map((i) => {
     const qty = Math.max(1, Number(i.qty || 1));
-    const thumb = i.image ? `<img src="${i.image}" alt="${i.name}" class="table-item-thumb" />` : '<span class="table-item-thumb fallback">🍽️</span>';
+    const thumb = createThumbMarkup(i.image, i.name, 'table-item-thumb', 'fallback');
     return `<span class="table-image-cell">${thumb}${qty > 1 ? `<span class="table-item-qty-badge">x${qty}</span>` : ''}</span>`;
   }).join('')}</div>
          ${pendingRequests.length > 0 ? '<div class="dot-notify">🔔 มีคำขอรอยืนยัน</div>' : ''}
@@ -925,6 +962,7 @@ function renderCashier() {
   const queues = db.tables.filter((t) => getTableOrders(t.id).some((o) => o.status === 'accepted'));
   qs('checkout-count').textContent = `${queues.length} รายการ`;
   if (!queues.length) {
+    applyAdaptiveGridData(wrap, 0);
     wrap.innerHTML = '<div class="empty">ยังไม่มีคิวใช้งาน</div>';
     return;
   }
@@ -947,7 +985,7 @@ function renderCashier() {
       </div>
       <div class="checkout-items">${groupedItems.length ? groupedItems.slice(-5).map((i) => {
     const qty = Math.max(1, Number(i.qty || 1));
-    const thumb = i.image ? `<img src="${i.image}" alt="${i.name}" class="checkout-item-thumb" />` : '<span class="checkout-item-thumb fallback">🍽️</span>';
+    const thumb = createThumbMarkup(i.image, i.name, 'checkout-item-thumb', 'fallback');
     return `<div class="checkout-item-row">${thumb}<span>${i.name}${qty > 1 ? ` x${qty}` : ''}</span></div>`;
   }).join('') : ''}</div>
       <strong>รวม ${money(total)} บาท</strong>`;
@@ -958,7 +996,7 @@ function renderCashier() {
     });
     wrap.appendChild(row);
   });
-  wrap.dataset.gridSize = queues.length > 9 ? '4' : '3';
+  applyAdaptiveGridData(wrap, queues.length);
 }
 
 function renderMenu() {
@@ -1725,8 +1763,8 @@ function bind() {
   qs('menu-image-file').addEventListener('change', async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    menuImagePreviewData = await new Promise((resolve) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.readAsDataURL(file); });
-    const compressed = await api('/api/menu/upload-image', { method: 'POST', body: JSON.stringify({ image: menuImagePreviewData }) });
+    menuImagePreviewData = await compressImageFileClient(file, { maxWidth: 1280, quality: 0.8 });
+    const compressed = await api('/api/menu/upload-image', { method: 'POST', body: JSON.stringify({ image: menuImagePreviewData || '' }) });
     menuImagePreviewData = compressed.image || menuImagePreviewData;
     qs('menu-image-preview').src = menuImagePreviewData;
     qs('menu-image-preview').classList.remove('hidden');
