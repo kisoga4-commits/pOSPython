@@ -276,6 +276,18 @@ def main() -> None:
             raise AssertionError("customer live missing table state after checkout")
         if table_state.get("status") != "available":
             raise AssertionError(f"table should be available after checkout, got {table_state.get('status')}")
+        bill_after_checkout = client.get("/api/bill/table/1")
+        assert_status(bill_after_checkout, 200, "bill excludes completed by default")
+        bill_after_checkout_payload = bill_after_checkout.get_json() or {}
+        if float(bill_after_checkout_payload.get("total", -1)) != 0:
+            raise AssertionError(
+                f"bill total should reset after checkout, got {bill_after_checkout_payload.get('total')}"
+            )
+        bill_with_completed = client.get("/api/bill/table/1?include_completed=1")
+        assert_status(bill_with_completed, 200, "bill includes completed when requested")
+        bill_with_completed_payload = bill_with_completed.get_json() or {}
+        if float(bill_with_completed_payload.get("total", 0)) <= 0:
+            raise AssertionError("bill with include_completed should contain historical paid items")
 
         # Create one more order to verify QR payment checkout mode.
         order_qr = client.post(
