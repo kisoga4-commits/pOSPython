@@ -40,11 +40,15 @@ function resolvePaymentQrImage(cfg, amount) {
     if (dynamicImage) return dynamicImage;
   }
   if (hasUploadedQrImage) return settings.qrImage;
+
   if (promptPayId) {
     const staticPromptPayImage = buildStaticPromptPayImage(promptPayId);
     if (staticPromptPayImage) return staticPromptPayImage;
   }
   return buildQrImageUrl('promptpay-not-configured');
+
+  return '';
+
 }
 
 function summarizeItems(items = []) {
@@ -106,7 +110,6 @@ function renderBill(bill) {
     return;
   }
 
-  qrWrap?.classList.remove('hidden');
   groupedItems.forEach((item) => {
     const row = document.createElement('div');
     row.className = 'list-card bill-row-item';
@@ -119,7 +122,13 @@ function renderBill(bill) {
   });
   qs('customer-facing-total').textContent = money(bill.total);
   const qrImage = resolvePaymentQrImage(settings, Number(bill.total || 0));
-  qs('customer-facing-qr-image').src = qrImage;
+  if (qrImage) {
+    qs('customer-facing-qr-image').src = qrImage;
+    qrWrap?.classList.remove('hidden');
+  } else {
+    qs('customer-facing-qr-image').removeAttribute('src');
+    qrWrap?.classList.add('hidden');
+  }
 }
 
 function renderWaitingDisplay() {

@@ -932,8 +932,13 @@ async function openBill(targetId) {
   }
   qs('bill-total').textContent = money(bill.total);
   const paymentImage = resolvePaymentQrImage(db.settings, Number(bill.total || 0));
-  qs('bill-payment-qr-image').src = paymentImage;
-  qs('bill-payment-qr-wrap').classList.remove('hidden');
+  if (paymentImage) {
+    qs('bill-payment-qr-image').src = paymentImage;
+    qs('bill-payment-qr-wrap').classList.remove('hidden');
+  } else {
+    qs('bill-payment-qr-image').removeAttribute('src');
+    qs('bill-payment-qr-wrap').classList.add('hidden');
+  }
   qs('payment-modal').classList.remove('hidden');
 }
 
@@ -998,11 +1003,15 @@ function resolvePaymentQrImage(settings, totalAmount) {
     if (dynamicImage) return dynamicImage;
   }
   if (hasUploadedQrImage) return cfg.qrImage;
+
   if (promptPayId) {
     const staticPromptPayImage = buildStaticPromptPayImage(promptPayId);
     if (staticPromptPayImage) return staticPromptPayImage;
   }
   return buildQrImageUrl('promptpay-not-configured');
+
+  return '';
+
 }
 
 function renderCashier() {
@@ -1815,12 +1824,16 @@ function bind() {
   qs('menu-image-file').addEventListener('change', async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
+
     menuImagePreviewData = await compressImageFileClient(file, {
       maxWidth: 960,
       squareSize: 640,
       quality: 0.72,
       format: 'image/webp',
     });
+
+    menuImagePreviewData = await compressImageFileClient(file, { maxWidth: 512, quality: 0.66, format: 'image/webp' });
+
     const compressed = await api('/api/menu/upload-image', { method: 'POST', body: JSON.stringify({ image: menuImagePreviewData || '' }) });
     menuImagePreviewData = compressed.image || menuImagePreviewData;
     qs('menu-image-preview').src = menuImagePreviewData;
