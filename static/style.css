@@ -924,8 +924,12 @@ main{display:grid;gap:10px}
 .main-tab:nth-child(4) svg{stroke:#a855f7}
 .main-tab.is-active svg{filter:drop-shadow(0 2px 3px rgba(0,0,0,.12))}
 .backup-panel{border:1px dashed #93c5fd;background:linear-gradient(150deg,#f8fafc,#ecfeff)}
+.backup-guide-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;margin:10px 0}
+.backup-guide-card{border:1px solid #bfdbfe;border-radius:12px;background:#fff;padding:10px;display:grid;gap:4px}
+.backup-guide-card small{color:#64748b}
 .backup-row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 .backup-row small{display:block;color:#64748b;margin-top:3px}
+.backup-source{font-size:.78rem;color:#1d4ed8;background:#dbeafe;border:1px solid #93c5fd;border-radius:999px;padding:4px 8px}
 .file-like-btn{display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
 
 .sales-comparison-card{padding:10px 12px;border-radius:12px;display:grid;gap:4px}

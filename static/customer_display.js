@@ -65,10 +65,13 @@ function buildPromptPayQrImage(promptPayId, amount, dynamic) {
 
 function resolvePaymentQrImage(cfg, amount) {
   const settings = cfg || {};
-  if (settings.dynamicPromptPay) {
+  const promptPayId = String(settings.promptPay || '').trim();
+  const hasUploadedQrImage = Boolean(String(settings.qrImage || '').trim());
+  if (settings.dynamicPromptPay && promptPayId) {
     return buildPromptPayQrImage(settings.promptPay || '', Number(amount || 0), true);
   }
-  return settings.qrImage || buildPromptPayQrImage(settings.promptPay || '', Number(amount || 0), false);
+  if (hasUploadedQrImage) return settings.qrImage;
+  return buildPromptPayQrImage(promptPayId, Number(amount || 0), false);
 }
 
 function summarizeItems(items = []) {

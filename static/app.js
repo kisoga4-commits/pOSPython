@@ -909,10 +909,13 @@ function buildPromptPayQrImage(promptPayId, amount, dynamic) {
 
 function resolvePaymentQrImage(settings, totalAmount) {
   const cfg = settings || {};
-  if (cfg.dynamicPromptPay) {
+  const promptPayId = String(cfg.promptPay || '').trim();
+  const hasUploadedQrImage = Boolean(String(cfg.qrImage || '').trim());
+  if (cfg.dynamicPromptPay && promptPayId) {
     return buildPromptPayQrImage(cfg.promptPay || '', Number(totalAmount || 0), true);
   }
-  return cfg.qrImage || buildPromptPayQrImage(cfg.promptPay || '', Number(totalAmount || 0), false);
+  if (hasUploadedQrImage) return cfg.qrImage;
+  return buildPromptPayQrImage(promptPayId, Number(totalAmount || 0), false);
 }
 
 function renderCashier() {
@@ -1345,13 +1348,18 @@ function writeLocalBackups(rows) {
 function pushLocalBackup(snapshotDb) {
   const now = new Date();
   const backups = readLocalBackups();
+  const source = snapshotDb?.__source === 'before_restore' ? 'before_restore' : 'local';
+  const payload = source === 'before_restore'
+    ? { ...snapshotDb, __source: undefined }
+    : snapshotDb;
   backups.unshift({
     id: `${now.getTime()}-${Math.random().toString(16).slice(2, 7)}`,
     created_at: now.toISOString(),
     store_name: snapshotDb?.settings?.storeName || 'FAKDU',
     table_count: Number(snapshotDb?.tableCount || 0),
     sales_count: Array.isArray(snapshotDb?.sales) ? snapshotDb.sales.length : 0,
-    payload: snapshotDb,
+    source,
+    payload,
   });
   writeLocalBackups(backups);
 }
@@ -1379,7 +1387,9 @@ function renderBackupList() {
     const card = document.createElement('div');
     card.className = 'list-card backup-row';
     const stamp = new Date(row.created_at || Date.now()).toLocaleString('th-TH');
+    const sourceTag = row.source === 'before_restore' ? '🛟 ก่อนกู้คืน' : '🖥️ ภายในเครื่อง';
     card.innerHTML = `<div><strong>${row.store_name || 'FAKDU'}</strong><small>${stamp} • โต๊ะ ${row.table_count || 0} • บิล ${row.sales_count || 0}</small></div>
+      <span class="backup-source">${sourceTag}</span>
       <div class="btn-row">
         <button class="btn-soft js-backup-download" data-id="${row.id}" type="button">ดาวน์โหลด</button>
         <button class="btn-secondary js-backup-restore" data-id="${row.id}" type="button">กู้คืน</button>
@@ -1869,13 +1879,15 @@ function bind() {
       event.target.value = '';
       return;
     }
+    const latestSnapshot = await api('/api/backup');
+    if (!latestSnapshot.error) pushLocalBackup({ ...latestSnapshot, __source: 'before_restore' });
     const result = await api('/api/restore', { method: 'POST', body: JSON.stringify(parsed) });
     event.target.value = '';
     if (result.error) {
       alert('กู้คืนข้อมูลไม่สำเร็จ');
       return;
     }
-    pushLocalBackup(parsed);
+    renderBackupList();
     await loadData();
     alert('กู้คืนข้อมูลจากไฟล์สำเร็จ');
   });
