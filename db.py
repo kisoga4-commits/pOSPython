@@ -3,6 +3,7 @@ import os
 import sqlite3
 import random
 import string
+import time
 from copy import deepcopy
 from datetime import datetime
 from threading import Lock
@@ -10,6 +11,10 @@ from threading import Lock
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 DB_FILE = os.path.join(BASE_DIR, "pos_local.sqlite3")
 _db_lock = Lock()
+_db_initialized = False
+_db_cache = None
+_db_cache_expires_at = 0.0
+CACHE_TTL_SECONDS = 0.35
 
 
 def now_iso() -> str:
@@ -85,7 +90,12 @@ def default_db() -> dict:
 
 
 def ensure_db_exists() -> None:
+    global _db_initialized
+    if _db_initialized:
+        return
     with _db_lock:
+        if _db_initialized:
+            return
         with sqlite3.connect(DB_FILE) as conn:
             conn.execute(
                 """
@@ -105,6 +115,7 @@ def ensure_db_exists() -> None:
                     ("main", payload, now_iso()),
                 )
             conn.commit()
+        _db_initialized = True
 
 
 def _normalize_db(data: dict) -> dict:
@@ -147,14 +158,23 @@ def _normalize_db(data: dict) -> dict:
 
 
 def load_db() -> dict:
+    global _db_cache_expires_at
     ensure_db_exists()
+    now = time.monotonic()
+    if _db_cache is not None and now < _db_cache_expires_at:
+        return deepcopy(_db_cache)
     with _db_lock:
+        if _db_cache is not None and now < _db_cache_expires_at:
+            return deepcopy(_db_cache)
         with sqlite3.connect(DB_FILE) as conn:
             cur = conn.execute("SELECT state_json FROM app_state WHERE state_key = ?", ("main",))
             row = cur.fetchone()
             if row is None:
-                return default_db()
-            return _normalize_db(json.loads(row[0]))
+                data = default_db()
+            else:
+                data = _normalize_db(json.loads(row[0]))
+        _set_cache_unlocked(data)
+        return deepcopy(data)
 
 
 def save_db(data: dict) -> dict:
@@ -175,7 +195,14 @@ def save_db(data: dict) -> dict:
                 ("main", payload, normalized["meta"]["updated_at"]),
             )
             conn.commit()
+        _set_cache_unlocked(normalized)
     return normalized
+
+
+def _set_cache_unlocked(data: dict) -> None:
+    global _db_cache, _db_cache_expires_at
+    _db_cache = deepcopy(data)
+    _db_cache_expires_at = time.monotonic() + CACHE_TTL_SECONDS
 
 
 def reset_tables(data: dict, preserve_existing_suffix: bool = True) -> dict:
