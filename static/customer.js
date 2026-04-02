@@ -11,6 +11,7 @@ let submitState = 'idle';
 let lastSubmittedOrderId = '';
 let renderMenuTaskToken = 0;
 let activeItemDraftQty = 1;
+let pendingSubmission = null;
 const params = new URLSearchParams(window.location.search);
 function parseCombinedTableParam(rawValue = '') {
   const token = String(rawValue || '').trim();
@@ -27,6 +28,7 @@ const lockedTableToken = parsedToken.token || '';
 const masterBaseUrl = window.location.origin;
 let liveEventSource = null;
 const cartStorageKey = `customer_cart_table_${lockedTableId || 'unknown'}`;
+const pendingSubmissionStorageKey = `customer_pending_submission_${lockedTableId || 'unknown'}`;
 const userRole = localStorage.getItem('user_role') || '';
 
 const TABLE_STATUS_META = {
@@ -216,6 +218,40 @@ function addToCart(item, options = {}) {
 function persistCart() {
   sessionStorage.setItem(cartStorageKey, JSON.stringify(cart));
   localStorage.setItem(cartStorageKey, JSON.stringify(cart));
+}
+
+function persistPendingSubmission() {
+  if (pendingSubmission) {
+    sessionStorage.setItem(pendingSubmissionStorageKey, JSON.stringify(pendingSubmission));
+    localStorage.setItem(pendingSubmissionStorageKey, JSON.stringify(pendingSubmission));
+    return;
+  }
+  sessionStorage.removeItem(pendingSubmissionStorageKey);
+  localStorage.removeItem(pendingSubmissionStorageKey);
+}
+
+function loadPendingSubmission() {
+  try {
+    const raw = sessionStorage.getItem(pendingSubmissionStorageKey) || localStorage.getItem(pendingSubmissionStorageKey);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !Array.isArray(parsed.items) || !parsed.items.length) return;
+    pendingSubmission = parsed;
+  } catch (error) {
+    pendingSubmission = null;
+    persistPendingSubmission();
+  }
+}
+
+function updatePendingSubmissionNote() {
+  const noteNode = document.getElementById('pending-order-note');
+  if (!noteNode) return;
+  if (!pendingSubmission?.items?.length) {
+    noteNode.textContent = '';
+    return;
+  }
+  const totalQty = pendingSubmission.items.reduce((sum, item) => sum + Math.max(1, Number(item.qty || 1)), 0);
+  noteNode.textContent = `ส่งแล้ว ${totalQty} รายการ · รอร้านยืนยัน`;
 }
 
 function loadCartFromSession() {
@@ -614,12 +650,19 @@ async function loadLive() {
       }
       return;
     }
+    let shouldRenderMenu = false;
     if (Array.isArray(data.menu) && data.menu.length) {
+      const nextMenuSignature = JSON.stringify(data.menu);
+      const currentMenuSignature = JSON.stringify(menu);
       menu = data.menu;
+      shouldRenderMenu = nextMenuSignature !== currentMenuSignature;
       await window.posDB.saveMenu(menu);
     } else if (!menu.length) {
       const cachedMenu = await window.posDB.loadMenu();
-      if (cachedMenu.length) menu = cachedMenu;
+      if (cachedMenu.length) {
+        menu = cachedMenu;
+        shouldRenderMenu = true;
+      }
     }
     if (data.settings && typeof data.settings === 'object') {
       currentSettings = data.settings;
@@ -637,10 +680,16 @@ async function loadLive() {
       } else if (lastOrder.status === 'accepted') {
         submitState = 'confirmed';
         msg.textContent = 'พนักงานยืนยันคำขอแล้ว';
+        pendingSubmission = null;
+        persistPendingSubmission();
+        updatePendingSubmissionNote();
         refreshSubmitState();
       } else if (lastOrder.status === 'cancelled') {
         submitState = 'rejected';
         msg.textContent = 'คำขอถูกปฏิเสธ กรุณาตรวจรายการแล้วส่งใหม่';
+        pendingSubmission = null;
+        persistPendingSubmission();
+        updatePendingSubmissionNote();
         refreshSubmitState();
       }
     }
@@ -648,7 +697,7 @@ async function loadLive() {
     setLockedTableUI();
     updateTableStatus(data.tables || []);
     updateOrderAckIndicator(data.orders || []);
-    renderMenu();
+    if (shouldRenderMenu || !document.getElementById('menu-list')?.children?.length) renderMenu();
   } catch (error) {
     const cachedMenu = await window.posDB.loadMenu();
     if (cachedMenu.length) {
@@ -784,6 +833,13 @@ function bind() {
         lastSubmittedOrderId = res.order?.id || '';
         submitState = 'waiting_confirm';
         document.getElementById('message').textContent = 'ส่งคำขอสำเร็จ · รอร้านยืนยัน';
+        pendingSubmission = {
+          orderId: lastSubmittedOrderId,
+          createdAt: new Date().toISOString(),
+          items: payloadCart,
+        };
+        persistPendingSubmission();
+        updatePendingSubmissionNote();
         playOrderSubmitSound();
         clearCart();
         document.getElementById('cart-modal').classList.add('hidden');
@@ -799,6 +855,13 @@ function bind() {
       submitState = 'waiting_confirm';
       refreshSubmitState();
       document.getElementById('message').textContent = 'บันทึกคำขอไว้แล้ว จะซิงก์อัตโนมัติเมื่อเชื่อมต่อ LAN ได้';
+      pendingSubmission = {
+        orderId: pendingPayload.client_order_id,
+        createdAt: new Date().toISOString(),
+        items: payloadCart,
+      };
+      persistPendingSubmission();
+      updatePendingSubmissionNote();
       clearCart();
       document.getElementById('cart-modal').classList.add('hidden');
     }
@@ -876,6 +939,8 @@ function bind() {
   }
   bind();
   loadCartFromSession();
+  loadPendingSubmission();
+  updatePendingSubmissionNote();
   renderCart();
   window.posSync.startSync(masterBaseUrl);
   validateCartAgainstTableStatus().then(() => loadLive()).then(setLockedTableUI);
