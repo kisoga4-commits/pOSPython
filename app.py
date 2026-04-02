@@ -585,9 +585,11 @@ def api_checkout():
 @require_license
 def api_bill(target: str, target_id: int):
     db = load_db()
+    include_completed = str(request.args.get("include_completed", "0")).strip().lower() in {"1", "true", "yes"}
+    allowed_statuses = {"accepted", "completed"} if include_completed else {"accepted"}
     orders = [
         order for order in db["orders"]
-        if order["target"] == target and order["target_id"] == target_id and order["status"] in {"accepted", "completed"}
+        if order["target"] == target and order["target_id"] == target_id and order["status"] in allowed_statuses
     ]
     items = []
     first_created = None
