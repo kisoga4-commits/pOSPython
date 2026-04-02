@@ -152,6 +152,15 @@ async function safeApi(path, options = {}) {
   }
 }
 
+async function safeFetchOk(path, options = {}) {
+  try {
+    const res = await fetch(path, { ...options, cache: 'no-store' });
+    return res.ok;
+  } catch (error) {
+    return false;
+  }
+}
+
 function setSystemCheckState(state, note = '') {
   const pill = qs('system-check-status');
   if (!pill) return;
@@ -164,9 +173,10 @@ function setSystemCheckState(state, note = '') {
 
 async function checkSystemHealth() {
   setSystemCheckState('checking', 'กำลังตรวจสอบการเชื่อมต่อจาก /api/ping และ /api/system/network ...');
-  const [ping, network] = await Promise.all([
+  const [ping, network, displaySync] = await Promise.all([
     safeApi('/api/ping'),
     safeApi('/api/system/network'),
+    safeApi('/api/customer-display/active'),
   ]);
   const online = !ping.error && !network.error;
   const serverStatus = qs('system-server-status');
@@ -174,6 +184,9 @@ async function checkSystemHealth() {
   const baseUrl = qs('system-base-url');
   const lanIp = qs('system-lan-ip');
   const hostCheck = qs('system-host-check');
+  const displaySyncStatus = qs('system-display-sync-status');
+  const staffScanStatus = qs('system-staff-scan-status');
+  const customerScanStatus = qs('system-customer-scan-status');
   if (serverStatus) {
     serverStatus.textContent = online ? 'Online' : 'Offline';
     serverStatus.classList.toggle('system-server-online', online);
@@ -183,6 +196,24 @@ async function checkSystemHealth() {
   if (baseUrl) baseUrl.textContent = network.base_url || resolveRuntimeHost();
   if (lanIp) lanIp.textContent = network.local_ip || document.body.dataset.localIp || '-';
   if (hostCheck) hostCheck.textContent = network.is_host_request ? `ใช่ (${network.request_ip || '-'})` : `ไม่ใช่ (${network.request_ip || '-'})`;
+  if (displaySyncStatus) {
+    const syncedTable = Number(displaySync.table_id || 0);
+    displaySyncStatus.textContent = displaySync.error
+      ? `ไม่พร้อม (${displaySync.error})`
+      : `พร้อม (Table ${syncedTable || 0} · v${displaySync.version || '-'})`;
+  }
+
+  const staffScanReady = await safeFetchOk('/scan/staff', { headers: { Accept: 'text/html' } });
+  if (staffScanStatus) staffScanStatus.textContent = staffScanReady ? 'พร้อมใช้งาน' : 'ไม่พร้อม';
+
+  const firstTableId = Number(db.tables?.[0]?.id || 0);
+  if (!firstTableId) {
+    if (customerScanStatus) customerScanStatus.textContent = 'รอตั้งค่าโต๊ะก่อนตรวจสอบ';
+  } else {
+    const customerScanReady = await safeFetchOk(`/scan/customer/${firstTableId}`, { headers: { Accept: 'text/html' } });
+    if (customerScanStatus) customerScanStatus.textContent = customerScanReady ? `พร้อมใช้งาน (Table ${firstTableId})` : 'ไม่พร้อม';
+  }
+
   if (!online) {
     const fallbackReason = ping.error === 'network_unreachable' || network.error === 'network_unreachable'
       ? 'ไม่สามารถติดต่อเครือข่ายได้ (fallback mode)'
@@ -390,7 +421,11 @@ function renderTables() {
     const stackedItems = summarizeItems(previewItems);
     card.innerHTML = previewItems.length
       ? `<div class="table-head-row"><strong>${unitLabel()} ${table.id}</strong><span class="status-chip ${meta.tone}">${meta.icon}</span></div>
-         <small>${stackedItems.slice(-4).map((i) => `${i.image ? '<img src=\"' + i.image + '\" alt=\"' + i.name + '\" class=\"table-item-thumb\" /> ' : ''}${i.name}${Number(i.qty || 1) > 1 ? ` x${Number(i.qty || 1)}` : ''} • ${money(i.price)}`).join('<br>')}</small>
+         <div class="table-image-grid">${stackedItems.slice(-4).map((i) => {
+    const qty = Math.max(1, Number(i.qty || 1));
+    const thumb = i.image ? `<img src="${i.image}" alt="${i.name}" class="table-item-thumb" />` : '<span class="table-item-thumb fallback">🍽️</span>';
+    return `<span class="table-image-cell">${thumb}${qty > 1 ? `<span class="table-item-qty-badge">x${qty}</span>` : ''}</span>`;
+  }).join('')}</div>
          ${pendingRequests.length > 0 ? '<div class="dot-notify">🔔 มีคำขอรอยืนยัน</div>' : ''}
          ${showAdditionalOrder ? '<div class="dot-notify notify-additional">🆕 มีการสั่งเพิ่ม</div>' : ''}
          <div class="table-total">รวม ${money((items.length ? total : pendingItems.reduce((sum, item) => sum + (Number(item.price || 0) * Math.max(1, Number(item.qty || 1))), 0)))} บาท</div>`
