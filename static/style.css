@@ -686,6 +686,9 @@ input,select{
 .addon-check-list{display:grid;gap:8px}
 .addon-check-item{display:flex;align-items:center;gap:8px}
 .addon-check-item input{width:auto}
+.addon-option-row{display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%}
+.addon-option-row strong{font-size:.95rem}
+.addon-option-row small{color:#6b7280;font-weight:700;white-space:nowrap}
 
 .app-shell.desktop-shell{padding:8px}
 .desktop-shell .tab-bar{grid-template-columns:repeat(4,minmax(0,1fr))}
@@ -714,6 +717,11 @@ input,select{
 .bill-modal-card{max-width:620px}
 .bill-items-clean{max-height:220px;overflow:auto;padding:8px;border-radius:14px;background:#f8fafc;border:1px solid #e5e7eb}
 .bill-row-item{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-radius:12px;background:#fff;box-shadow:0 8px 20px rgba(15,23,42,.06)}
+.bill-item-main{display:grid;gap:4px;min-width:0}
+.bill-item-main small{color:#6b7280}
+.bill-item-side{display:flex;align-items:center;gap:8px}
+.bill-item-actions{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
+.bill-item-actions .btn-soft{padding:7px 10px}
 .bill-foot{font-size:1.15rem;color:#4c1d95;text-align:right;margin-top:12px}
 .bill-payment-qr{display:grid;place-items:center;padding:8px 0 12px}
 .bill-action-row button{min-height:56px;font-size:1rem}
@@ -814,6 +822,10 @@ main{display:grid;gap:10px}
 .mobile-menu-list{max-height:52vh;overflow:auto;padding-right:2px}
 #order-menu-grid{max-height:48vh;overflow:auto;padding-right:2px}
 #order-cart-list{max-height:38vh;overflow:auto;padding-right:2px}
+.order-panel-layout .order-panel{min-height:0}
+#order-menu-grid{max-height:52vh;overflow:auto;padding-right:4px;align-content:start}
+#order-cart-list{max-height:52vh}
+.mobile-menu-list{content-visibility:auto;contain-intrinsic-size:1px 520px}
 
 /* customer page compact + visual first */
 .delivery-app-shell{max-width:860px;padding:8px}

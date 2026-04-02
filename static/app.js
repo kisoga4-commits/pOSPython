@@ -12,6 +12,7 @@ let lastCheckoutRequestIds = new Set();
 let activeOrderItemDraft = null;
 let acceptRequestInFlight = false;
 const requestActionInFlight = new Set();
+let orderMenuRenderToken = 0;
 let salesPeriod = 'day';
 let salesFilterRange = null;
 let activeMenuCategory = 'ทั้งหมด';
@@ -374,33 +375,46 @@ function renderTables() {
 }
 
 function renderOrderMenuChoices() {
+  const renderToken = ++orderMenuRenderToken;
   const grid = qs('order-menu-grid');
   grid.innerHTML = '';
   const filteredMenu = (db.menu || []).filter((item) => activeMenuCategory === 'ทั้งหมด' || (item.category || 'ทั่วไป') === activeMenuCategory);
-  filteredMenu.forEach((item) => {
-    const btn = document.createElement('article');
-    btn.className = 'menu-choice visual large-thumb';
-    btn.innerHTML = `<div class="menu-choice-thumb">${item.image ? `<img src="${item.image}" alt="${item.name}" />` : 'Image'}</div><strong>${item.name}</strong><small>฿${money(item.price)}</small>`;
-    btn.addEventListener('click', () => {
-      const addonOptions = normalizeAddonOptions(item);
-      if (!addonOptions.length) {
-        addItemToOrderCart(item, { addons: [], qty: 1, note: '' });
-        return;
-      }
-      activeOrderItemDraft = item;
-      qs('order-item-detail-title').textContent = item.name;
-      const addonWrap = qs('order-item-addon-checkboxes');
-      addonWrap.innerHTML = '';
-      addonOptions.forEach((option) => {
-        const row = document.createElement('label');
-        row.className = 'addon-check-item';
-        row.innerHTML = `<input type="checkbox" value="${option}" /> <span>${option}</span>`;
-        addonWrap.appendChild(row);
+  const batchSize = 60;
+  let cursor = 0;
+  const paintBatch = () => {
+    if (renderToken !== orderMenuRenderToken) return;
+    const fragment = document.createDocumentFragment();
+    const end = Math.min(cursor + batchSize, filteredMenu.length);
+    for (let index = cursor; index < end; index += 1) {
+      const item = filteredMenu[index];
+      const btn = document.createElement('article');
+      btn.className = 'menu-choice visual large-thumb';
+      btn.innerHTML = `<div class="menu-choice-thumb">${item.image ? `<img src="${item.image}" alt="${item.name}" />` : 'Image'}</div><strong>${item.name}</strong><small>฿${money(item.price)}</small>`;
+      btn.addEventListener('click', () => {
+        const addonOptions = normalizeAddonOptions(item);
+        if (!addonOptions.length) {
+          addItemToOrderCart(item, { addons: [], qty: 1, note: '' });
+          return;
+        }
+        activeOrderItemDraft = item;
+        qs('order-item-detail-title').textContent = item.name;
+        const addonWrap = qs('order-item-addon-checkboxes');
+        addonWrap.innerHTML = '';
+        addonOptions.forEach((option) => {
+          const row = document.createElement('label');
+          row.className = 'addon-check-item';
+          row.innerHTML = `<input type="checkbox" value="${option}" /> <span>${option}</span>`;
+          addonWrap.appendChild(row);
+        });
+        qs('order-item-detail-modal').classList.remove('hidden');
       });
-      qs('order-item-detail-modal').classList.remove('hidden');
-    });
-    grid.appendChild(btn);
-  });
+      fragment.appendChild(btn);
+    }
+    grid.appendChild(fragment);
+    cursor = end;
+    if (cursor < filteredMenu.length) window.requestAnimationFrame(paintBatch);
+  };
+  window.requestAnimationFrame(paintBatch);
   if (!filteredMenu.length) {
     grid.innerHTML = '<div class="empty">ไม่มีเมนูในหมวดนี้</div>';
   }
@@ -751,14 +765,94 @@ async function openBill(targetId) {
   bill.items.forEach((item) => {
     const row = document.createElement('div');
     row.className = 'bill-row-item';
-    row.innerHTML = `<strong>${item.name}</strong><span>฿${money(item.price)}</span>`;
+    const qty = Math.max(1, Number(item.qty || 1));
+    row.innerHTML = `
+      <div class="bill-item-main">
+        <strong>${item.name}${qty > 1 ? ` x${qty}` : ''}</strong>
+        ${item.addon ? `<small>${item.addon}</small>` : ''}
+      </div>
+      <div class="bill-item-side">
+        <span>฿${money(Number(item.price || 0) * qty)}</span>
+      </div>
+    `;
+    if (isAdminLoggedIn) {
+      const actions = document.createElement('div');
+      actions.className = 'bill-item-actions';
+      actions.innerHTML = `
+        <button class="btn-soft" type="button" data-action="edit">แก้ราคา/ตัวเลือก</button>
+        <button class="btn-soft btn-danger" type="button" data-action="delete">ลบ</button>
+      `;
+      actions.querySelector('[data-action="edit"]')?.addEventListener('click', () => editBillItem(item));
+      actions.querySelector('[data-action="delete"]')?.addEventListener('click', () => deleteBillItem(item));
+      row.appendChild(actions);
+    }
     qs('bill-items').appendChild(row);
   });
+  if (!isAdminLoggedIn && bill.items.length) {
+    const lockNote = document.createElement('div');
+    lockNote.className = 'muted';
+    lockNote.textContent = 'การแก้ไข/ลบรายการเช็คบิล จำกัดเฉพาะ Admin';
+    qs('bill-items').appendChild(lockNote);
+  }
   qs('bill-total').textContent = money(bill.total);
   const paymentImage = resolvePaymentQrImage(db.settings, Number(bill.total || 0));
   qs('bill-payment-qr-image').src = paymentImage;
   qs('bill-payment-qr-wrap').classList.remove('hidden');
   qs('payment-modal').classList.remove('hidden');
+}
+
+function requireBillAdminAction() {
+  if (isAdminLoggedIn) return true;
+  window.alert('เฉพาะ Admin เท่านั้นที่แก้ไข/ลบรายการเช็คบิลได้');
+  return false;
+}
+
+async function editBillItem(item) {
+  if (!requireBillAdminAction() || !item?.order_id) return;
+  const currentAddon = String(item.addon || '').trim();
+  const addon = window.prompt('แก้ไขรายการเสริม (ค่าว่าง = ไม่มี)', currentAddon);
+  if (addon === null) return;
+  const rawPrice = window.prompt('แก้ไขราคาต่อชิ้น', String(Number(item.price || 0)));
+  if (rawPrice === null) return;
+  const nextPrice = Number(rawPrice);
+  if (!Number.isFinite(nextPrice) || nextPrice < 0) {
+    window.alert('ราคาไม่ถูกต้อง');
+    return;
+  }
+  const res = await api('/api/order/item', {
+    method: 'PATCH',
+    body: JSON.stringify({
+      order_id: item.order_id,
+      item_index: Number(item.item_index),
+      addon: addon.trim(),
+      price: nextPrice,
+    }),
+  });
+  if (res.error) {
+    window.alert(`แก้ไขไม่สำเร็จ: ${res.error}`);
+    return;
+  }
+  await loadData();
+  await openBill(activeCashierTableId);
+}
+
+async function deleteBillItem(item) {
+  if (!requireBillAdminAction() || !item?.order_id) return;
+  const ok = window.confirm(`ยืนยันลบ "${item.name}" ออกจากบิล?`);
+  if (!ok) return;
+  const res = await api('/api/order/item', {
+    method: 'DELETE',
+    body: JSON.stringify({
+      order_id: item.order_id,
+      item_index: Number(item.item_index),
+    }),
+  });
+  if (res.error) {
+    window.alert(`ลบไม่สำเร็จ: ${res.error}`);
+    return;
+  }
+  await loadData();
+  await openBill(activeCashierTableId);
 }
 
 function openCustomerDisplayWindow(tableId) {
