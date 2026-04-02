@@ -17,6 +17,14 @@ const requestActionInFlight = new Set();
 let orderMenuRenderToken = 0;
 let salesPeriod = 'day';
 let salesFilterRange = null;
+let renderSignatures = {
+  tables: '',
+  orders: '',
+  menu: '',
+  settings: '',
+  sales: '',
+};
+let nextSystemHealthCheckAt = 0;
 let activeMenuCategory = 'ทั้งหมด';
 let activeBackstoreMenuCategory = 'ทั้งหมด';
 const CUSTOMER_DISPLAY_ACTIVE_TABLE_KEY = 'customer_display_active_table';
@@ -172,6 +180,7 @@ function playUISound() {
 }
 
 function playCheckoutAlertBurst(durationMs = 5000) {
+  if (LITE_MODE) return;
   checkoutAlertUntil = Math.max(checkoutAlertUntil, Date.now() + durationMs);
   const tick = () => {
     if (Date.now() > checkoutAlertUntil) return;
@@ -182,6 +191,7 @@ function playCheckoutAlertBurst(durationMs = 5000) {
 }
 
 function playCallStaffAlertBurst(durationMs = 5000) {
+  if (LITE_MODE) return;
   checkoutAlertUntil = Math.max(checkoutAlertUntil, Date.now() + durationMs);
   const tick = () => {
     if (Date.now() > checkoutAlertUntil) return;
@@ -1695,18 +1705,50 @@ async function loadData() {
   db = await api('/api/data');
   if (db.error) return;
   version = db.meta.version;
-  applyTheme();
-  renderTables();
-  renderCashier();
-  renderMenu();
-  renderOrderCategoryTabs();
-  if (!LITE_MODE) {
+  const nextTablesSignature = JSON.stringify(db.tables || []);
+  const nextOrdersSignature = JSON.stringify((db.orders || []).map((order) => [order.id, order.status, order.updated_at]));
+  const nextMenuSignature = JSON.stringify(db.menu || []);
+  const nextSettingsSignature = JSON.stringify(db.settings || {});
+  const nextSalesSignature = JSON.stringify((db.sales || []).map((sale) => [sale.id, sale.total, sale.paid_at]));
+  const forceRenderAll = !renderSignatures.tables && !renderSignatures.settings;
+
+  if (forceRenderAll || renderSignatures.settings !== nextSettingsSignature) {
+    applyTheme();
+    renderSystem();
+    renderTableQRList();
+    updateReceiptPreview();
+    renderPaymentReadiness();
+  }
+  if (forceRenderAll || renderSignatures.tables !== nextTablesSignature || renderSignatures.orders !== nextOrdersSignature) {
+    renderTables();
+    renderCashier();
+    renderDeskSummary();
+    if (selectedTableId) {
+      renderExistingOrders(selectedTableId);
+      renderPendingRequestActions(selectedTableId);
+    }
+  }
+  if (forceRenderAll || renderSignatures.menu !== nextMenuSignature) {
+    renderMenu();
+    renderOrderCategoryTabs();
+    if (selectedTableId) renderOrderMenuChoices();
+  }
+  if (!LITE_MODE && (forceRenderAll || renderSignatures.sales !== nextSalesSignature)) {
     renderSales();
     await renderBestSellers();
   }
-  renderSystem();
-  await checkSystemHealth();
-  renderDeskSummary();
+  const now = Date.now();
+  if (forceRenderAll || now >= nextSystemHealthCheckAt) {
+    await checkSystemHealth();
+    nextSystemHealthCheckAt = now + (LITE_MODE ? 60000 : 20000);
+  }
+  renderSignatures = {
+    tables: nextTablesSignature,
+    orders: nextOrdersSignature,
+    menu: nextMenuSignature,
+    settings: nextSettingsSignature,
+    sales: nextSalesSignature,
+  };
   updateNetworkStatus(true);
 }
 
@@ -2214,6 +2256,7 @@ function connectLiveEvents() {
 
 const tableBlinkTimers = new Map();
 function blinkTableCard(tableId) {
+  if (LITE_MODE) return;
   const card = document.querySelector(`.table-card[data-table-id="${tableId}"]`);
   if (!card) return;
   card.classList.add('blink-red');

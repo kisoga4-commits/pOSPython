@@ -38,19 +38,27 @@
 
       <nav class="section-card tab-bar">
         <button class="main-tab is-active" data-screen="customer" aria-label="ลูกค้า">
+          {% if not lite_mode %}
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 10.5 12 4l9 6.5"/><path d="M5 9.5V20h14V9.5"/><path d="M9 14h6"/></svg>
+          {% endif %}
           <small>ลูกค้า</small>
         </button>
         <button class="main-tab" data-screen="cashier" aria-label="เช็คบิล">
+          {% if not lite_mode %}
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="3.5" width="14" height="17" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+          {% endif %}
           <small>เช็คบิล</small>
         </button>
         <button class="main-tab" data-screen="backstore" aria-label="หลังร้าน">
+          {% if not lite_mode %}
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19h16"/><rect x="5" y="10" width="3" height="6" rx="1"/><rect x="10.5" y="7" width="3" height="9" rx="1"/><rect x="16" y="5" width="3" height="11" rx="1"/></svg>
+          {% endif %}
           <small>หลังร้าน</small>
         </button>
         <button class="main-tab" data-screen="system" aria-label="ระบบ">
+          {% if not lite_mode %}
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.9V20a2 2 0 1 1-4 0v-.2a1 1 0 0 0-.6-.9 1 1 0 0 0-1.1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.9-.6H4a2 2 0 1 1 0-4h.2a1 1 0 0 0 .9-.6 1 1 0 0 0-.2-1.1l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1 1 0 0 0 1.1.2h.1a1 1 0 0 0 .6-.9V4a2 2 0 1 1 4 0v.2a1 1 0 0 0 .6.9 1 1 0 0 0 1.1-.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1 1 0 0 0-.2 1.1v.1a1 1 0 0 0 .9.6H20a2 2 0 1 1 0 4h-.2a1 1 0 0 0-.9.6Z"/></svg>
+          {% endif %}
           <small>ระบบ</small>
         </button>
       </nav>
@@ -487,9 +495,9 @@
   </div>
 
   {% if not lite_mode %}
-  <audio id="new-order-sound" src="{{ url_for('static', filename='sounds/new_order.mp3') }}"></audio>
-  <audio id="checkout-request-sound" src="{{ url_for('static', filename='sounds/checkout.mp3') }}"></audio>
-  <audio id="call-staff-sound" src="{{ url_for('static', filename='sounds/warning.mp3') }}"></audio>
+    <audio id="new-order-sound" src="{{ url_for('static', filename='sounds/new_order.mp3') }}"></audio>
+    <audio id="checkout-request-sound" src="{{ url_for('static', filename='sounds/checkout.mp3') }}"></audio>
+    <audio id="call-staff-sound" src="{{ url_for('static', filename='sounds/warning.mp3') }}"></audio>
   {% endif %}
   <script src="{{ url_for('static', filename='promptpay.js') }}?v={{ asset_version }}"></script>
   <script src="{{ url_for('static', filename='app.js') }}?v={{ asset_version }}"></script>
