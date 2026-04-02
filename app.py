@@ -379,9 +379,10 @@ def _refresh_table_state(db: dict, table_id: int) -> None:
         status = order.get("status")
         if status == "request_pending":
             pending_exists = True
-        if status in {"accepted", "completed"}:
+        order_items = order.get("items", []) or []
+        if status in {"accepted", "completed"} and order_items:
             has_accept_or_completed = True
-            accepted_items.extend(order.get("items", []))
+            accepted_items.extend(order_items)
 
     for table in db.get("tables", []):
         if table.get("id") != table_id:
@@ -631,21 +632,12 @@ def api_order_item():
         items.pop(item_index)
 
         order["items"] = items
+        if not items:
+            order["status"] = "cancelled"
         order["updated_at"] = local_now()
 
         if order["target"] == "table" and isinstance(order.get("target_id"), int):
-            for table in db["tables"]:
-                if table["id"] == order["target_id"]:
-                    merged_items = []
-                    for table_order in db["orders"]:
-                        if (
-                            table_order["target"] == "table"
-                            and table_order.get("target_id") == order["target_id"]
-                            and table_order.get("status") != "cancelled"
-                        ):
-                            merged_items.extend(table_order.get("items", []))
-                    table["items"] = merged_items
-                    break
+            _refresh_table_state(db, order["target_id"])
 
         db = save_db(db)
         return jsonify({"status": "success", "version": db["meta"]["version"]})
@@ -1126,6 +1118,32 @@ def api_customer_live():
         "settings": db["settings"],
         "version": db["meta"]["version"],
     })
+
+
+@app.route("/api/customer-display/active", methods=["GET"])
+@require_license
+def api_customer_display_active_get():
+    db = load_db()
+    active_table_id = int(db.get("settings", {}).get("activeCustomerDisplayTable", 0) or 0)
+    if active_table_id < 0:
+        active_table_id = 0
+    return jsonify({"table_id": active_table_id, "version": db["meta"]["version"]})
+
+
+@app.route("/api/customer-display/active", methods=["POST"])
+@require_license
+@require_roles("owner", "staff")
+def api_customer_display_active_set():
+    payload = read_json()
+    table_id = payload.get("table_id", 0)
+    if not isinstance(table_id, int):
+        return jsonify({"error": "invalid table_id"}), 400
+    db = load_db()
+    if table_id > 0 and not any(table.get("id") == table_id for table in db.get("tables", [])):
+        return jsonify({"error": "table_not_found"}), 404
+    db.setdefault("settings", {})["activeCustomerDisplayTable"] = table_id
+    db = save_db(db)
+    return jsonify({"status": "success", "table_id": table_id, "version": db["meta"]["version"]})
 
 
 @app.route("/api/sales/best-sellers", methods=["GET"])

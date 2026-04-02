@@ -45,6 +45,7 @@ async function api(path, options = {}) {
   const url = path.startsWith('http') ? path : `${window.location.origin}${path}`;
   const requestOptions = {
     ...options,
+    cache: 'no-store',
     headers: { 'Content-Type': 'application/json', 'X-POS-Role': 'customer', ...(options.headers || {}) },
   };
   const res = await fetch(url, requestOptions);
@@ -99,6 +100,10 @@ function playConfirmSound() {
 
 function playOrderSubmitSound() {
   boostPlaySound('customer-confirm-sound', 2.3);
+}
+
+function playCallStaffSound() {
+  boostPlaySound('customer-call-staff-sound', 2.1);
 }
 
 function getStatusMeta(status) {
@@ -478,6 +483,12 @@ function updateTableStatus(tables = []) {
     clearCart();
     document.getElementById('message').textContent = 'โต๊ะนี้ถูกเคลียร์แล้ว ล้างตะกร้าให้อัตโนมัติ';
   }
+  const callBtn = document.getElementById('call-staff-mini-btn');
+  if (callBtn) {
+    const busy = table.call_staff_status === 'requested';
+    callBtn.disabled = busy;
+    callBtn.textContent = busy ? '🔔 ส่งคำขอแล้ว' : '🔔 เรียกพนักงาน';
+  }
 }
 
 function updateOrderAckIndicator(orders = []) {
@@ -751,6 +762,26 @@ function bind() {
       clearCart();
       document.getElementById('cart-modal').classList.add('hidden');
     }
+  });
+  document.getElementById('call-staff-mini-btn')?.addEventListener('click', async () => {
+    if (!lockedTableId) return;
+    const callBtn = document.getElementById('call-staff-mini-btn');
+    if (callBtn) callBtn.disabled = true;
+    const res = await api('/api/table/call-staff', {
+      method: 'POST',
+      body: JSON.stringify({
+        table_id: lockedTableId,
+        table_token: lockedTableToken,
+      }),
+    });
+    if (res.error) {
+      document.getElementById('message').textContent = `เรียกพนักงานไม่สำเร็จ: ${res.error}`;
+      if (callBtn) callBtn.disabled = false;
+      return;
+    }
+    playCallStaffSound();
+    document.getElementById('message').textContent = 'ส่งคำขอเรียกพนักงานแล้ว';
+    await loadLive();
   });
   document.getElementById('clear-cart-btn').addEventListener('click', () => {
     if (!cart.length) {
