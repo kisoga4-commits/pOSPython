@@ -43,6 +43,7 @@ const qrApiBase = 'https://api.qrserver.com/v1/create-qr-code/';
 let networkBaseUrl = document.body.dataset.localBaseUrl || '';
 let liveEventSource = null;
 const scannerMode = document.body.dataset.scannerMode === '1';
+let activeBackupId = '';
 const ADMIN_SESSION_KEY = 'admin_logged_in';
 const adminAllowedScreens = new Set(['customer', 'cashier', 'backstore', 'system']);
 const nonAdminAllowedScreens = new Set(['customer', 'cashier']);
@@ -113,7 +114,12 @@ async function api(path, options = {}) {
     headers: { 'Content-Type': 'application/json', 'X-POS-Role': 'owner', ...optionHeaders },
   });
   const text = await res.text();
-  const data = text ? JSON.parse(text) : {};
+  let data = {};
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch (error) {
+    return { error: 'invalid_json_response' };
+  }
   return res.ok ? data : { error: data.error || `request_failed_${res.status}` };
 }
 
@@ -779,10 +785,8 @@ async function openBill(targetId) {
       const actions = document.createElement('div');
       actions.className = 'bill-item-actions';
       actions.innerHTML = `
-        <button class="btn-soft" type="button" data-action="edit">แก้ราคา/ตัวเลือก</button>
-        <button class="btn-soft btn-danger" type="button" data-action="delete">ลบ</button>
+        <button class="btn-soft btn-danger" type="button" data-action="delete">🗑️ ลบรายการนี้</button>
       `;
-      actions.querySelector('[data-action="edit"]')?.addEventListener('click', () => editBillItem(item));
       actions.querySelector('[data-action="delete"]')?.addEventListener('click', () => deleteBillItem(item));
       row.appendChild(actions);
     }
@@ -791,7 +795,7 @@ async function openBill(targetId) {
   if (!isAdminLoggedIn && bill.items.length) {
     const lockNote = document.createElement('div');
     lockNote.className = 'muted';
-    lockNote.textContent = 'การแก้ไข/ลบรายการเช็คบิล จำกัดเฉพาะ Admin';
+    lockNote.textContent = 'การลบรายการเช็คบิล จำกัดเฉพาะ Admin บนเครื่องแม่';
     qs('bill-items').appendChild(lockNote);
   }
   qs('bill-total').textContent = money(bill.total);
@@ -805,35 +809,6 @@ function requireBillAdminAction() {
   if (isAdminLoggedIn) return true;
   window.alert('เฉพาะ Admin เท่านั้นที่แก้ไข/ลบรายการเช็คบิลได้');
   return false;
-}
-
-async function editBillItem(item) {
-  if (!requireBillAdminAction() || !item?.order_id) return;
-  const currentAddon = String(item.addon || '').trim();
-  const addon = window.prompt('แก้ไขรายการเสริม (ค่าว่าง = ไม่มี)', currentAddon);
-  if (addon === null) return;
-  const rawPrice = window.prompt('แก้ไขราคาต่อชิ้น', String(Number(item.price || 0)));
-  if (rawPrice === null) return;
-  const nextPrice = Number(rawPrice);
-  if (!Number.isFinite(nextPrice) || nextPrice < 0) {
-    window.alert('ราคาไม่ถูกต้อง');
-    return;
-  }
-  const res = await api('/api/order/item', {
-    method: 'PATCH',
-    body: JSON.stringify({
-      order_id: item.order_id,
-      item_index: Number(item.item_index),
-      addon: addon.trim(),
-      price: nextPrice,
-    }),
-  });
-  if (res.error) {
-    window.alert(`แก้ไขไม่สำเร็จ: ${res.error}`);
-    return;
-  }
-  await loadData();
-  await openBill(activeCashierTableId);
 }
 
 async function deleteBillItem(item) {
@@ -1335,7 +1310,8 @@ function readLocalBackups() {
   try {
     const raw = localStorage.getItem(BACKUP_SNAPSHOTS_KEY);
     const data = JSON.parse(raw || '[]');
-    return Array.isArray(data) ? data : [];
+    if (!Array.isArray(data)) return [];
+    return data.filter((row) => row && typeof row === 'object' && row.id && row.payload && row.created_at);
   } catch (error) {
     return [];
   }
@@ -1391,11 +1367,31 @@ function renderBackupList() {
     card.innerHTML = `<div><strong>${row.store_name || 'FAKDU'}</strong><small>${stamp} • โต๊ะ ${row.table_count || 0} • บิล ${row.sales_count || 0}</small></div>
       <span class="backup-source">${sourceTag}</span>
       <div class="btn-row">
-        <button class="btn-soft js-backup-download" data-id="${row.id}" type="button">ดาวน์โหลด</button>
-        <button class="btn-secondary js-backup-restore" data-id="${row.id}" type="button">กู้คืน</button>
+        <button class="btn-soft js-backup-manage" data-id="${row.id}" type="button">จัดการไฟล์</button>
       </div>`;
     wrap.appendChild(card);
   });
+}
+
+function deleteLocalBackup(backupId) {
+  const nextRows = readLocalBackups().filter((row) => row.id !== backupId);
+  writeLocalBackups(nextRows);
+}
+
+function openBackupActionModal(backup) {
+  if (!backup) return;
+  activeBackupId = backup.id;
+  const stamp = new Date(backup.created_at || Date.now()).toLocaleString('th-TH');
+  qs('backup-action-summary').innerHTML = `
+    <strong>${backup.store_name || 'FAKDU'}</strong>
+    <small>${stamp} • โต๊ะ ${backup.table_count || 0} • บิล ${backup.sales_count || 0}</small>
+  `;
+  qs('backup-action-modal').classList.remove('hidden');
+}
+
+function closeBackupActionModal() {
+  activeBackupId = '';
+  qs('backup-action-modal').classList.add('hidden');
 }
 
 function renderPrinterDriverOptions(selectedDriver) {
@@ -1557,8 +1553,16 @@ function bind() {
     document.querySelectorAll('[data-sales-tab]').forEach((s) => s.classList.toggle('is-active', s === btn));
     ['history', 'best'].forEach((name) => qs(`sales-tab-${name}`)?.classList.toggle('hidden', name !== btn.dataset.salesTab));
   }));
+  document.querySelectorAll('[data-backup-tab]').forEach((btn) => btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-backup-tab]').forEach((node) => node.classList.toggle('is-active', node === btn));
+    ['history', 'import'].forEach((name) => qs(`backup-tab-${name}`)?.classList.toggle('hidden', name !== btn.dataset.backupTab));
+  }));
 
   qs('close-qr-modal').addEventListener('click', () => qs('qr-modal').classList.add('hidden'));
+  qs('close-backup-action-modal')?.addEventListener('click', closeBackupActionModal);
+  qs('backup-action-modal')?.addEventListener('click', (event) => {
+    if (event.target.id === 'backup-action-modal') closeBackupActionModal();
+  });
   qs('close-forgot-admin-modal').addEventListener('click', () => qs('forgot-admin-modal').classList.add('hidden'));
   qs('admin-login-btn')?.addEventListener('click', () => openAdminLoginModal(''));
   qs('admin-logout-btn')?.addEventListener('click', () => handleAdminLogout());
@@ -1853,15 +1857,6 @@ function bind() {
     renderBackupList();
     alert('สำรองข้อมูลเรียบร้อย');
   });
-  qs('backup-export-btn')?.addEventListener('click', async () => {
-    const snapshot = await api('/api/backup');
-    if (snapshot.error) {
-      alert('ดาวน์โหลด Backup ไม่สำเร็จ');
-      return;
-    }
-    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-    downloadJson(`pos-backup-${stamp}.json`, snapshot);
-  });
   qs('backup-import-file')?.addEventListener('change', async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -1892,18 +1887,24 @@ function bind() {
     alert('กู้คืนข้อมูลจากไฟล์สำเร็จ');
   });
   qs('backup-history-list')?.addEventListener('click', async (event) => {
-    const restoreBtn = event.target.closest('.js-backup-restore');
-    const downloadBtn = event.target.closest('.js-backup-download');
-    if (!restoreBtn && !downloadBtn) return;
-    const backupId = restoreBtn?.dataset.id || downloadBtn?.dataset.id;
+    const manageBtn = event.target.closest('.js-backup-manage');
+    if (!manageBtn) return;
+    const backupId = manageBtn.dataset.id;
     if (!backupId) return;
     const backup = readLocalBackups().find((row) => row.id === backupId);
     if (!backup?.payload) return;
-    if (downloadBtn) {
-      const stamp = String(backup.created_at || '').replace(/[:.]/g, '-');
-      downloadJson(`pos-backup-local-${stamp}.json`, backup.payload);
-      return;
-    }
+    openBackupActionModal(backup);
+  });
+  qs('backup-action-download')?.addEventListener('click', () => {
+    const backup = readLocalBackups().find((row) => row.id === activeBackupId);
+    if (!backup?.payload) return;
+    const stamp = String(backup.created_at || '').replace(/[:.]/g, '-');
+    downloadJson(`pos-backup-local-${stamp}.json`, backup.payload);
+    closeBackupActionModal();
+  });
+  qs('backup-action-restore')?.addEventListener('click', async () => {
+    const backup = readLocalBackups().find((row) => row.id === activeBackupId);
+    if (!backup?.payload) return;
     const ok = window.confirm('ยืนยันกู้คืนข้อมูลเก่าชุดนี้? ระบบจะเขียนทับข้อมูลปัจจุบัน');
     if (!ok) return;
     const result = await api('/api/restore', { method: 'POST', body: JSON.stringify(backup.payload) });
@@ -1911,8 +1912,18 @@ function bind() {
       alert('กู้คืนข้อมูลไม่สำเร็จ');
       return;
     }
+    closeBackupActionModal();
     await loadData();
     alert('กู้คืนข้อมูลสำเร็จ');
+  });
+  qs('backup-action-delete')?.addEventListener('click', async () => {
+    const backup = readLocalBackups().find((row) => row.id === activeBackupId);
+    if (!backup?.id) return;
+    const ok = window.confirm('ยืนยันลบไฟล์ Backup นี้ออกจากรายการ?');
+    if (!ok) return;
+    deleteLocalBackup(backup.id);
+    closeBackupActionModal();
+    renderBackupList();
   });
 
   qs('save-system').addEventListener('click', async () => {
