@@ -236,12 +236,29 @@ input,select{width:100%;padding:10px;border-radius:10px;border:1px solid var(--l
 }
 .lite-ui .hero-logo,
 .lite-ui .menu-choice-thumb,
+.lite-ui .menu-thumb,
+.lite-ui .checkout-item-thumb,
 .lite-ui .table-image-grid,
 .lite-ui .theme-preset-grid,
 .lite-ui #sales-chart,
 .lite-ui #sales-comparison,
 .lite-ui .device-hub{
   display:none !important;
+}
+.lite-ui .main-tab svg{
+  display:none !important;
+}
+.lite-ui .menu-choice,
+.lite-ui .menu-admin-row,
+.lite-ui .checkout-card{
+  background:#fff !important;
+  border:1px solid #d1d5db !important;
+}
+.lite-ui .menu-choice{
+  padding:8px !important;
+}
+.lite-ui .icon-btn{
+  border-radius:8px !important;
 }
 .lite-ui .section-card,
 .lite-ui .panel-block,
