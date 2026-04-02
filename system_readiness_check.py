@@ -3,8 +3,10 @@
 
 Covers:
 - staff scan page availability
-- staff console availability
+- customer scan page availability
+- mobile viewport hints in UI templates
 - menu availability via API
+- customer live data updates/version increments
 - customer order creation
 - staff order acceptance
 - checkout flow completion
@@ -24,6 +26,16 @@ def assert_status(response, expected: int, label: str) -> None:
         raise AssertionError(f"{label}: expected HTTP {expected}, got {response.status_code}, body={response.get_data(as_text=True)}")
 
 
+def assert_contains(text: str, expected: str, label: str) -> None:
+    if expected not in text:
+        raise AssertionError(f"{label}: expected to find '{expected}'")
+
+
+def assert_version_increased(new_version: int, previous_version: int, label: str) -> None:
+    if int(new_version) <= int(previous_version):
+        raise AssertionError(f"{label}: version did not increase (prev={previous_version}, new={new_version})")
+
+
 def main() -> None:
     with tempfile.TemporaryDirectory(prefix="pos-smoke-") as tmp:
         db.DB_FILE = os.path.join(tmp, "pos_local.sqlite3")
@@ -39,9 +51,11 @@ def main() -> None:
 
         scanner_page = client.get("/scan/staff", follow_redirects=True)
         assert_status(scanner_page, 200, "scan staff landing page")
+        assert_contains(scanner_page.get_data(as_text=True), 'name="viewport"', "scan staff mobile viewport")
 
         staff_page = client.get("/staff")
         assert_status(staff_page, 200, "staff page")
+        assert_contains(staff_page.get_data(as_text=True), 'name="viewport"', "staff mobile viewport")
 
         data = client.get(
             "/api/data",
@@ -52,8 +66,25 @@ def main() -> None:
         payload = data.get_json()
         if not payload or not payload.get("menu"):
             raise AssertionError("menu is empty")
+        base_version = int(payload.get("meta", {}).get("version", 0))
 
         table_token = build_table_token(payload["tables"][0])
+        if not table_token:
+            raise AssertionError("table token cannot be built")
+
+        customer_scan = client.get("/scan/customer/1")
+        assert_status(customer_scan, 200, "scan customer page")
+        assert_contains(customer_scan.get_data(as_text=True), 'name="viewport"', "scan customer mobile viewport")
+
+        customer_with_token = client.get(f"/customer?t={table_token}")
+        assert_status(customer_with_token, 200, "customer token page")
+        assert_contains(customer_with_token.get_data(as_text=True), 'name="viewport"', "customer page mobile viewport")
+
+        customer_live_initial = client.get(f"/api/customer/live?table_id=1&since={base_version - 1}")
+        assert_status(customer_live_initial, 200, "customer live initial")
+        customer_live_initial_payload = customer_live_initial.get_json() or {}
+        if not customer_live_initial_payload.get("changed"):
+            raise AssertionError("customer live should indicate changed on initial pull")
 
         create_order = client.post(
             "/api/order",
@@ -71,9 +102,29 @@ def main() -> None:
         order_id = order_json.get("order", {}).get("id")
         if not order_id:
             raise AssertionError("create order did not return order id")
+        version_after_order = int(order_json.get("version", 0))
+        assert_version_increased(version_after_order, base_version, "version after customer order")
+
+        customer_live_after_order = client.get(f"/api/customer/live?t={table_token}&since={base_version}")
+        assert_status(customer_live_after_order, 200, "customer live after order")
+        live_after_order_payload = customer_live_after_order.get_json() or {}
+        if not live_after_order_payload.get("changed"):
+            raise AssertionError("customer live did not update after order")
+        if not any(order.get("id") == order_id for order in live_after_order_payload.get("orders", [])):
+            raise AssertionError("customer live missing created order")
 
         accept = client.post("/api/table/accept", headers={"X-POS-Role": "staff"}, json={"order_id": order_id})
         assert_status(accept, 200, "accept order")
+        accept_json = accept.get_json() or {}
+        version_after_accept = int(accept_json.get("version", 0))
+        assert_version_increased(version_after_accept, version_after_order, "version after accept")
+
+        customer_live_after_accept = client.get(f"/api/customer/live?t={table_token}&since={version_after_order}")
+        assert_status(customer_live_after_accept, 200, "customer live after accept")
+        live_after_accept_payload = customer_live_after_accept.get_json() or {}
+        accepted_order = next((order for order in live_after_accept_payload.get("orders", []) if order.get("id") == order_id), None)
+        if accepted_order is None or accepted_order.get("status") != "accepted":
+            raise AssertionError("order status was not updated to accepted in customer live")
 
         checkout = client.post(
             "/api/checkout",
@@ -81,8 +132,20 @@ def main() -> None:
             json={"target": "table", "target_id": 1, "payment_method": "cash"},
         )
         assert_status(checkout, 200, "checkout")
+        checkout_json = checkout.get_json() or {}
+        version_after_checkout = int(checkout_json.get("version", 0))
+        assert_version_increased(version_after_checkout, version_after_accept, "version after checkout")
 
-    print("SYSTEM READY: scan/staff/menu/order/checkout smoke checks passed.")
+        customer_live_after_checkout = client.get(f"/api/customer/live?t={table_token}&since={version_after_accept}")
+        assert_status(customer_live_after_checkout, 200, "customer live after checkout")
+        live_after_checkout_payload = customer_live_after_checkout.get_json() or {}
+        table_state = next((table for table in live_after_checkout_payload.get("tables", []) if int(table.get("id", 0)) == 1), None)
+        if table_state is None:
+            raise AssertionError("customer live missing table state after checkout")
+        if table_state.get("status") != "available":
+            raise AssertionError(f"table should be available after checkout, got {table_state.get('status')}")
+
+    print("SYSTEM READY: staff+customer scan, live updates, mobile UI hints, order/accept/checkout checks passed.")
 
 
 if __name__ == "__main__":
