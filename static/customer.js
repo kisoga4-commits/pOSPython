@@ -43,13 +43,31 @@ const VISUAL_MENU_LABELS = [
 
 async function api(path, options = {}) {
   const url = path.startsWith('http') ? path : `${window.location.origin}${path}`;
+  const timeoutMs = Number(options.timeoutMs || 12000);
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
   const requestOptions = {
     ...options,
     cache: 'no-store',
+    signal: controller.signal,
     headers: { 'Content-Type': 'application/json', 'X-POS-Role': 'customer', ...(options.headers || {}) },
   };
-  const res = await fetch(url, requestOptions);
-  return res.json();
+  try {
+    const res = await fetch(url, requestOptions);
+    let payload = {};
+    try {
+      payload = await res.json();
+    } catch (error) {
+      payload = {};
+    }
+    if (!res.ok) return { error: payload.error || `http_${res.status}` };
+    return payload;
+  } catch (error) {
+    if (error?.name === 'AbortError') return { error: 'timeout' };
+    return { error: 'network_error' };
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
 }
 
 function connectLiveEvents() {
@@ -498,6 +516,12 @@ function updateTableStatus(tables = []) {
     callBtn.disabled = busy;
     callBtn.textContent = busy ? '🔔 ส่งคำขอแล้ว' : '🔔 เรียกพนักงาน';
   }
+  const checkoutBtn = document.getElementById('request-checkout-btn');
+  if (checkoutBtn) {
+    const checkoutBusy = table.status === 'checkout_requested';
+    checkoutBtn.disabled = checkoutBusy;
+    checkoutBtn.textContent = checkoutBusy ? '🧾 ส่งคำขอแล้ว' : '🧾 เรียกเช็คบิล';
+  }
 }
 
 function updateOrderAckIndicator(orders = []) {
@@ -783,7 +807,32 @@ function bind() {
     if (!lockedTableId) return;
     const callBtn = document.getElementById('call-staff-mini-btn');
     if (callBtn) callBtn.disabled = true;
-    const res = await api('/api/table/call-staff', {
+    try {
+      const res = await api('/api/table/call-staff', {
+        method: 'POST',
+        body: JSON.stringify({
+          table_id: lockedTableId,
+          table_token: lockedTableToken,
+        }),
+      });
+      if (res.error) {
+        document.getElementById('message').textContent = `เรียกพนักงานไม่สำเร็จ: ${res.error}`;
+        if (callBtn) callBtn.disabled = false;
+        return;
+      }
+      playCallStaffSound();
+      document.getElementById('message').textContent = 'ส่งคำขอเรียกพนักงานแล้ว';
+      await loadLive();
+    } catch (error) {
+      document.getElementById('message').textContent = 'เรียกพนักงานไม่สำเร็จ: network_error';
+      if (callBtn) callBtn.disabled = false;
+    }
+  });
+  document.getElementById('request-checkout-btn')?.addEventListener('click', async () => {
+    if (!lockedTableId) return;
+    const checkoutBtn = document.getElementById('request-checkout-btn');
+    if (checkoutBtn) checkoutBtn.disabled = true;
+    const res = await api('/api/table/checkout-request', {
       method: 'POST',
       body: JSON.stringify({
         table_id: lockedTableId,
@@ -791,12 +840,12 @@ function bind() {
       }),
     });
     if (res.error) {
-      document.getElementById('message').textContent = `เรียกพนักงานไม่สำเร็จ: ${res.error}`;
-      if (callBtn) callBtn.disabled = false;
+      document.getElementById('message').textContent = `เรียกเช็คบิลไม่สำเร็จ: ${res.error}`;
+      if (checkoutBtn) checkoutBtn.disabled = false;
       return;
     }
     playCallStaffSound();
-    document.getElementById('message').textContent = 'ส่งคำขอเรียกพนักงานแล้ว';
+    document.getElementById('message').textContent = 'ส่งคำขอเช็คบิลแล้ว';
     await loadLive();
   });
   document.getElementById('clear-cart-btn').addEventListener('click', () => {
