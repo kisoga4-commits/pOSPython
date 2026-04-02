@@ -337,7 +337,7 @@ function renderMenu() {
       card.className = 'menu-mobile-card menu-tap-card';
       card.type = 'button';
       card.innerHTML = `
-        <div class="menu-thumb">${item.image ? `<img src="${item.image}" alt="${item.name}" loading="lazy" decoding="async" />` : '🍜'}</div>
+        <div class="menu-thumb">${item.image ? `<img src="${item.image}" alt="${item.name}" loading="lazy" decoding="async" fetchpriority="low" width="108" height="108" />` : '🍜'}</div>
         <div class="menu-mobile-meta">
           <strong>${menuVisualLabel(item.name)}</strong>
           <small>${money(item.price)} บาท</small>
