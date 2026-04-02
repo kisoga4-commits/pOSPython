@@ -868,25 +868,28 @@ async function syncCustomerDisplayActiveTable(tableId) {
   });
 }
 
-function buildPromptPayPayload(promptPayId, amount = 0, dynamic = true) {
-  return window.PromptPayQR?.buildPromptPayPayload(promptPayId, amount, dynamic) || '';
-}
-
-function buildPromptPayQrImage(promptPayId, amount, dynamic) {
-  const payload = buildPromptPayPayload(promptPayId, amount, dynamic);
-  if (!payload) return buildQrImageUrl('promptpay-not-configured');
-  return buildQrImageUrl(payload);
+function buildPromptPayIoUrl(promptPayId, amount = 0, dynamic = true) {
+  return window.PromptPayQR?.buildPromptPayIoUrl(promptPayId, amount, dynamic) || '';
 }
 
 function resolvePaymentQrImage(settings, totalAmount) {
   const cfg = settings || {};
   const promptPayId = String(cfg.promptPay || '').trim();
   const hasUploadedQrImage = Boolean(String(cfg.qrImage || '').trim());
+
   if (cfg.dynamicPromptPay && promptPayId) {
-    return buildPromptPayQrImage(cfg.promptPay || '', Number(totalAmount || 0), true);
+    const dynamicUrl = buildPromptPayIoUrl(promptPayId, Number(totalAmount || 0), true);
+    if (dynamicUrl) return dynamicUrl;
   }
+
   if (hasUploadedQrImage) return cfg.qrImage;
-  return buildPromptPayQrImage(promptPayId, Number(totalAmount || 0), false);
+
+  if (promptPayId) {
+    const staticPromptPayUrl = buildPromptPayIoUrl(promptPayId, Number(totalAmount || 0), false);
+    if (staticPromptPayUrl) return staticPromptPayUrl;
+  }
+
+  return buildQrImageUrl('promptpay-not-configured');
 }
 
 function renderCashier() {
