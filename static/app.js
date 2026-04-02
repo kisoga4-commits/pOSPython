@@ -119,7 +119,7 @@ async function compressImageFileClient(file, options = {}) {
 async function loadNetworkBaseUrl() {
   const network = await api('/api/system/network');
   if (!network.error && network.base_url) {
-    networkBaseUrl = window.location.origin;
+    networkBaseUrl = String(network.base_url || '').trim() || window.location.origin;
     return;
   }
   if (!networkBaseUrl) {

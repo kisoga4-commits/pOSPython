@@ -6,7 +6,6 @@ import re
 import json
 import hashlib
 import time
-from pathlib import Path
 from urllib.parse import quote
 from datetime import datetime
 from collections import defaultdict
@@ -33,10 +32,6 @@ app = Flask(__name__)
 ASSET_VERSION = "20260402-ui-sync-perf-fix-v2"
 STATIC_IMAGE_CACHE_SECONDS = 7 * 24 * 60 * 60
 STATIC_IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg", ".avif")
-MENU_IMAGE_DIR = Path(app.static_folder or "static") / "menu"
-
-
-
 @app.after_request
 def add_cors_headers(response):
     response.headers["Access-Control-Allow-Origin"] = request.headers.get("Origin", "*")
@@ -282,6 +277,18 @@ def customer_scan_page(table_id: int):
         asset_version=ASSET_VERSION,
         local_base_url=local_base_url,
     )
+
+
+@app.route("/scan/customer")
+def customer_scan_default_page():
+    db = load_db()
+    tables = db.get("tables", [])
+    if not tables:
+        abort(404, description="table_not_found")
+    first_table_id = _safe_parse_int(tables[0].get("id"), default=0)
+    if first_table_id < 1:
+        abort(404, description="table_not_found")
+    return redirect(url_for("customer_scan_page", table_id=first_table_id))
 
 
 @app.route("/table/<int:table_id>")
@@ -756,17 +763,14 @@ def api_menu_upload_image():
     offset_x = max(0, (image.width - crop_edge) // 2)
     offset_y = max(0, (image.height - crop_edge) // 2)
     image = image.crop((offset_x, offset_y, offset_x + crop_edge, offset_y + crop_edge))
-    image = image.resize((240, 240), Image.Resampling.LANCZOS)
+    image = image.resize((420, 420), Image.Resampling.LANCZOS)
 
     out = io.BytesIO()
     image.save(out, format="WEBP", optimize=True, quality=62, method=6)
     binary = out.getvalue()
     digest = hashlib.sha1(binary).hexdigest()[:16]
-    filename = f"menu-{digest}.webp"
-    MENU_IMAGE_DIR.mkdir(parents=True, exist_ok=True)
-    (MENU_IMAGE_DIR / filename).write_bytes(binary)
-    image_url = url_for("static", filename=f"menu/{filename}")
-    return jsonify({"status": "success", "image": image_url})
+    image_data_url = f"data:image/webp;base64,{base64.b64encode(binary).decode('utf-8')}"
+    return jsonify({"status": "success", "image": image_data_url, "sha1": digest})
 
 
 @app.route("/api/table/accept", methods=["POST"])
