@@ -266,6 +266,24 @@ input,select{width:100%;padding:10px;border-radius:10px;border:1px solid var(--l
 .lite-ui .list-card{
   border-radius:10px !important;
 }
+.lite-ui #backstore-sales,
+.lite-ui #system-theme,
+.lite-ui #system-check,
+.lite-ui #open-sales-insight,
+.lite-ui .sales-range-row,
+.lite-ui #sales-overview,
+.lite-ui .sales-panel{
+  display:none !important;
+}
+.lite-ui .table-card{
+  min-height:96px !important;
+  padding:10px !important;
+}
+.lite-ui .desktop-shell{
+  max-width:100%;
+  padding:10px;
+  font-size:15px;
+}
 .order-ack-indicator{margin-top:10px}
 .mobile-menu-list{display:grid;gap:10px;margin-top:8px}
 .menu-mobile-card{display:grid;grid-template-columns:72px 1fr;gap:10px;align-items:center;border:1px solid var(--line);border-radius:16px;padding:8px;background:#fff;cursor:pointer}

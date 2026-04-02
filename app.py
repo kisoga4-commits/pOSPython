@@ -30,7 +30,7 @@ log.setLevel(logging.ERROR)
 
 app = Flask(__name__)
 
-ASSET_VERSION = "20260402-lite-perf-prod-v1"
+ASSET_VERSION = "20260402-lite-perf-prod-v2"
 LITE_UI_MODE = os.getenv("POS_LITE_MODE", "1") != "0"
 STATIC_IMAGE_CACHE_SECONDS = 7 * 24 * 60 * 60
 STATIC_IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg", ".avif")
@@ -362,7 +362,23 @@ def api_activate():
 @app.route("/api/data", methods=["GET"])
 @require_roles("owner", "staff")
 def api_data():
-    return jsonify(load_db())
+    db = load_db()
+    if not LITE_UI_MODE:
+        return jsonify(db)
+    projected = dict(db)
+    projected_tables = []
+    for table in db.get("tables", []):
+        items = table.get("items", []) or []
+        total_qty = 0
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            total_qty += max(1, _safe_parse_int(item.get("qty"), default=1))
+        projected_table = dict(table)
+        projected_table["items"] = [{"qty": total_qty}] if total_qty > 0 else []
+        projected_tables.append(projected_table)
+    projected["tables"] = projected_tables
+    return jsonify(projected)
 
 
 @app.route("/api/order", methods=["POST"])
@@ -488,18 +504,7 @@ def _refresh_table_state(db: dict, table_id: int) -> None:
 
 
 def _compact_table_item(item: dict, qty: int) -> dict:
-    compact = {
-        "id": item.get("id") if item.get("id") is not None else item.get("item_id"),
-        "name": str(item.get("name", "")).strip() or "Unknown Item",
-        "price": float(item.get("price", 0) or 0),
-        "qty": max(1, qty),
-        "addon": str(item.get("addon", "")).strip(),
-        "note": str(item.get("note", "")).strip(),
-    }
-    image = str(item.get("image", "")).strip()
-    if image:
-        compact["image"] = image
-    return compact
+    return {"qty": max(1, qty)}
 
 
 def _compress_table_items(items: list) -> list:
