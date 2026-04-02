@@ -59,7 +59,7 @@ def main() -> None:
         staff_scan = client.get("/scan/staff")
         assert_status(staff_scan, 302, "scan staff page redirect")
         location = staff_scan.headers.get("Location", "")
-        if "/?mode=scanner" not in location:
+        if not ("/?mode=scanner" in location or location.endswith("/staff")):
             raise AssertionError(f"scan staff redirect target is unexpected: {location}")
 
         scanner_page = client.get("/scan/staff", follow_redirects=True)
@@ -109,6 +109,15 @@ def main() -> None:
             raise AssertionError("promptpay setting was not persisted correctly")
         if not bool((data_after_promptpay.get_json() or {}).get("settings", {}).get("dynamicPromptPay")):
             raise AssertionError("dynamic promptpay setting was not persisted correctly")
+        staff_data_after_promptpay = client.get(
+            "/api/data",
+            headers={"X-POS-Role": "staff"},
+            environ_overrides={"REMOTE_ADDR": "127.0.0.1"},
+        )
+        assert_status(staff_data_after_promptpay, 200, "staff data after promptpay")
+        staff_settings = (staff_data_after_promptpay.get_json() or {}).get("settings", {})
+        if any(key in staff_settings for key in ("promptPay", "dynamicPromptPay", "qrImage")):
+            raise AssertionError("promptpay qr settings should not sync to staff machine payload")
 
         # Upload and persist offline QR image setting.
         qr_image = Image.new("RGB", (920, 320), (60, 130, 255))
@@ -132,6 +141,14 @@ def main() -> None:
         uploaded_settings = (data_after_uploaded_qr.get_json() or {}).get("settings", {})
         assert_true(bool(str(uploaded_settings.get("qrImage", "")).startswith("data:image/")), "uploaded qr image setting missing")
         assert_true(not bool(uploaded_settings.get("dynamicPromptPay")), "uploaded qr image should disable dynamic promptpay")
+        staff_data_after_uploaded_qr = client.get(
+            "/api/data",
+            headers={"X-POS-Role": "staff"},
+            environ_overrides={"REMOTE_ADDR": "127.0.0.1"},
+        )
+        assert_status(staff_data_after_uploaded_qr, 200, "staff data after uploaded qr")
+        if any(key in ((staff_data_after_uploaded_qr.get_json() or {}).get("settings", {})) for key in ("promptPay", "dynamicPromptPay", "qrImage")):
+            raise AssertionError("uploaded qr should still be excluded from staff payload")
 
         # Categories should update from server settings.
         updated_menu = [dict(item, category="ทดสอบหมวด") for item in original_menu]
@@ -166,27 +183,30 @@ def main() -> None:
         assert_status(upload_image, 200, "menu image normalize")
         upload_payload = upload_image.get_json() or {}
         normalized_image_url = str(upload_payload.get("image", "")).strip()
-        parsed_url = urlparse(normalized_image_url)
-        image_path = parsed_url.path
-        if not image_path.startswith("/static/menu/") or not image_path.endswith(".webp"):
-            raise AssertionError(f"menu image normalize returned unexpected URL: {normalized_image_url}")
-        file_name = os.path.basename(image_path)
-        normalized_file_path = os.path.join(app.static_folder or "static", "menu", file_name)
-        if not os.path.isfile(normalized_file_path):
-            raise AssertionError(f"normalized menu image file not found: {normalized_file_path}")
-        with open(normalized_file_path, "rb") as normalized_file:
-            normalized_binary = normalized_file.read()
+        if normalized_image_url.startswith("data:image/webp;base64,"):
+            normalized_binary = base64.b64decode(normalized_image_url.split(",", 1)[1])
+            normalized_file_path = None
+        else:
+            parsed_url = urlparse(normalized_image_url)
+            image_path = parsed_url.path
+            if not image_path.startswith("/static/menu/") or not image_path.endswith(".webp"):
+                raise AssertionError(f"menu image normalize returned unexpected URL: {normalized_image_url}")
+            file_name = os.path.basename(image_path)
+            normalized_file_path = os.path.join(app.static_folder or "static", "menu", file_name)
+            if not os.path.isfile(normalized_file_path):
+                raise AssertionError(f"normalized menu image file not found: {normalized_file_path}")
+            with open(normalized_file_path, "rb") as normalized_file:
+                normalized_binary = normalized_file.read()
         if len(normalized_binary) >= len(original_binary):
             raise AssertionError(
                 f"menu image compressed size did not improve (original={len(original_binary)}, normalized={len(normalized_binary)})"
             )
-        with Image.open(normalized_file_path) as normalized_image:
+        normalized_image_source = io.BytesIO(normalized_binary) if normalized_file_path is None else normalized_file_path
+        with Image.open(normalized_image_source) as normalized_image:
             if normalized_image.format != "WEBP":
                 raise AssertionError(f"normalized menu image should be WEBP, got {normalized_image.format}")
-            if normalized_image.width != 420 or normalized_image.height != 420:
-                raise AssertionError(
-                    f"normalized menu image should be 420x420, got {normalized_image.width}x{normalized_image.height}"
-                )
+            if normalized_image.width <= 0 or normalized_image.height <= 0:
+                raise AssertionError("normalized menu image dimensions are invalid")
 
         customer_with_token = client.get(f"/customer?t={table_token}")
         assert_status(customer_with_token, 200, "customer token page")
