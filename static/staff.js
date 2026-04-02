@@ -225,8 +225,10 @@ function tableCard(table, orders = [], actions = [], options = {}) {
     stackItems(orders).slice(0, 4).forEach((item) => {
       const hasAddon = Array.isArray(item.addons) ? item.addons.length > 0 : Boolean(item.addon);
       const row = document.createElement('small');
+      row.className = 'summary-item';
       const qty = Math.max(1, Number(item.qty || 1));
-      row.innerHTML = `• ${item.name}${showQty && qty > 1 ? ` x${qty}` : ''}${hasAddon ? '<span class="addon-flag">➕</span>' : ''}`;
+      const thumb = item.image ? `<img src="${item.image}" alt="${item.name}" class="table-order-thumb" />` : '<span class="table-order-thumb">🍽️</span>';
+      row.innerHTML = `${thumb}<span>${item.name}${showQty && qty > 1 ? ` x${qty}` : ''}${hasAddon ? '<span class="addon-flag">➕</span>' : ''}</span>`;
       orderSummary.appendChild(row);
     });
     card.appendChild(orderSummary);
@@ -446,7 +448,7 @@ function blinkTableCard(tableId) {
   const timeoutId = setTimeout(() => {
     card.classList.remove('blink-red');
     blinkTimers.delete(tableId);
-  }, 10000);
+  }, 3500);
   blinkTimers.set(tableId, timeoutId);
 }
 
