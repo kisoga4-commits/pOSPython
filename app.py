@@ -31,6 +31,7 @@ log.setLevel(logging.ERROR)
 app = Flask(__name__)
 
 ASSET_VERSION = "20260402-ui-sync-perf-fix-v2"
+LITE_UI_MODE = os.getenv("POS_LITE_MODE", "1") != "0"
 STATIC_IMAGE_CACHE_SECONDS = 7 * 24 * 60 * 60
 STATIC_IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg", ".avif")
 MENU_IMAGE_DIR = os.path.join(app.static_folder, "menu")
@@ -210,6 +211,7 @@ def index():
         local_ip=local_ip,
         local_base_url=local_base_url,
         scanner_mode=scanner_mode,
+        lite_mode=LITE_UI_MODE,
         asset_version=ASSET_VERSION,
     )
 
@@ -455,7 +457,7 @@ def _create_order(payload: dict) -> dict:
                     table["status"] = "pending_order"
                 else:
                     table["status"] = "accepted_order"
-                    table["items"].extend(normalized_cart)
+                    table["items"] = _compress_table_items((table.get("items") or []) + normalized_cart)
                 break
 
     db = save_db(db)
@@ -481,8 +483,31 @@ def _refresh_table_state(db: dict, table_id: int) -> None:
         if table.get("id") != table_id:
             continue
         table["status"] = "pending_order" if pending_exists else ("accepted_order" if has_accept_or_completed else "available")
-        table["items"] = accepted_items if has_accept_or_completed else []
+        table["items"] = _compress_table_items(accepted_items) if has_accept_or_completed else []
         break
+
+
+def _compress_table_items(items: list) -> list:
+    grouped: dict[tuple, dict] = {}
+    for raw in items or []:
+        if not isinstance(raw, dict):
+            continue
+        item = dict(raw)
+        qty = max(1, _safe_parse_int(item.get("qty"), default=1))
+        addon = str(item.get("addon", "")).strip()
+        note = str(item.get("note", "")).strip()
+        key = (
+            item.get("item_id") or item.get("id") or str(item.get("name", "")).strip(),
+            float(item.get("price", 0) or 0),
+            addon,
+            note,
+        )
+        if key not in grouped:
+            item["qty"] = qty
+            grouped[key] = item
+        else:
+            grouped[key]["qty"] = max(1, _safe_parse_int(grouped[key].get("qty"), default=1)) + qty
+    return list(grouped.values())
 
 
 def _parse_addon_option_price(raw_option: str) -> tuple[str, float]:

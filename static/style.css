@@ -218,6 +218,37 @@ input,select{width:100%;padding:10px;border-radius:10px;border:1px solid var(--l
 .mobile-panel{padding:12px}
 .badge{margin-top:10px;display:inline-flex;padding:6px 10px;border-radius:999px;font-size:.82rem;font-weight:600}
 .customer-status-head{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;align-items:center}
+
+/* Lite/Production mode: reduce visual effects and expensive paint operations */
+.lite-ui{
+  --shadow:none;
+  --shadow-soft:none;
+}
+.lite-ui body,
+.lite-ui{
+  background:#f5f5f5 !important;
+}
+.lite-ui *{
+  animation:none !important;
+  transition:none !important;
+  box-shadow:none !important;
+  backdrop-filter:none !important;
+}
+.lite-ui .hero-logo,
+.lite-ui .menu-choice-thumb,
+.lite-ui .table-image-grid,
+.lite-ui .theme-preset-grid,
+.lite-ui #sales-chart,
+.lite-ui #sales-comparison,
+.lite-ui .device-hub{
+  display:none !important;
+}
+.lite-ui .section-card,
+.lite-ui .panel-block,
+.lite-ui .table-card,
+.lite-ui .list-card{
+  border-radius:10px !important;
+}
 .order-ack-indicator{margin-top:10px}
 .mobile-menu-list{display:grid;gap:10px;margin-top:8px}
 .menu-mobile-card{display:grid;grid-template-columns:72px 1fr;gap:10px;align-items:center;border:1px solid var(--line);border-radius:16px;padding:8px;background:#fff;cursor:pointer}
