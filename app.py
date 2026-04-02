@@ -627,10 +627,6 @@ def api_order_item():
         if request.method == "DELETE":
             if not is_server_request():
                 return jsonify({"error": "host_machine_only"}), 403
-            if order.get("status") in {"accepted", "completed"}:
-                return jsonify({"error": "submitted_order_locked"}), 403
-            if str(order.get("source", "customer")) == "customer":
-                return jsonify({"error": "customer_order_locked"}), 403
             items.pop(item_index)
         else:
             if "price" in payload:

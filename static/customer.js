@@ -9,6 +9,7 @@ let isInlineCartOpen = false;
 let activeCategory = 'ทั้งหมด';
 let submitState = 'idle';
 let lastSubmittedOrderId = '';
+let renderMenuTaskToken = 0;
 const params = new URLSearchParams(window.location.search);
 function parseCombinedTableParam(rawValue = '') {
   const token = String(rawValue || '').trim();
@@ -270,6 +271,7 @@ function refreshSubmitState() {
   submitButton.textContent = hasItems ? 'ส่งคำขอรายการ' : 'เพิ่มเมนูก่อนส่งคำขอ';
 }
 function renderMenu() {
+  const currentTaskToken = ++renderMenuTaskToken;
   const list = document.getElementById('menu-list');
   const tabs = document.getElementById('customer-category-tabs');
   list.innerHTML = '';
@@ -297,28 +299,40 @@ function renderMenu() {
     return;
   }
 
-  displayMenu.forEach((item) => {
-    const card = document.createElement('button');
-    card.className = 'menu-mobile-card menu-tap-card';
-    card.type = 'button';
-    card.innerHTML = `
-      <div class="menu-thumb">${item.image ? `<img src="${item.image}" alt="${item.name}" loading="lazy" decoding="async" />` : '🍜'}</div>
-      <div class="menu-mobile-meta">
-        <strong>${menuVisualLabel(item.name)}</strong>
-        <small>${money(item.price)} บาท</small>
-      </div>
-    `;
-    card.addEventListener('click', () => {
-      if (!lockedTableId) return;
-      const addonOptions = normalizeAddonOptions(item);
-      if (!addonOptions.length) {
-        addToCart(item, { addons: [], note: '', qty: 1 });
-        return;
-      }
-      openItemDetailModal(item, addonOptions);
-    });
-    list.appendChild(card);
-  });
+  const batchSize = 48;
+  let cursor = 0;
+  const renderNextBatch = () => {
+    if (currentTaskToken !== renderMenuTaskToken) return;
+    const fragment = document.createDocumentFragment();
+    const end = Math.min(cursor + batchSize, displayMenu.length);
+    for (let idx = cursor; idx < end; idx += 1) {
+      const item = displayMenu[idx];
+      const card = document.createElement('button');
+      card.className = 'menu-mobile-card menu-tap-card';
+      card.type = 'button';
+      card.innerHTML = `
+        <div class="menu-thumb">${item.image ? `<img src="${item.image}" alt="${item.name}" loading="lazy" decoding="async" />` : '🍜'}</div>
+        <div class="menu-mobile-meta">
+          <strong>${menuVisualLabel(item.name)}</strong>
+          <small>${money(item.price)} บาท</small>
+        </div>
+      `;
+      card.addEventListener('click', () => {
+        if (!lockedTableId) return;
+        const addonOptions = normalizeAddonOptions(item);
+        if (!addonOptions.length) {
+          addToCart(item, { addons: [], note: '', qty: 1 });
+          return;
+        }
+        openItemDetailModal(item, addonOptions);
+      });
+      fragment.appendChild(card);
+    }
+    list.appendChild(fragment);
+    cursor = end;
+    if (cursor < displayMenu.length) window.requestAnimationFrame(renderNextBatch);
+  };
+  window.requestAnimationFrame(renderNextBatch);
 }
 
 function openItemDetailModal(item, addonOptions) {
@@ -327,9 +341,16 @@ function openItemDetailModal(item, addonOptions) {
   const addonWrap = document.getElementById('item-addon-checkboxes');
   addonWrap.innerHTML = '';
   addonOptions.forEach((option) => {
+    const parsed = parseAddonOption(option);
     const row = document.createElement('label');
     row.className = 'addon-check-item';
-    row.innerHTML = `<input type="checkbox" value="${option}" /> <span>${option}</span>`;
+    row.innerHTML = `
+      <input type="checkbox" value="${option}" />
+      <span class="addon-option-row">
+        <strong>${parsed.name}</strong>
+        <small>${parsed.price > 0 ? `+${money(parsed.price)} บาท` : 'ฟรี'}</small>
+      </span>
+    `;
     addonWrap.appendChild(row);
   });
   document.getElementById('item-detail-modal').classList.remove('hidden');
@@ -625,6 +646,11 @@ function bind() {
     const checked = [...document.querySelectorAll('#item-addon-checkboxes input[type="checkbox"]:checked')].map((node) => node.value.trim()).filter(Boolean);
     const selectedAddons = checked.map((label) => parseAddonOption(label));
     addToCart(activeItemDraft, { addons: selectedAddons, qty: 1 });
+    closeItemDetailModal();
+  });
+  document.getElementById('item-detail-skip-addon-btn').addEventListener('click', () => {
+    if (!activeItemDraft) return;
+    addToCart(activeItemDraft, { addons: [], qty: 1 });
     closeItemDetailModal();
   });
 
