@@ -266,26 +266,29 @@
 
         <div id="system-backup" class="panel-block system-panel backup-panel">
           <h3>สำรองข้อมูล & กู้คืนข้อมูลเก่า</h3>
-          <p class="muted">ขั้นตอนแนะนำ: (1) สร้าง Backup ปัจจุบันก่อนเสมอ → (2) ค่อยกู้คืนไฟล์เก่าเมื่อจำเป็น เพื่อลดความสับสนและการทำงานซ้ำ</p>
-          <div class="backup-guide-grid">
-            <div class="backup-guide-card">
-              <strong>สำรองข้อมูลปัจจุบัน</strong>
-              <small>เก็บ snapshot ล่าสุดก่อนแก้ไขระบบหรือก่อนนำเข้าไฟล์เก่า</small>
-            </div>
-            <div class="backup-guide-card">
-              <strong>กู้คืนเฉพาะตอนจำเป็น</strong>
-              <small>การกู้คืนจะเขียนทับข้อมูลปัจจุบันทั้งระบบ</small>
-            </div>
+          <p class="muted">ใช้งานแบบแท็บเพื่อให้หน้าเรียบร้อย: สำรองข้อมูล, ดูรายการไฟล์, และนำเข้าเพื่อกู้คืน</p>
+          <div class="subtabs backup-tabs">
+            <button class="subtab is-active" data-backup-tab="history" type="button">รายการ Backup</button>
+            <button class="subtab" data-backup-tab="import" type="button">นำเข้าไฟล์</button>
           </div>
-          <div class="manage-row">
-            <button id="create-backup-btn" class="btn-secondary" type="button">💾 สร้าง Backup ลงรายการด้านล่าง</button>
-            <button id="backup-export-btn" class="btn-soft" type="button">⬇️ ดาวน์โหลด Backup ปัจจุบัน (ไฟล์)</button>
+          <div id="backup-tab-history" class="backup-tab-panel">
+            <div class="manage-row">
+              <button id="create-backup-btn" class="btn-secondary" type="button">💾 สร้าง Backup ปัจจุบัน</button>
+            </div>
+            <div id="backup-history-list" class="order-list"></div>
+          </div>
+          <div id="backup-tab-import" class="backup-tab-panel hidden">
+            <div class="backup-guide-grid">
+              <div class="backup-guide-card">
+                <strong>คำแนะนำ</strong>
+                <small>ระบบจะสร้าง snapshot ปัจจุบันให้อัตโนมัติก่อนกู้คืนไฟล์ที่นำเข้า</small>
+              </div>
+            </div>
             <label class="btn-soft file-like-btn">
-              ⬆️ นำเข้าไฟล์ Backup เพื่อกู้คืน
+              ⬆️ เลือกไฟล์ Backup (.json) เพื่อกู้คืน
               <input id="backup-import-file" type="file" accept="application/json" class="hidden" />
             </label>
           </div>
-          <div id="backup-history-list" class="order-list"></div>
         </div>
       </section>
     </main>
@@ -440,6 +443,21 @@
       <div class="section-head" style="margin-top:8px"><strong>Add-ons</strong><button id="add-addon-row" class="btn-soft" type="button">+ Row</button></div>
       <div id="addon-rows" class="order-list"></div>
       <button id="save-menu" class="btn-primary big-save" type="button">บันทึกเมนู</button>
+    </div>
+  </div>
+
+  <div id="backup-action-modal" class="modal hidden">
+    <div class="modal-card compact">
+      <div class="section-head">
+        <h3>จัดการไฟล์ Backup</h3>
+        <button id="close-backup-action-modal" class="btn-soft btn-close-x" type="button">✖</button>
+      </div>
+      <div id="backup-action-summary" class="list-card"></div>
+      <div class="order-list">
+        <button id="backup-action-download" class="btn-soft" type="button">⬇️ ดาวน์โหลด</button>
+        <button id="backup-action-restore" class="btn-secondary" type="button">♻️ กู้คืน</button>
+        <button id="backup-action-delete" class="btn-soft btn-danger" type="button">🗑️ ลบไฟล์นี้</button>
+      </div>
     </div>
   </div>
 

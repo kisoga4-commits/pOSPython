@@ -520,6 +520,8 @@ def api_sync_pending_orders():
 @app.route("/api/checkout", methods=["POST"])
 @require_roles("owner", "staff")
 def api_checkout():
+    if not is_server_request():
+        return jsonify({"error": "host_machine_only"}), 403
     payload = read_json()
     target = str(payload.get("target", "table"))
     target_id = payload.get("target_id")
@@ -606,7 +608,7 @@ def api_bill(target: str, target_id: int):
     })
 
 
-@app.route("/api/order/item", methods=["PATCH", "DELETE"])
+@app.route("/api/order/item", methods=["DELETE"])
 @require_license
 @require_roles("owner")
 def api_order_item():
@@ -624,15 +626,9 @@ def api_order_item():
         if item_index < 0 or item_index >= len(items):
             return jsonify({"error": "item not found"}), 404
 
-        if request.method == "DELETE":
-            if not is_server_request():
-                return jsonify({"error": "host_machine_only"}), 403
-            items.pop(item_index)
-        else:
-            if "price" in payload:
-                items[item_index]["price"] = float(payload.get("price", 0))
-            if "addon" in payload:
-                items[item_index]["addon"] = str(payload.get("addon", "")).strip()
+        if not is_server_request():
+            return jsonify({"error": "host_machine_only"}), 403
+        items.pop(item_index)
 
         order["items"] = items
         order["updated_at"] = local_now()
