@@ -53,6 +53,13 @@ function getAdaptiveGridSize(count) {
   return 4;
 }
 
+function applyAdaptiveGridData(node, count) {
+  if (!node) return;
+  const total = Math.max(0, Number(count || 0));
+  node.dataset.gridSize = String(getAdaptiveGridSize(total));
+  node.dataset.overflowBlur = total > 16 ? '1' : '0';
+}
+
 const ACTIVE_TABLE_KEY = 'customer_display_active_table';
 let settings = {};
 let tableId = Number(document.body.dataset.tableId || localStorage.getItem(ACTIVE_TABLE_KEY) || 0);
@@ -78,7 +85,7 @@ function renderBill(bill) {
   const qrWrap = qs('customer-facing-qr-wrap');
   list.innerHTML = '';
   const groupedItems = summarizeItems(bill.items || []);
-  list.dataset.gridSize = String(getAdaptiveGridSize(groupedItems.length));
+  applyAdaptiveGridData(list, groupedItems.length);
   if (!groupedItems.length) {
     list.innerHTML = '<div class="empty">ยังไม่มีรายการที่ต้องชำระ<br/>รอการเช็คบิลถัดไป</div>';
     qs('customer-facing-total').textContent = money(0);
@@ -92,7 +99,9 @@ function renderBill(bill) {
     const row = document.createElement('div');
     row.className = 'list-card bill-row-item';
     const qty = Math.max(1, Number(item.qty || 1));
-    const thumb = item.image ? `<img src="${item.image}" alt="${item.name}" class="checkout-item-thumb" />` : '<span class="checkout-item-thumb fallback">🍽️</span>';
+    const thumb = item.image
+      ? `<img src="${item.image}" alt="${item.name}" class="checkout-item-thumb" loading="lazy" decoding="async" fetchpriority="low" />`
+      : '<span class="checkout-item-thumb fallback">🍽️</span>';
     row.innerHTML = `${thumb}<strong>${item.name}${qty > 1 ? ` x${qty}` : ''}</strong><span>฿${money(item.price * qty)}</span>`;
     list.appendChild(row);
   });
