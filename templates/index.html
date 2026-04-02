@@ -471,6 +471,7 @@
 
   <audio id="new-order-sound" src="{{ url_for('static', filename='sounds/new_order.mp3') }}"></audio>
   <audio id="checkout-request-sound" src="{{ url_for('static', filename='sounds/checkout.mp3') }}"></audio>
+  <script src="{{ url_for('static', filename='promptpay.js') }}?v={{ asset_version }}"></script>
   <audio id="call-staff-sound" src="{{ url_for('static', filename='sounds/warning.mp3') }}"></audio>
   <script src="{{ url_for('static', filename='app.js') }}?v={{ asset_version }}"></script>
 </body>

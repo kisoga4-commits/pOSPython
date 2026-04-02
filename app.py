@@ -27,7 +27,7 @@ log = logging.getLogger("werkzeug")
 log.setLevel(logging.ERROR)
 
 app = Flask(__name__)
-ASSET_VERSION = "20260402-ui-stability-v3"
+ASSET_VERSION = "20260402-promptpay-fix-v4"
 
 
 @app.after_request
@@ -243,9 +243,7 @@ def customer_display_page():
 
 @app.route("/scan/staff")
 def staff_scan_page():
-    # ใช้หน้า scanner ของเครื่องแม่โดยตรง เพื่อให้ workflow พนักงาน
-    # (โหมดลูกค้า/แคชเชียร์) ทำงานเหมือนเครื่องแม่ทุกจุด
-    return redirect(url_for("index", mode="scanner"))
+    return redirect(url_for("staff_page"))
 
 
 @app.route("/authorize-staff")
@@ -462,6 +460,7 @@ def _normalize_cart_items(raw_cart: list, menu: list) -> list:
             "name": resolved_name,
             "price": base_price,
             "base_price": base_price,
+            "image": str((menu_item or {}).get("image", "")).strip() or str(item.get("image", "")).strip(),
             "note": str(item.get("note", "")).strip(),
             "addon": str(item.get("addon", "")).strip(),
         }
@@ -521,8 +520,6 @@ def api_sync_pending_orders():
 @app.route("/api/checkout", methods=["POST"])
 @require_roles("owner", "staff")
 def api_checkout():
-    if not is_server_request():
-        return jsonify({"error": "host_machine_only"}), 403
     payload = read_json()
     target = str(payload.get("target", "table"))
     target_id = payload.get("target_id")
@@ -596,6 +593,7 @@ def api_bill(target: str, target_id: int):
                 "name": item.get("name", "-"),
                 "price": float(item.get("price", 0)),
                 "qty": max(1, int(item.get("qty", 1) or 1)),
+                "image": item.get("image", ""),
                 "addon": item.get("addon", ""),
             })
     total = sum(i["price"] * i["qty"] for i in items)

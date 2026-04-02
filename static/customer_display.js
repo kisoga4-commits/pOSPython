@@ -15,53 +15,12 @@ async function api(path, options = {}) {
   return response.json();
 }
 
-function sanitizePromptPay(raw) {
-  const digits = String(raw || '').replace(/\D/g, '');
-  if (!digits) return '';
-  if (digits.length === 10 && digits.startsWith('0')) return digits;
-  if (digits.length === 9) return `0${digits}`;
-  if (digits.length === 11 && digits.startsWith('66')) return `0${digits.slice(2)}`;
-  if (digits.length === 13) return digits;
-  return digits;
-}
-
-function crc16ccitt(input) {
-  let crc = 0xFFFF;
-  for (let c = 0; c < input.length; c += 1) {
-    crc ^= input.charCodeAt(c) << 8;
-    for (let i = 0; i < 8; i += 1) {
-      crc = (crc & 0x8000) !== 0 ? ((crc << 1) ^ 0x1021) : (crc << 1);
-      crc &= 0xFFFF;
-    }
-  }
-  return crc.toString(16).toUpperCase().padStart(4, '0');
-}
-
-function tlv(id, value) {
-  const val = String(value);
-  return `${id}${String(val.length).padStart(2, '0')}${val}`;
-}
-
 function buildPromptPayPayload(promptPayId, amount = 0, dynamic = true) {
-  const id = sanitizePromptPay(promptPayId);
-  if (!id) return '';
-  const formattedId = id.length === 10 && id.startsWith('0') ? `0066${id.slice(1)}` : id;
-  const merchantInfo = `${tlv('00', 'A000000677010111')}${tlv('01', formattedId)}`;
-  let payload = '';
-  payload += tlv('00', '01');
-  payload += tlv('01', dynamic ? '12' : '11');
-  payload += tlv('29', merchantInfo);
-  payload += tlv('52', '0000');
-  payload += tlv('58', 'TH');
-  payload += tlv('53', '764');
-  if (dynamic && amount > 0) payload += tlv('54', Number(amount).toFixed(2));
-  payload += tlv('63', '');
-  return payload + crc16ccitt(payload);
+  return window.PromptPayQR?.buildPromptPayPayload(promptPayId, amount, dynamic) || '';
 }
 
 function buildQrImageUrl(rawText) {
-  const text = String(rawText || '').trim();
-  return `https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=0&data=${encodeURIComponent(text || 'promptpay-not-configured')}`;
+  return window.PromptPayQR?.buildQrImageUrl(rawText) || '';
 }
 
 function buildPromptPayQrImage(promptPayId, amount, dynamic) {
