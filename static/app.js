@@ -1184,6 +1184,27 @@ function renderSystem() {
   renderThemePresets(s.themePreset || '');
   updateReceiptPreview();
   renderTableQRList();
+  renderPaymentReadiness();
+}
+
+function renderPaymentReadiness() {
+  const wrap = qs('payment-readiness');
+  if (!wrap) return;
+  const settings = db.settings || {};
+  const hasPromptPay = Boolean(String(settings.promptPay || '').trim());
+  const hasQrImage = Boolean(String(settings.qrImage || '').trim());
+  const onlineReady = navigator.onLine && Boolean(resolveRuntimeHost());
+  const dynamicEnabled = Boolean(settings.dynamicPromptPay);
+
+  const rows = [
+    { label: 'พร้อมเพย์ถูกตั้งค่า', ok: hasPromptPay, okText: 'พร้อม', warnText: 'ยังไม่กรอกหมายเลขพร้อมเพย์' },
+    { label: 'อัปโหลดรูป QR พร้อมเพย์', ok: hasQrImage, okText: 'มีไฟล์แล้ว', warnText: 'ยังไม่อัปโหลดรูป' },
+    { label: 'สแกนแบบมีเน็ต', ok: onlineReady, okText: 'ออนไลน์', warnText: 'ออฟไลน์ (ตรวจเน็ตอีกครั้ง)' },
+    { label: 'Dynamic PromptPay', ok: dynamicEnabled, okText: 'เปิดใช้งาน', warnText: 'ปิดใช้งาน' },
+  ];
+  wrap.innerHTML = rows
+    .map((row) => `<div class="payment-readiness-item"><span>${row.label}</span><strong class="${row.ok ? 'payment-ok' : 'payment-warn'}">${row.ok ? `✅ ${row.okText}` : `⚠️ ${row.warnText}`}</strong></div>`)
+    .join('');
 }
 
 function renderPrinterDriverOptions(selectedDriver) {
@@ -1585,6 +1606,14 @@ function bind() {
     qs('new-admin-pin').value = '';
     qs('forgot-admin-modal').classList.remove('hidden');
   });
+  qs('admin-login-forgot-btn')?.addEventListener('click', () => {
+    closeAdminLoginModal();
+    qs('forgot-phone').value = '';
+    qs('forgot-color').value = '';
+    qs('forgot-celebrity').value = '';
+    qs('new-admin-pin').value = '';
+    qs('forgot-admin-modal').classList.remove('hidden');
+  });
   qs('reset-admin-pin')?.addEventListener('click', async () => {
     const s = db.settings || {};
     const phoneOk = qs('forgot-phone').value.trim() && qs('forgot-phone').value.trim() === (s.adminRecoveryPhone || '');
@@ -1654,6 +1683,7 @@ function bind() {
       }),
     });
     await loadData();
+    renderPaymentReadiness();
   });
 
   document.querySelectorAll('.modal').forEach((m) => m.addEventListener('click', (e) => {

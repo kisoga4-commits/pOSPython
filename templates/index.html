@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version }}" />
 </head>
 <body
+  class="{{ 'scanner-ui' if scanner_mode else 'host-ui' }}"
   data-local-ip="{{ local_ip }}"
   data-local-base-url="{{ local_base_url }}"
   data-scanner-mode="{{ '1' if scanner_mode else '0' }}"
@@ -33,6 +34,26 @@
     </header>
 
     <main>
+      <section class="section-card device-hub">
+        <div class="section-head">
+          <h2>โหมดการใช้งาน 3 อุปกรณ์</h2>
+        </div>
+        <div class="device-hub-grid">
+          <a class="device-card host-device" href="/">
+            <strong>🖥️ เครื่องแม่ (คอมพิวเตอร์)</strong>
+            <small>จัดการโต๊ะ / เช็คบิล / ตั้งค่าระบบ</small>
+          </a>
+          <a class="device-card staff-device" href="/staff">
+            <strong>📱 มือถือพนักงาน</strong>
+            <small>รับงานโต๊ะ, ตรวจแจ้งเตือนลูกค้า, เช็คบิล</small>
+          </a>
+          <a class="device-card customer-device" href="/customer-display">
+            <strong>📲 มือถือลูกค้า</strong>
+            <small>ลูกค้าสแกน QR ที่โต๊ะเพื่อสั่งอาหาร</small>
+          </a>
+        </div>
+      </section>
+
       <nav class="section-card tab-bar">
         <button class="main-tab is-active" data-screen="customer" aria-label="ลูกค้า">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 10.5 12 4l9 6.5"/><path d="M5 9.5V20h14V9.5"/><path d="M9 14h6"/></svg>
@@ -178,6 +199,7 @@
             <span>ใช้ Dynamic PromptPay</span>
           </label>
           <input id="qr-image" type="file" accept="image/*" />
+          <div id="payment-readiness" class="payment-readiness"></div>
         </div>
 
         <div id="system-qr" class="panel-block system-panel">
@@ -393,6 +415,7 @@
         <input id="admin-login-pin" type="password" placeholder="กรอกรหัส Admin" autocomplete="current-password" />
         <button id="admin-login-submit" class="btn-primary" type="button">เข้าสู่ระบบ</button>
       </div>
+      <button id="admin-login-forgot-btn" class="link-btn" type="button">ลืมรหัส?</button>
       <small id="admin-login-note" class="muted"></small>
     </div>
   </div>
