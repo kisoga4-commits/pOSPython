@@ -22,6 +22,7 @@ import os
 import tempfile
 import base64
 import io
+from urllib.parse import urlparse
 
 import db
 from app import app, build_table_token
@@ -164,19 +165,28 @@ def main() -> None:
         )
         assert_status(upload_image, 200, "menu image normalize")
         upload_payload = upload_image.get_json() or {}
-        normalized_data_url = str(upload_payload.get("image", ""))
-        if not normalized_data_url.startswith("data:image/webp;base64,"):
-            raise AssertionError("menu image normalize did not return webp data URL")
-        normalized_binary = base64.b64decode(normalized_data_url.split(",", 1)[1])
+        normalized_image_url = str(upload_payload.get("image", "")).strip()
+        parsed_url = urlparse(normalized_image_url)
+        image_path = parsed_url.path
+        if not image_path.startswith("/static/menu/") or not image_path.endswith(".webp"):
+            raise AssertionError(f"menu image normalize returned unexpected URL: {normalized_image_url}")
+        file_name = os.path.basename(image_path)
+        normalized_file_path = os.path.join(app.static_folder or "static", "menu", file_name)
+        if not os.path.isfile(normalized_file_path):
+            raise AssertionError(f"normalized menu image file not found: {normalized_file_path}")
+        with open(normalized_file_path, "rb") as normalized_file:
+            normalized_binary = normalized_file.read()
         if len(normalized_binary) >= len(original_binary):
             raise AssertionError(
                 f"menu image compressed size did not improve (original={len(original_binary)}, normalized={len(normalized_binary)})"
             )
-        normalized_image = Image.open(io.BytesIO(normalized_binary))
-        if normalized_image.width != 420 or normalized_image.height != 420:
-            raise AssertionError(
-                f"normalized menu image should be 420x420, got {normalized_image.width}x{normalized_image.height}"
-            )
+        with Image.open(normalized_file_path) as normalized_image:
+            if normalized_image.format != "WEBP":
+                raise AssertionError(f"normalized menu image should be WEBP, got {normalized_image.format}")
+            if normalized_image.width != 420 or normalized_image.height != 420:
+                raise AssertionError(
+                    f"normalized menu image should be 420x420, got {normalized_image.width}x{normalized_image.height}"
+                )
 
         customer_with_token = client.get(f"/customer?t={table_token}")
         assert_status(customer_with_token, 200, "customer token page")
