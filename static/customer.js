@@ -287,6 +287,14 @@ function refreshSubmitState() {
   }
   submitButton.textContent = hasItems ? 'ส่งคำขอรายการ' : 'เพิ่มเมนูก่อนส่งคำขอ';
 }
+
+function resolveAdaptiveGridSize(count) {
+  const total = Math.max(0, Number(count || 0));
+  if (total <= 3) return 3;
+  if (total <= 9) return 3;
+  return 4;
+}
+
 function renderMenu() {
   const currentTaskToken = ++renderMenuTaskToken;
   const list = document.getElementById('menu-list');
@@ -310,6 +318,7 @@ function renderMenu() {
     });
   }
   const displayMenu = availableMenu.filter((item) => activeCategory === 'ทั้งหมด' || (item.category || 'ทั่วไป') === activeCategory);
+  list.dataset.gridSize = String(resolveAdaptiveGridSize(displayMenu.length));
 
   if (!displayMenu.length) {
     list.innerHTML = '<div class="empty">เมนูที่ยังไม่สั่งหมดแล้ว 🎉</div>';

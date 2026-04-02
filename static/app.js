@@ -870,7 +870,13 @@ async function syncCustomerDisplayActiveTable(tableId) {
 }
 
 function sanitizePromptPay(raw) {
-  return String(raw || '').replace(/\D/g, '');
+  const digits = String(raw || '').replace(/\D/g, '');
+  if (!digits) return '';
+  if (digits.length === 10 && digits.startsWith('0')) return digits;
+  if (digits.length === 9) return `0${digits}`;
+  if (digits.length === 11 && digits.startsWith('66')) return `0${digits.slice(2)}`;
+  if (digits.length === 13) return digits;
+  return digits;
 }
 
 function crc16ccitt(input) {
@@ -894,11 +900,12 @@ function buildPromptPayPayload(promptPayId, amount = 0, dynamic = true) {
   const id = sanitizePromptPay(promptPayId);
   if (!id) return '';
   const formattedId = id.length === 10 && id.startsWith('0') ? `0066${id.slice(1)}` : id;
-  const merchantInfo = `0016A000000677010111${tlv('01', formattedId)}`;
+  const merchantInfo = `${tlv('00', 'A000000677010111')}${tlv('01', formattedId)}`;
   let payload = '';
   payload += tlv('00', '01');
   payload += tlv('01', dynamic ? '12' : '11');
   payload += tlv('29', merchantInfo);
+  payload += tlv('52', '0000');
   payload += tlv('58', 'TH');
   payload += tlv('53', '764');
   if (dynamic && amount > 0) payload += tlv('54', Number(amount).toFixed(2));
@@ -962,6 +969,7 @@ function renderCashier() {
     });
     wrap.appendChild(row);
   });
+  wrap.dataset.gridSize = queues.length > 9 ? '4' : '3';
 }
 
 function renderMenu() {
