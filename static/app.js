@@ -46,6 +46,8 @@ let liveEventSource = null;
 const scannerMode = document.body.dataset.scannerMode === '1';
 let activeBackupId = '';
 let checkoutAlertUntil = 0;
+const tableCardCache = new Map();
+const tableCardNodeCache = new Map();
 const ADMIN_SESSION_KEY = 'admin_logged_in';
 const adminAllowedScreens = new Set(['customer', 'cashier', 'backstore', 'system']);
 const nonAdminAllowedScreens = new Set(['customer', 'cashier']);
@@ -477,8 +479,10 @@ function addItemToOrderCart(item, options = {}) {
 
 function renderTables() {
   const grid = qs('table-grid');
-  grid.innerHTML = '';
+  if (!grid) return;
+  const nextTableIds = new Set();
   db.tables.forEach((table) => {
+    nextTableIds.add(Number(table.id));
     const tableOrders = getTableOrders(table.id);
     const pendingRequests = getTablePendingRequests(table.id);
     const hasAcceptedBefore = tableOrders.some((order) => order.status === 'accepted');
@@ -495,15 +499,14 @@ function renderTables() {
     if (table.call_staff_status === 'requested') card.classList.add('status-checkout_requested');
     const stackedItems = summarizeItems(previewItems);
     const tableTotal = money((items.length ? total : pendingItems.reduce((sum, item) => sum + (Number(item.price || 0) * Math.max(1, Number(item.qty || 1))), 0)));
-    if (LITE_MODE) {
-      const itemCount = stackedItems.reduce((sum, item) => sum + Math.max(1, Number(item.qty || 1)), 0);
-      card.innerHTML = `
+    const itemCount = stackedItems.reduce((sum, item) => sum + Math.max(1, Number(item.qty || 1)), 0);
+    const cardMarkup = LITE_MODE
+      ? `
         <div class="table-head-row"><strong>${unitLabel()} ${table.id}</strong><span class="status-chip ${meta.tone}">${meta.icon}</span></div>
         <div class="table-total">รวม ${tableTotal} บาท</div>
         <small>${itemCount > 0 ? `${itemCount} รายการ` : 'ยังไม่มีรายการ'}</small>
-        ${pendingRequests.length > 0 ? '<div class="dot-notify">🔔 มีคำขอรอยืนยัน</div>' : ''}`;
-    } else {
-      card.innerHTML = previewItems.length
+        ${pendingRequests.length > 0 ? '<div class="dot-notify">🔔 มีคำขอรอยืนยัน</div>' : ''}`
+      : (previewItems.length
         ? `<div class="table-head-row"><strong>${unitLabel()} ${table.id}</strong><span class="status-chip ${meta.tone}">${meta.icon}</span></div>
            <div class="table-image-grid">${stackedItems.slice(-4).map((i) => {
       const qty = Math.max(1, Number(i.qty || 1));
@@ -514,10 +517,42 @@ function renderTables() {
            ${showAdditionalOrder ? '<div class="dot-notify notify-additional">🆕 มีการสั่งเพิ่ม</div>' : ''}
            <div class="table-total">รวม ${tableTotal} บาท</div>`
         : `<div class="table-head-row"><strong>${unitLabel()} ${table.id}</strong><span class="status-chip available">○</span></div>
-           <small>${pendingRequests.length > 0 ? '🔔 รอยืนยันคำขอ' : ''}</small>`;
+           <small>${pendingRequests.length > 0 ? '🔔 รอยืนยันคำขอ' : ''}</small>`);
+    const signature = JSON.stringify({
+      status: displayStatus,
+      callStaff: table.call_staff_status || '',
+      pendingCount: pendingRequests.length,
+      total: tableTotal,
+      itemCount,
+      topItems: stackedItems.slice(-5).map((item) => [item.id || item.name, Number(item.qty || 1), Number(item.price || 0)]),
+      showAdditionalOrder,
+      lite: LITE_MODE,
+    });
+    const cacheKey = String(table.id);
+    const oldSignature = tableCardCache.get(cacheKey);
+    const existingCard = tableCardNodeCache.get(cacheKey);
+    const changed = !existingCard || oldSignature !== signature;
+    if (changed) {
+      card.innerHTML = cardMarkup;
+      tableCardCache.set(cacheKey, signature);
+      tableCardNodeCache.set(cacheKey, card);
+      if (existingCard && existingCard.parentElement === grid) {
+        existingCard.replaceWith(card);
+      } else {
+        grid.appendChild(card);
+      }
+    } else if (existingCard && existingCard.parentElement !== grid) {
+      grid.appendChild(existingCard);
     }
-    card.addEventListener('click', () => selectTable(table.id));
-    grid.appendChild(card);
+    (tableCardNodeCache.get(cacheKey) || card).onclick = () => selectTable(table.id);
+  });
+  [...tableCardNodeCache.keys()].forEach((cacheKey) => {
+    const numericId = Number(cacheKey);
+    if (nextTableIds.has(numericId)) return;
+    const node = tableCardNodeCache.get(cacheKey);
+    if (node?.parentElement) node.remove();
+    tableCardNodeCache.delete(cacheKey);
+    tableCardCache.delete(cacheKey);
   });
 }
 
@@ -1665,8 +1700,10 @@ async function loadData() {
   renderCashier();
   renderMenu();
   renderOrderCategoryTabs();
-  renderSales();
-  await renderBestSellers();
+  if (!LITE_MODE) {
+    renderSales();
+    await renderBestSellers();
+  }
   renderSystem();
   await checkSystemHealth();
   renderDeskSummary();
@@ -1987,12 +2024,16 @@ function bind() {
     await loadData();
   });
 
-  document.body.addEventListener('click', (event) => { if (event.target.closest('button')) playUISound(); });
+  if (!LITE_MODE) {
+    document.body.addEventListener('click', (event) => { if (event.target.closest('button')) playUISound(); });
+  }
   const soundToggle = qs('ui-sound-toggle');
   if (soundToggle) {
     soundToggle.checked = uiSoundEnabled;
     qs('ui-sound-label').textContent = uiSoundEnabled ? '🔊' : '🔇';
+    soundToggle.disabled = LITE_MODE;
     soundToggle.addEventListener('change', () => {
+      if (LITE_MODE) return;
       uiSoundEnabled = soundToggle.checked;
       localStorage.setItem('uiSoundEnabled', uiSoundEnabled ? '1' : '0');
       qs('ui-sound-label').textContent = uiSoundEnabled ? '🔊' : '🔇';

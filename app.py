@@ -30,7 +30,7 @@ log.setLevel(logging.ERROR)
 
 app = Flask(__name__)
 
-ASSET_VERSION = "20260402-ui-sync-perf-fix-v2"
+ASSET_VERSION = "20260402-lite-perf-prod-v1"
 LITE_UI_MODE = os.getenv("POS_LITE_MODE", "1") != "0"
 STATIC_IMAGE_CACHE_SECONDS = 7 * 24 * 60 * 60
 STATIC_IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg", ".avif")
@@ -487,6 +487,21 @@ def _refresh_table_state(db: dict, table_id: int) -> None:
         break
 
 
+def _compact_table_item(item: dict, qty: int) -> dict:
+    compact = {
+        "id": item.get("id") if item.get("id") is not None else item.get("item_id"),
+        "name": str(item.get("name", "")).strip() or "Unknown Item",
+        "price": float(item.get("price", 0) or 0),
+        "qty": max(1, qty),
+        "addon": str(item.get("addon", "")).strip(),
+        "note": str(item.get("note", "")).strip(),
+    }
+    image = str(item.get("image", "")).strip()
+    if image:
+        compact["image"] = image
+    return compact
+
+
 def _compress_table_items(items: list) -> list:
     grouped: dict[tuple, dict] = {}
     for raw in items or []:
@@ -503,8 +518,7 @@ def _compress_table_items(items: list) -> list:
             note,
         )
         if key not in grouped:
-            item["qty"] = qty
-            grouped[key] = item
+            grouped[key] = _compact_table_item(item, qty)
         else:
             grouped[key]["qty"] = max(1, _safe_parse_int(grouped[key].get("qty"), default=1)) + qty
     return list(grouped.values())
@@ -848,7 +862,7 @@ def api_table_accept():
     for table in db["tables"]:
         if table["id"] == table_id:
             table["status"] = "pending_order" if has_pending_request else "accepted_order"
-            table["items"] = accepted_items
+            table["items"] = _compress_table_items(accepted_items)
             table["last_order_event"] = "accepted"
             table["last_order_event_at"] = local_now()
             break
