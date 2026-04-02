@@ -8,7 +8,7 @@ function money(value) {
 
 async function api(path, options = {}) {
   const response = await fetch(path, {
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'X-POS-Role': 'owner', ...(options.headers || {}) },
     cache: 'no-store',
     ...options,
   });

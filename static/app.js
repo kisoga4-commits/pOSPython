@@ -10,6 +10,7 @@ let editingMenuId = null;
 let lastPendingTableIds = new Set();
 let lastCheckoutRequestIds = new Set();
 let activeOrderItemDraft = null;
+let activeOrderItemDraftQty = 1;
 let acceptRequestInFlight = false;
 const requestActionInFlight = new Set();
 let orderMenuRenderToken = 0;
@@ -113,6 +114,16 @@ function playCheckoutAlertBurst(durationMs = 5000) {
   const tick = () => {
     if (Date.now() > checkoutAlertUntil) return;
     playAlert('checkout-request-sound');
+    setTimeout(tick, 900);
+  };
+  tick();
+}
+
+function playCallStaffAlertBurst(durationMs = 5000) {
+  checkoutAlertUntil = Math.max(checkoutAlertUntil, Date.now() + durationMs);
+  const tick = () => {
+    if (Date.now() > checkoutAlertUntil) return;
+    playAlert('call-staff-sound');
     setTimeout(tick, 900);
   };
   tick();
@@ -414,7 +425,9 @@ function renderOrderMenuChoices() {
           return;
         }
         activeOrderItemDraft = item;
+        activeOrderItemDraftQty = 1;
         qs('order-item-detail-title').textContent = item.name;
+        qs('order-item-detail-qty-value').textContent = String(activeOrderItemDraftQty);
         const addonWrap = qs('order-item-addon-checkboxes');
         addonWrap.innerHTML = '';
         addonOptions.forEach((option) => {
@@ -796,7 +809,7 @@ async function openBill(targetId) {
       const actions = document.createElement('div');
       actions.className = 'bill-item-actions';
       actions.innerHTML = `
-        <button class="btn-soft btn-danger" type="button" data-action="delete">🗑️ ลบรายการนี้</button>
+        <button class="btn-soft btn-danger icon-delete" type="button" data-action="delete" aria-label="ลบรายการ">✕</button>
       `;
       actions.querySelector('[data-action="delete"]')?.addEventListener('click', () => deleteBillItem(item));
       row.appendChild(actions);
@@ -1592,13 +1605,23 @@ function bind() {
   qs('close-table-order-modal').addEventListener('click', () => qs('table-order-modal').classList.add('hidden'));
   qs('close-order-item-detail-modal')?.addEventListener('click', () => {
     activeOrderItemDraft = null;
+    activeOrderItemDraftQty = 1;
     qs('order-item-detail-modal').classList.add('hidden');
   });
   qs('order-item-detail-modal')?.addEventListener('click', (event) => {
     if (event.target.id === 'order-item-detail-modal') {
       activeOrderItemDraft = null;
+      activeOrderItemDraftQty = 1;
       qs('order-item-detail-modal').classList.add('hidden');
     }
+  });
+  qs('order-item-detail-qty-minus')?.addEventListener('click', () => {
+    activeOrderItemDraftQty = Math.max(1, Number(activeOrderItemDraftQty || 1) - 1);
+    qs('order-item-detail-qty-value').textContent = String(activeOrderItemDraftQty);
+  });
+  qs('order-item-detail-qty-plus')?.addEventListener('click', () => {
+    activeOrderItemDraftQty = Math.max(1, Number(activeOrderItemDraftQty || 1) + 1);
+    qs('order-item-detail-qty-value').textContent = String(activeOrderItemDraftQty);
   });
   qs('order-item-detail-add-btn')?.addEventListener('click', () => {
     if (!activeOrderItemDraft) return;
@@ -1606,8 +1629,9 @@ function bind() {
       .map((node) => node.value.trim())
       .filter(Boolean);
     const selectedAddons = checked.map((label) => parseAddonOption(label));
-    addItemToOrderCart(activeOrderItemDraft, { addons: selectedAddons, qty: 1, note: '' });
+    addItemToOrderCart(activeOrderItemDraft, { addons: selectedAddons, qty: activeOrderItemDraftQty, note: '' });
     activeOrderItemDraft = null;
+    activeOrderItemDraftQty = 1;
     qs('order-item-detail-modal').classList.add('hidden');
   });
   qs('close-payment-modal').addEventListener('click', () => {
@@ -2003,6 +2027,7 @@ async function poll() {
     }
     if (hasNewCheckoutRequest) {
       playCheckoutAlertBurst(5000);
+      playCallStaffAlertBurst(5000);
       [...checkoutSet].filter((id) => !lastCheckoutRequestIds.has(id)).forEach((tableId) => blinkTableCard(tableId));
     }
     lastPendingTableIds = pendingSet;
@@ -2031,7 +2056,7 @@ function blinkTableCard(tableId) {
   const timer = setTimeout(() => {
     card.classList.remove('blink-red');
     tableBlinkTimers.delete(tableId);
-  }, 10000);
+  }, 3500);
   tableBlinkTimers.set(tableId, timer);
 }
 

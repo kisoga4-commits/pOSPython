@@ -27,7 +27,7 @@ log = logging.getLogger("werkzeug")
 log.setLevel(logging.ERROR)
 
 app = Flask(__name__)
-ASSET_VERSION = "20260401-offline-lan-sync-v2"
+ASSET_VERSION = "20260402-ui-stability-v3"
 
 
 @app.after_request

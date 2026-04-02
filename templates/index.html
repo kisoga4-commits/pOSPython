@@ -367,6 +367,14 @@
       <div class="order-list">
         <div id="order-item-addon-checkboxes" class="addon-check-list"></div>
       </div>
+      <div class="item-detail-qty-row">
+        <span>จำนวน</span>
+        <div class="item-detail-qty-control">
+          <button id="order-item-detail-qty-minus" class="btn-soft cart-qty-btn" type="button">−</button>
+          <strong id="order-item-detail-qty-value" class="cart-qty-value">1</strong>
+          <button id="order-item-detail-qty-plus" class="btn-soft cart-qty-btn" type="button">+</button>
+        </div>
+      </div>
       <div class="btn-row modal-fixed-footer">
         <button id="order-item-detail-add-btn" class="btn-primary" type="button">เพิ่มลงตะกร้า</button>
       </div>
@@ -463,6 +471,7 @@
 
   <audio id="new-order-sound" src="{{ url_for('static', filename='sounds/new_order.mp3') }}"></audio>
   <audio id="checkout-request-sound" src="{{ url_for('static', filename='sounds/checkout.mp3') }}"></audio>
+  <audio id="call-staff-sound" src="{{ url_for('static', filename='sounds/warning.mp3') }}"></audio>
   <script src="{{ url_for('static', filename='app.js') }}?v={{ asset_version }}"></script>
 </body>
 </html>

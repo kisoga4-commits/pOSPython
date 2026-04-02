@@ -178,8 +178,15 @@ def save_db(data: dict) -> dict:
     return normalized
 
 
-def reset_tables(data: dict) -> dict:
+def reset_tables(data: dict, preserve_existing_suffix: bool = True) -> dict:
     table_count = int(data.get("tableCount", 8))
+    existing_suffix_by_id = {}
+    if preserve_existing_suffix:
+        for table in data.get("tables", []):
+            table_id = int(table.get("id", 0) or 0)
+            suffix = str(table.get("suffix", "")).strip()
+            if table_id > 0 and len(suffix) == 4 and suffix.isalnum():
+                existing_suffix_by_id[table_id] = suffix
     data["tables"] = [
         {
             "id": i,
@@ -190,7 +197,7 @@ def reset_tables(data: dict) -> dict:
             "call_staff_ack_at": "",
             "last_order_event": "",
             "last_order_event_at": "",
-            "suffix": generate_table_suffix(),
+            "suffix": existing_suffix_by_id.get(i) or generate_table_suffix(),
         }
         for i in range(1, table_count + 1)
     ]
