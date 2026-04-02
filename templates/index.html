@@ -263,6 +263,20 @@
         </div>
 
         <button id="save-system" class="btn-primary big-save">บันทึกการตั้งค่า</button>
+
+        <div id="system-backup" class="panel-block system-panel backup-panel">
+          <h3>สำรองข้อมูล & กู้คืนข้อมูลเก่า</h3>
+          <p class="muted">เมนูนี้อยู่ล่างสุดสำหรับสำรองข้อมูลระบบปัจจุบัน และดึงข้อมูลเก่ากลับมาใช้งานจริง</p>
+          <div class="manage-row">
+            <button id="create-backup-btn" class="btn-secondary" type="button">💾 สร้าง Backup ตอนนี้</button>
+            <button id="backup-export-btn" class="btn-soft" type="button">⬇️ ดาวน์โหลด Backup ล่าสุด</button>
+            <label class="btn-soft file-like-btn">
+              ⬆️ นำเข้าไฟล์ Backup
+              <input id="backup-import-file" type="file" accept="application/json" class="hidden" />
+            </label>
+          </div>
+          <div id="backup-history-list" class="order-list"></div>
+        </div>
       </section>
     </main>
   </div>
