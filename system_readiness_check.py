@@ -6,10 +6,14 @@ Covers:
 - customer scan page availability
 - mobile viewport hints in UI templates
 - menu availability via API
+- menu category update propagation
 - customer live data updates/version increments
 - customer order creation
 - staff order acceptance
-- checkout flow completion
+- checkout flow completion (cash + QR)
+- online/offline QR payment readiness settings
+- offline pending-order sync to master endpoint
+- image normalization + compression effectiveness
 """
 
 from __future__ import annotations
@@ -37,6 +41,11 @@ def assert_contains(text: str, expected: str, label: str) -> None:
 def assert_version_increased(new_version: int, previous_version: int, label: str) -> None:
     if int(new_version) <= int(previous_version):
         raise AssertionError(f"{label}: version did not increase (prev={previous_version}, new={new_version})")
+
+
+def assert_true(condition: bool, label: str) -> None:
+    if not condition:
+        raise AssertionError(label)
 
 
 def main() -> None:
@@ -70,6 +79,7 @@ def main() -> None:
         if not payload or not payload.get("menu"):
             raise AssertionError("menu is empty")
         base_version = int(payload.get("meta", {}).get("version", 0))
+        original_menu = payload.get("menu", [])
 
         table_token = build_table_token(payload["tables"][0])
         if not table_token:
@@ -84,7 +94,7 @@ def main() -> None:
             "/api/settings",
             headers={"X-POS-Role": "owner"},
             environ_overrides={"REMOTE_ADDR": "127.0.0.1"},
-            json={"settings": {"promptPay": "0812345678"}},
+            json={"settings": {"promptPay": "0812345678", "dynamicPromptPay": True}},
         )
         assert_status(save_settings, 200, "save promptpay setting")
 
@@ -96,11 +106,56 @@ def main() -> None:
         assert_status(data_after_promptpay, 200, "api data after promptpay")
         if str((data_after_promptpay.get_json() or {}).get("settings", {}).get("promptPay", "")).strip() != "0812345678":
             raise AssertionError("promptpay setting was not persisted correctly")
+        if not bool((data_after_promptpay.get_json() or {}).get("settings", {}).get("dynamicPromptPay")):
+            raise AssertionError("dynamic promptpay setting was not persisted correctly")
+
+        # Upload and persist offline QR image setting.
+        qr_image = Image.new("RGB", (920, 320), (60, 130, 255))
+        qr_io = io.BytesIO()
+        qr_image.save(qr_io, format="PNG")
+        qr_data_url = f"data:image/png;base64,{base64.b64encode(qr_io.getvalue()).decode('utf-8')}"
+        save_offline_qr = client.post(
+            "/api/settings",
+            headers={"X-POS-Role": "owner"},
+            environ_overrides={"REMOTE_ADDR": "127.0.0.1"},
+            json={"settings": {"dynamicPromptPay": False, "qrImage": qr_data_url}},
+        )
+        assert_status(save_offline_qr, 200, "save uploaded qr image setting")
+
+        data_after_uploaded_qr = client.get(
+            "/api/data",
+            headers={"X-POS-Role": "owner"},
+            environ_overrides={"REMOTE_ADDR": "127.0.0.1"},
+        )
+        assert_status(data_after_uploaded_qr, 200, "api data after uploaded qr")
+        uploaded_settings = (data_after_uploaded_qr.get_json() or {}).get("settings", {})
+        assert_true(bool(str(uploaded_settings.get("qrImage", "")).startswith("data:image/")), "uploaded qr image setting missing")
+        assert_true(not bool(uploaded_settings.get("dynamicPromptPay")), "uploaded qr image should disable dynamic promptpay")
+
+        # Categories should update from server settings.
+        updated_menu = [dict(item, category="ทดสอบหมวด") for item in original_menu]
+        save_menu = client.post(
+            "/api/settings",
+            headers={"X-POS-Role": "owner"},
+            environ_overrides={"REMOTE_ADDR": "127.0.0.1"},
+            json={"menu": updated_menu},
+        )
+        assert_status(save_menu, 200, "save menu categories")
+        data_after_menu = client.get(
+            "/api/data",
+            headers={"X-POS-Role": "staff"},
+            environ_overrides={"REMOTE_ADDR": "127.0.0.1"},
+        )
+        assert_status(data_after_menu, 200, "api data after menu category update")
+        refreshed_menu = (data_after_menu.get_json() or {}).get("menu", [])
+        if not refreshed_menu or not all(str(item.get("category", "")).strip() == "ทดสอบหมวด" for item in refreshed_menu):
+            raise AssertionError("menu category update was not reflected to staff data")
 
         # Uploaded menu image should be normalized into square WEBP (420x420).
         sample_image = Image.new("RGB", (1200, 400), (255, 60, 60))
         sample_io = io.BytesIO()
         sample_image.save(sample_io, format="PNG")
+        original_binary = sample_io.getvalue()
         sample_data_url = f"data:image/png;base64,{base64.b64encode(sample_io.getvalue()).decode('utf-8')}"
         upload_image = client.post(
             "/api/menu/upload-image",
@@ -113,6 +168,10 @@ def main() -> None:
         if not normalized_data_url.startswith("data:image/webp;base64,"):
             raise AssertionError("menu image normalize did not return webp data URL")
         normalized_binary = base64.b64decode(normalized_data_url.split(",", 1)[1])
+        if len(normalized_binary) >= len(original_binary):
+            raise AssertionError(
+                f"menu image compressed size did not improve (original={len(original_binary)}, normalized={len(normalized_binary)})"
+            )
         normalized_image = Image.open(io.BytesIO(normalized_binary))
         if normalized_image.width != 420 or normalized_image.height != 420:
             raise AssertionError(
@@ -188,7 +247,52 @@ def main() -> None:
         if table_state.get("status") != "available":
             raise AssertionError(f"table should be available after checkout, got {table_state.get('status')}")
 
-    print("SYSTEM READY: staff+customer scan, live updates, mobile UI hints, order/accept/checkout checks passed.")
+        # Create one more order to verify QR payment checkout mode.
+        order_qr = client.post(
+            "/api/order",
+            headers={"X-POS-Role": "customer"},
+            json={
+                "target": "table",
+                "target_id": 1,
+                "table_token": table_token,
+                "source": "customer",
+                "cart": [{"id": 2, "name": "หมูสันคอสไลซ์", "price": 120, "qty": 1}],
+            },
+        )
+        assert_status(order_qr, 200, "create order for qr checkout")
+        qr_order_id = (order_qr.get_json() or {}).get("order", {}).get("id")
+        assert_true(bool(qr_order_id), "qr checkout flow missing order id")
+        accept_qr = client.post("/api/table/accept", headers={"X-POS-Role": "staff"}, json={"order_id": qr_order_id})
+        assert_status(accept_qr, 200, "accept order for qr checkout")
+        checkout_qr = client.post(
+            "/api/checkout",
+            headers={"X-POS-Role": "staff"},
+            json={"target": "table", "target_id": 1, "payment_method": "qr"},
+        )
+        assert_status(checkout_qr, 200, "checkout qr")
+        sale_record = (checkout_qr.get_json() or {}).get("sale_record", {})
+        if str(sale_record.get("payment_method")) != "qr":
+            raise AssertionError("sale record did not store qr payment method")
+
+        # Offline sync (client cached order list) to master endpoint should be accepted.
+        pending_sync_payload = [{
+            "client_order_id": "LOCAL-001",
+            "target": "table",
+            "target_id": 1,
+            "table_token": table_token,
+            "source": "customer",
+            "cart": [{"id": 1, "name": "เนื้อใบพายพรีเมียม", "price": 150, "qty": 1}],
+        }]
+        sync_pending = client.post("/api/sync/pending-orders", json={"pending_orders": pending_sync_payload})
+        assert_status(sync_pending, 200, "sync pending orders")
+        sync_result = sync_pending.get_json() or {}
+        if int(sync_result.get("accepted_count", 0)) != 1:
+            raise AssertionError(f"pending order sync did not accept expected items: {sync_result}")
+
+    print(
+        "SYSTEM READY: scan pages, customer/staff live sync, menu categories, QR payment "
+        "(dynamic+uploaded/cash+qr checkout), offline sync, and image compression checks passed."
+    )
 
 
 if __name__ == "__main__":
