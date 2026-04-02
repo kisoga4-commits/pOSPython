@@ -4,7 +4,8 @@ let selectedTableId = null;
 let orderCart = [];
 let activeCashierTableId = null;
 let menuImagePreviewData = '';
-let uiSoundEnabled = localStorage.getItem('uiSoundEnabled') !== '0';
+const LITE_MODE = document.body?.dataset?.liteMode === '1';
+let uiSoundEnabled = !LITE_MODE && localStorage.getItem('uiSoundEnabled') !== '0';
 let tableZoom = 100;
 let editingMenuId = null;
 let lastPendingTableIds = new Set();
@@ -146,7 +147,7 @@ function customerScanUrl(tableId) {
 }
 function buildQrImageUrl(text) { return window.PromptPayQR?.buildQrImageUrl(text) || ''; }
 function playAlert(id) {
-  if (!uiSoundEnabled) return;
+  if (LITE_MODE || !uiSoundEnabled) return;
   const audio = qs(id);
   if (!audio) return;
   audio.volume = 1;
@@ -155,7 +156,7 @@ function playAlert(id) {
 }
 
 function playUISound() {
-  if (!uiSoundEnabled) return;
+  if (LITE_MODE || !uiSoundEnabled) return;
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
   const o = ctx.createOscillator();
   const g = ctx.createGain();
@@ -493,18 +494,28 @@ function renderTables() {
     card.dataset.tableId = String(table.id);
     if (table.call_staff_status === 'requested') card.classList.add('status-checkout_requested');
     const stackedItems = summarizeItems(previewItems);
-    card.innerHTML = previewItems.length
-      ? `<div class="table-head-row"><strong>${unitLabel()} ${table.id}</strong><span class="status-chip ${meta.tone}">${meta.icon}</span></div>
-         <div class="table-image-grid">${stackedItems.slice(-4).map((i) => {
-    const qty = Math.max(1, Number(i.qty || 1));
-    const thumb = createThumbMarkup(i.image, i.name, 'table-item-thumb', 'fallback');
-    return `<span class="table-image-cell">${thumb}${qty > 1 ? `<span class="table-item-qty-badge">x${qty}</span>` : ''}</span>`;
-  }).join('')}</div>
-         ${pendingRequests.length > 0 ? '<div class="dot-notify">🔔 มีคำขอรอยืนยัน</div>' : ''}
-         ${showAdditionalOrder ? '<div class="dot-notify notify-additional">🆕 มีการสั่งเพิ่ม</div>' : ''}
-         <div class="table-total">รวม ${money((items.length ? total : pendingItems.reduce((sum, item) => sum + (Number(item.price || 0) * Math.max(1, Number(item.qty || 1))), 0)))} บาท</div>`
-      : `<div class="table-head-row"><strong>${unitLabel()} ${table.id}</strong><span class="status-chip available">○</span></div>
-         <small>${pendingRequests.length > 0 ? '🔔 รอยืนยันคำขอ' : ''}</small>`;
+    const tableTotal = money((items.length ? total : pendingItems.reduce((sum, item) => sum + (Number(item.price || 0) * Math.max(1, Number(item.qty || 1))), 0)));
+    if (LITE_MODE) {
+      const itemCount = stackedItems.reduce((sum, item) => sum + Math.max(1, Number(item.qty || 1)), 0);
+      card.innerHTML = `
+        <div class="table-head-row"><strong>${unitLabel()} ${table.id}</strong><span class="status-chip ${meta.tone}">${meta.icon}</span></div>
+        <div class="table-total">รวม ${tableTotal} บาท</div>
+        <small>${itemCount > 0 ? `${itemCount} รายการ` : 'ยังไม่มีรายการ'}</small>
+        ${pendingRequests.length > 0 ? '<div class="dot-notify">🔔 มีคำขอรอยืนยัน</div>' : ''}`;
+    } else {
+      card.innerHTML = previewItems.length
+        ? `<div class="table-head-row"><strong>${unitLabel()} ${table.id}</strong><span class="status-chip ${meta.tone}">${meta.icon}</span></div>
+           <div class="table-image-grid">${stackedItems.slice(-4).map((i) => {
+      const qty = Math.max(1, Number(i.qty || 1));
+      const thumb = createThumbMarkup(i.image, i.name, 'table-item-thumb', 'fallback');
+      return `<span class="table-image-cell">${thumb}${qty > 1 ? `<span class="table-item-qty-badge">x${qty}</span>` : ''}</span>`;
+    }).join('')}</div>
+           ${pendingRequests.length > 0 ? '<div class="dot-notify">🔔 มีคำขอรอยืนยัน</div>' : ''}
+           ${showAdditionalOrder ? '<div class="dot-notify notify-additional">🆕 มีการสั่งเพิ่ม</div>' : ''}
+           <div class="table-total">รวม ${tableTotal} บาท</div>`
+        : `<div class="table-head-row"><strong>${unitLabel()} ${table.id}</strong><span class="status-chip available">○</span></div>
+           <small>${pendingRequests.length > 0 ? '🔔 รอยืนยันคำขอ' : ''}</small>`;
+    }
     card.addEventListener('click', () => selectTable(table.id));
     grid.appendChild(card);
   });
@@ -524,8 +535,10 @@ function renderOrderMenuChoices() {
     for (let index = cursor; index < end; index += 1) {
       const item = filteredMenu[index];
       const btn = document.createElement('article');
-      btn.className = 'menu-choice visual large-thumb';
-      btn.innerHTML = `<div class="menu-choice-thumb">${createThumbMarkup(item.image, item.name, 'menu-grid-thumb', 'fallback')}</div><strong>${item.name}</strong><small>฿${money(item.price)}</small>`;
+      btn.className = LITE_MODE ? 'menu-choice' : 'menu-choice visual large-thumb';
+      btn.innerHTML = LITE_MODE
+        ? `<strong>${item.name}</strong><small>฿${money(item.price)}</small>`
+        : `<div class="menu-choice-thumb">${createThumbMarkup(item.image, item.name, 'menu-grid-thumb', 'fallback')}</div><strong>${item.name}</strong><small>฿${money(item.price)}</small>`;
       btn.addEventListener('click', () => {
         const addonOptions = normalizeAddonOptions(item);
         if (!addonOptions.length) {
