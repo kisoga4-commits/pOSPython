@@ -1,4 +1,6 @@
 (function attachPromptPayQR(global) {
+  const QR_DEFAULT_SIZE = 512;
+
   function tlv(id, value) {
     const val = String(value ?? '');
     return `${id}${String(val.length).padStart(2, '0')}${val}`;
@@ -32,6 +34,11 @@
     return safe.toFixed(2);
   }
 
+  function createDynamicRefFromAmount(amountText) {
+    if (!amountText) return '';
+    return amountText.replace('.', '');
+  }
+
   function buildPromptPayPayload(promptPayId, amount = 0, dynamic = true) {
     const normalized = sanitizePromptPay(promptPayId);
     if (!normalized.value) return '';
@@ -46,12 +53,37 @@
     payload += tlv('58', 'TH');
     const amountText = dynamic ? formatAmount(amount) : '';
     if (amountText) payload += tlv('54', amountText);
+    if (dynamic && amountText) {
+      payload += tlv('62', tlv('04', createDynamicRefFromAmount(amountText)));
+    }
     payload += tlv('63', '');
     return payload + crc16ccitt(payload);
   }
 
-  function buildQrImageUrl(text) {
+  function buildQrImageUrl(text, size = QR_DEFAULT_SIZE) {
     const value = String(text || '').trim() || 'promptpay-not-configured';
+    const safeSize = Math.max(128, Number(size || QR_DEFAULT_SIZE));
+    if (typeof global.QRCode === 'function') {
+      const holder = document.createElement('div');
+      holder.style.position = 'fixed';
+      holder.style.left = '-99999px';
+      holder.style.top = '-99999px';
+      holder.style.width = `${safeSize}px`;
+      holder.style.height = `${safeSize}px`;
+      document.body.appendChild(holder);
+      // eslint-disable-next-line no-new
+      new global.QRCode(holder, {
+        text: value,
+        width: safeSize,
+        height: safeSize,
+        correctLevel: global.QRCode.CorrectLevel?.H || 2,
+      });
+      const canvas = holder.querySelector('canvas');
+      const image = holder.querySelector('img');
+      const result = canvas?.toDataURL('image/png') || image?.src || '';
+      holder.remove();
+      if (result) return result;
+    }
     return `https://api.qrserver.com/v1/create-qr-code/?size=512x512&margin=12&ecc=H&data=${encodeURIComponent(value)}`;
   }
 
