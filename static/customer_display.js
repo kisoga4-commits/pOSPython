@@ -63,6 +63,14 @@ function buildPromptPayQrImage(promptPayId, amount, dynamic) {
   return buildQrImageUrl(payload);
 }
 
+function resolvePaymentQrImage(cfg, amount) {
+  const settings = cfg || {};
+  if (settings.dynamicPromptPay) {
+    return buildPromptPayQrImage(settings.promptPay || '', Number(amount || 0), true);
+  }
+  return settings.qrImage || buildPromptPayQrImage(settings.promptPay || '', Number(amount || 0), false);
+}
+
 function summarizeItems(items = []) {
   const itemMap = new Map();
   items.forEach((item) => {
@@ -116,7 +124,7 @@ function renderBill(bill) {
     list.appendChild(row);
   });
   qs('customer-facing-total').textContent = money(bill.total);
-  const qrImage = settings.qrImage || buildPromptPayQrImage(settings.promptPay || '', Number(bill.total || 0), Boolean(settings.dynamicPromptPay));
+  const qrImage = resolvePaymentQrImage(settings, Number(bill.total || 0));
   qs('customer-facing-qr-image').src = qrImage;
 }
 
@@ -137,6 +145,7 @@ function clearDisplaySelection() {
 }
 
 async function refreshBill() {
+  await loadSettings();
   if (!tableId) {
     updateTableHeader();
     renderWaitingDisplay();

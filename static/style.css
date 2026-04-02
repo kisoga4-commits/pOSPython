@@ -896,6 +896,26 @@ main{display:grid;gap:10px}
 .menu-admin-row .btn-soft{min-height:36px;padding:6px 9px}
 .history-danger-zone{margin-top:12px;justify-content:flex-end}
 
+/* vivid icon refresh + backup panel */
+.header-icons .icon-btn{
+  background:linear-gradient(135deg,#fef3c7,#ffedd5 48%,#dbeafe);
+  border-color:#c7d2fe;
+  box-shadow:0 8px 18px rgba(59,130,246,.18);
+}
+.header-icons .icon-btn:nth-child(1){background:linear-gradient(135deg,#fef2f2,#fee2e2,#fce7f3)}
+.header-icons .icon-btn:nth-child(2){background:linear-gradient(135deg,#ecfccb,#dcfce7,#ccfbf1)}
+.header-icons .icon-btn:nth-child(3){background:linear-gradient(135deg,#dbeafe,#e0e7ff,#ede9fe)}
+.header-icons .icon-btn:nth-child(4){background:linear-gradient(135deg,#ffedd5,#fde68a,#fef9c3)}
+.main-tab:nth-child(1) svg{stroke:#0ea5e9}
+.main-tab:nth-child(2) svg{stroke:#f97316}
+.main-tab:nth-child(3) svg{stroke:#22c55e}
+.main-tab:nth-child(4) svg{stroke:#a855f7}
+.main-tab.is-active svg{filter:drop-shadow(0 2px 3px rgba(0,0,0,.12))}
+.backup-panel{border:1px dashed #93c5fd;background:linear-gradient(150deg,#f8fafc,#ecfeff)}
+.backup-row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.backup-row small{display:block;color:#64748b;margin-top:3px}
+.file-like-btn{display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+
 .sales-comparison-card{padding:10px 12px;border-radius:12px;display:grid;gap:4px}
 .sales-comparison-card.is-up{background:#ecfdf3;border:1px solid #86efac}
 .sales-comparison-card.is-up span{color:#166534}

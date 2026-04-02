@@ -17,6 +17,7 @@ let salesFilterRange = null;
 let activeMenuCategory = 'ทั้งหมด';
 let activeBackstoreMenuCategory = 'ทั้งหมด';
 const CUSTOMER_DISPLAY_ACTIVE_TABLE_KEY = 'customer_display_active_table';
+const BACKUP_SNAPSHOTS_KEY = 'pos_backup_snapshots_v1';
 const RECOVERY_COLORS = ['แดง', 'ส้ม', 'เหลือง', 'เขียว', 'ฟ้า', 'น้ำเงิน', 'ม่วง'];
 const CELEBRITIES = ['ณเดชน์ คูกิมิยะ', 'ญาญ่า อุรัสยา', 'ใหม่ ดาวิกา', 'มาริโอ้ เมาเร่อ', 'เบลล่า ราณี', 'ชมพู่ อารยา', 'อั้ม พัชราภา', 'แพนเค้ก เขมนิจ', 'เวียร์ ศุกลวัฒน์', 'โป๊ป ธนวรรธน์', 'เจมส์ จิรายุ', 'คิมเบอร์ลี่', 'บอย ปกรณ์', 'เต้ย จรินทร์พร', 'ใบเฟิร์น พิมพ์ชนก', 'โตโน่ ภาคิน', 'แพทริเซีย กู๊ด', 'แอฟ ทักษอร', 'นนกุล ชานน', 'กลัฟ คณาวุฒิ'];
 const THEME_PRESETS = [
@@ -754,7 +755,7 @@ async function openBill(targetId) {
     qs('bill-items').appendChild(row);
   });
   qs('bill-total').textContent = money(bill.total);
-  const paymentImage = db.settings?.qrImage || buildPromptPayQrImage(db.settings?.promptPay || '', Number(bill.total || 0), Boolean(db.settings?.dynamicPromptPay));
+  const paymentImage = resolvePaymentQrImage(db.settings, Number(bill.total || 0));
   qs('bill-payment-qr-image').src = paymentImage;
   qs('bill-payment-qr-wrap').classList.remove('hidden');
   qs('payment-modal').classList.remove('hidden');
@@ -810,6 +811,14 @@ function buildPromptPayQrImage(promptPayId, amount, dynamic) {
   const payload = buildPromptPayPayload(promptPayId, amount, dynamic);
   if (!payload) return buildQrImageUrl('promptpay-not-configured');
   return buildQrImageUrl(payload);
+}
+
+function resolvePaymentQrImage(settings, totalAmount) {
+  const cfg = settings || {};
+  if (cfg.dynamicPromptPay) {
+    return buildPromptPayQrImage(cfg.promptPay || '', Number(totalAmount || 0), true);
+  }
+  return cfg.qrImage || buildPromptPayQrImage(cfg.promptPay || '', Number(totalAmount || 0), false);
 }
 
 function renderCashier() {
@@ -1197,6 +1206,7 @@ function renderSystem() {
   updateReceiptPreview();
   renderTableQRList();
   renderPaymentReadiness();
+  renderBackupList();
 }
 
 function renderPaymentReadiness() {
@@ -1210,13 +1220,78 @@ function renderPaymentReadiness() {
 
   const rows = [
     { label: 'พร้อมเพย์ถูกตั้งค่า', ok: hasPromptPay, okText: 'พร้อม', warnText: 'ยังไม่กรอกหมายเลขพร้อมเพย์' },
-    { label: 'อัปโหลดรูป QR พร้อมเพย์', ok: hasQrImage, okText: 'มีไฟล์แล้ว', warnText: 'ยังไม่อัปโหลดรูป' },
+    {
+      label: 'อัปโหลดรูป QR พร้อมเพย์ (โหมด Static)',
+      ok: dynamicEnabled ? true : hasQrImage,
+      okText: dynamicEnabled ? 'ไม่จำเป็นเมื่อใช้ Dynamic' : 'มีไฟล์แล้ว',
+      warnText: 'ยังไม่อัปโหลดรูป',
+    },
     { label: 'สแกนแบบมีเน็ต', ok: onlineReady, okText: 'ออนไลน์', warnText: 'ออฟไลน์ (ตรวจเน็ตอีกครั้ง)' },
     { label: 'Dynamic PromptPay', ok: dynamicEnabled, okText: 'เปิดใช้งาน', warnText: 'ปิดใช้งาน' },
   ];
   wrap.innerHTML = rows
     .map((row) => `<div class="payment-readiness-item"><span>${row.label}</span><strong class="${row.ok ? 'payment-ok' : 'payment-warn'}">${row.ok ? `✅ ${row.okText}` : `⚠️ ${row.warnText}`}</strong></div>`)
     .join('');
+}
+
+function readLocalBackups() {
+  try {
+    const raw = localStorage.getItem(BACKUP_SNAPSHOTS_KEY);
+    const data = JSON.parse(raw || '[]');
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    return [];
+  }
+}
+
+function writeLocalBackups(rows) {
+  localStorage.setItem(BACKUP_SNAPSHOTS_KEY, JSON.stringify(rows.slice(0, 20)));
+}
+
+function pushLocalBackup(snapshotDb) {
+  const now = new Date();
+  const backups = readLocalBackups();
+  backups.unshift({
+    id: `${now.getTime()}-${Math.random().toString(16).slice(2, 7)}`,
+    created_at: now.toISOString(),
+    store_name: snapshotDb?.settings?.storeName || 'FAKDU',
+    table_count: Number(snapshotDb?.tableCount || 0),
+    sales_count: Array.isArray(snapshotDb?.sales) ? snapshotDb.sales.length : 0,
+    payload: snapshotDb,
+  });
+  writeLocalBackups(backups);
+}
+
+function downloadJson(filename, data) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function renderBackupList() {
+  const wrap = qs('backup-history-list');
+  if (!wrap) return;
+  const backups = readLocalBackups();
+  if (!backups.length) {
+    wrap.innerHTML = '<div class="empty">ยังไม่มี Backup ในเครื่องนี้</div>';
+    return;
+  }
+  wrap.innerHTML = '';
+  backups.forEach((row) => {
+    const card = document.createElement('div');
+    card.className = 'list-card backup-row';
+    const stamp = new Date(row.created_at || Date.now()).toLocaleString('th-TH');
+    card.innerHTML = `<div><strong>${row.store_name || 'FAKDU'}</strong><small>${stamp} • โต๊ะ ${row.table_count || 0} • บิล ${row.sales_count || 0}</small></div>
+      <div class="btn-row">
+        <button class="btn-soft js-backup-download" data-id="${row.id}" type="button">ดาวน์โหลด</button>
+        <button class="btn-secondary js-backup-restore" data-id="${row.id}" type="button">กู้คืน</button>
+      </div>`;
+    wrap.appendChild(card);
+  });
 }
 
 function renderPrinterDriverOptions(selectedDriver) {
@@ -1664,6 +1739,75 @@ function bind() {
     renderSelectedTableQR(event.target.value);
   });
   qs('recheck-system')?.addEventListener('click', checkSystemHealth);
+  qs('create-backup-btn')?.addEventListener('click', async () => {
+    const snapshot = await api('/api/backup');
+    if (snapshot.error) {
+      alert('สร้าง Backup ไม่สำเร็จ');
+      return;
+    }
+    pushLocalBackup(snapshot);
+    renderBackupList();
+    alert('สำรองข้อมูลเรียบร้อย');
+  });
+  qs('backup-export-btn')?.addEventListener('click', async () => {
+    const snapshot = await api('/api/backup');
+    if (snapshot.error) {
+      alert('ดาวน์โหลด Backup ไม่สำเร็จ');
+      return;
+    }
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    downloadJson(`pos-backup-${stamp}.json`, snapshot);
+  });
+  qs('backup-import-file')?.addEventListener('change', async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const raw = await file.text();
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (error) {
+      alert('ไฟล์ Backup ไม่ถูกต้อง');
+      event.target.value = '';
+      return;
+    }
+    const ok = window.confirm('ยืนยันนำเข้า Backup นี้และเขียนทับข้อมูลเดิม?');
+    if (!ok) {
+      event.target.value = '';
+      return;
+    }
+    const result = await api('/api/restore', { method: 'POST', body: JSON.stringify(parsed) });
+    event.target.value = '';
+    if (result.error) {
+      alert('กู้คืนข้อมูลไม่สำเร็จ');
+      return;
+    }
+    pushLocalBackup(parsed);
+    await loadData();
+    alert('กู้คืนข้อมูลจากไฟล์สำเร็จ');
+  });
+  qs('backup-history-list')?.addEventListener('click', async (event) => {
+    const restoreBtn = event.target.closest('.js-backup-restore');
+    const downloadBtn = event.target.closest('.js-backup-download');
+    if (!restoreBtn && !downloadBtn) return;
+    const backupId = restoreBtn?.dataset.id || downloadBtn?.dataset.id;
+    if (!backupId) return;
+    const backup = readLocalBackups().find((row) => row.id === backupId);
+    if (!backup?.payload) return;
+    if (downloadBtn) {
+      const stamp = String(backup.created_at || '').replace(/[:.]/g, '-');
+      downloadJson(`pos-backup-local-${stamp}.json`, backup.payload);
+      return;
+    }
+    const ok = window.confirm('ยืนยันกู้คืนข้อมูลเก่าชุดนี้? ระบบจะเขียนทับข้อมูลปัจจุบัน');
+    if (!ok) return;
+    const result = await api('/api/restore', { method: 'POST', body: JSON.stringify(backup.payload) });
+    if (result.error) {
+      alert('กู้คืนข้อมูลไม่สำเร็จ');
+      return;
+    }
+    await loadData();
+    alert('กู้คืนข้อมูลสำเร็จ');
+  });
 
   qs('save-system').addEventListener('click', async () => {
     let qrImage = db.settings?.qrImage || '';
