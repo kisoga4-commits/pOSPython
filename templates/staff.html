@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FAKDU Staff</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version }}" />
+</head>
+<body data-auto-staff="{{ '1' if auto_staff else '0' }}">
+  <main class="mobile-shell staff-shell">
+    <header class="mobile-header">
+      <div class="brand-zone">
+        <div class="logo-wrap">
+          <div id="staff-logo-slot" class="logo-slot">📱</div>
+          <span id="staff-online-dot" class="network-dot online" title="Online"></span>
+          <strong id="staff-store-name" class="logo-name">FAKDU</strong>
+        </div>
+        <div class="brand-copy">
+          <small class="mobile-subtitle">พนักงาน</small>
+        </div>
+      </div>
+      <button id="staff-logout-btn" class="btn-soft logout-btn hidden" type="button">🚪 Remove Staff Role</button>
+    </header>
+
+    <section id="staff-login-screen" class="mobile-panel staff-login-screen">
+      <h3>สแกนเพื่อเข้าโหมดพนักงาน</h3>
+      <p>สแกน QR จากเครื่องแม่เพื่อเข้าใช้งานได้ทันที</p>
+    </section>
+
+    <section id="staff-app-screen" class="mobile-content staff-mobile hidden">
+      <section id="staff-tab-customer" class="mobile-panel">
+        <div class="section-head">
+          <h3>👥 ลูกค้า (Tables)</h3>
+        </div>
+        <div id="staff-customer-list" class="order-list"></div>
+      </section>
+
+      <section id="staff-tab-checkout" class="mobile-panel hidden">
+        <div class="section-head">
+          <h3>💵 เช็คบิล (Billing)</h3>
+        </div>
+        <div id="staff-checkout-list" class="order-list"></div>
+      </section>
+    </section>
+
+    <nav id="staff-bottom-nav" class="staff-bottom-nav hidden">
+      <button class="staff-nav-btn is-active" data-staff-tab="customer" type="button">👥</button>
+      <button class="staff-nav-btn" data-staff-tab="checkout" type="button">💵</button>
+    </nav>
+  </main>
+  <audio id="new-order-sound" src="{{ url_for('static', filename='sounds/new_order.mp3') }}"></audio>
+  <audio id="checkout-request-sound" src="{{ url_for('static', filename='sounds/checkout.mp3') }}"></audio>
+  <audio id="call-staff-sound" src="{{ url_for('static', filename='sounds/warning.mp3') }}"></audio>
+  <script src="{{ url_for('static', filename='staff.js') }}?v={{ asset_version }}"></script>
+</body>
+</html>

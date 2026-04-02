@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Staff Access</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version }}" />
+</head>
+<body class="customer-app">
+  <main class="mobile-shell app-mobile delivery-app-shell">
+    <section class="mobile-panel compact-panel">
+      <h3>เข้าโหมดพนักงาน</h3>
+      <p>ลิงก์นี้เข้าใช้งานโหมดพนักงานได้ทันที (ลูกค้า + เช็คบิล)</p>
+      <button id="authorize-staff-btn" class="btn-primary" type="button">✅ เข้าโหมดพนักงาน</button>
+      <p id="authorize-note" class="muted"></p>
+    </section>
+  </main>
+  <script>
+    document.getElementById('authorize-staff-btn').addEventListener('click', () => {
+      document.getElementById('authorize-note').innerHTML = 'เปิดสิทธิ์พนักงานแล้ว ✅ <a href="/scan/staff">แตะเพื่อเข้าโหมดพนักงาน</a>';
+      localStorage.setItem('user_role', 'staff');
+    });
+  </script>
+</body>
+</html>

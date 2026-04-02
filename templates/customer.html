@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FAKDU โต๊ะลูกค้า</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version }}" />
+</head>
+<body
+  data-table-id="{{ table_id or '' }}"
+  data-table-token="{{ table_token or '' }}"
+  data-local-base-url="{{ local_base_url or '' }}"
+  data-asset-version="{{ asset_version }}"
+  class="customer-app"
+>
+  <main class="mobile-shell app-mobile delivery-app-shell">
+    <header class="mobile-header delivery-header compact-header">
+      <div class="brand-zone">
+        <div class="logo-wrap">
+          <div id="customer-logo-slot" class="logo-slot">📱</div>
+          <span class="network-dot online" title="Online"></span>
+          <strong id="customer-store-name" class="logo-name">FAKDU</strong>
+        </div>
+        <div class="brand-copy">
+          <p class="mobile-subtitle">Table {{ table_id }}</p>
+          <p id="table-mode-note" class="mobile-subtitle"></p>
+          <p class="mobile-subtitle">เลือกเมนูจากรูปได้ทันที</p>
+        </div>
+      </div>
+      <div class="customer-status-head">
+        <div id="table-badge" class="badge status-accepted_order"></div>
+        <div id="order-ack-indicator" class="badge order-ack-indicator hidden"></div>
+      </div>
+    </header>
+
+    <section class="mobile-content customer-mobile">
+      <section class="mobile-panel menu-panel compact-panel">
+        <h3>เมนู</h3>
+        <div class="btn-row">
+          <button id="call-staff-mini-btn" class="btn-call-staff btn-call-staff-mini" type="button">🔔 เรียกพนักงาน</button>
+          <button id="toggle-current-cart" class="btn-soft" type="button">🧺 ▸</button>
+        </div>
+        <div id="inline-cart-panel" class="order-list hidden"></div>
+        <div id="customer-category-tabs" class="menu-category-tabs"></div>
+        <div id="menu-list" class="mobile-menu-list delivery-grid compact-grid"></div>
+      </section>
+    </section>
+  </main>
+
+  <button id="floating-cart-btn" class="floating-cart-btn" type="button">
+    <div>
+      <span id="floating-cart-count">0 รายการ</span>
+      <strong id="floating-cart-total">฿0.00</strong>
+    </div>
+    <strong>🛒</strong>
+  </button>
+
+  <div id="cart-modal" class="modal hidden">
+    <div class="modal-card cart-modal-card">
+      <div class="section-head">
+        <h3>ตะกร้าของฉัน</h3>
+        <button id="close-cart-modal" class="btn-soft btn-close-x">✖</button>
+      </div>
+      <button id="clear-cart-btn" class="btn-danger clear-cart-btn" type="button">🗑️ ล้างตะกร้า (Clear Cart)</button>
+      <div id="cart-list" class="order-list"></div>
+      <div id="cart-total" class="order-total"></div>
+      <div class="btn-row modal-fixed-footer">
+        <button id="submit-order" class="btn-primary">ส่งคำขอรายการ</button>
+      </div>
+      <p id="message"></p>
+    </div>
+  </div>
+
+  <div id="item-detail-modal" class="modal hidden">
+    <div class="modal-card cart-modal-card">
+      <div class="section-head">
+        <h3 id="item-detail-title">เลือกตัวเลือก</h3>
+        <button id="close-item-detail-modal" class="btn-soft btn-close-x" type="button">✖</button>
+      </div>
+      <div class="order-list">
+        <div id="item-addon-checkboxes" class="addon-check-list"></div>
+      </div>
+      <div class="item-detail-qty-row">
+        <span>จำนวน</span>
+        <div class="item-detail-qty-control">
+          <button id="item-detail-qty-minus" class="btn-soft cart-qty-btn" type="button">−</button>
+          <strong id="item-detail-qty-value" class="cart-qty-value">1</strong>
+          <button id="item-detail-qty-plus" class="btn-soft cart-qty-btn" type="button">+</button>
+        </div>
+      </div>
+      <div class="btn-row modal-fixed-footer">
+        <button id="item-detail-skip-addon-btn" class="btn-soft" type="button">ไม่เลือกเสริม</button>
+        <button id="item-detail-add-btn" class="btn-primary" type="button">เพิ่มลงตะกร้า</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="cart-toast" class="cart-toast hidden" role="status" aria-live="polite">เพิ่มลงตะกร้าแล้ว</div>
+  <audio id="customer-confirm-sound" src="{{ url_for('static', filename='sounds/warning.mp3') }}"></audio>
+  <audio id="add-to-cart-sound" src="{{ url_for('static', filename='sounds/new_order.mp3') }}"></audio>
+  <audio id="customer-call-staff-sound" src="{{ url_for('static', filename='sounds/warning.mp3') }}"></audio>
+
+  <script src="{{ url_for('static', filename='db.js') }}?v={{ asset_version }}"></script>
+  <script src="{{ url_for('static', filename='sync.js') }}?v={{ asset_version }}"></script>
+  <script src="{{ url_for('static', filename='customer.js') }}?v={{ asset_version }}"></script>
+</body>
+</html>
