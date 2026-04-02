@@ -590,9 +590,17 @@ async function loadLive() {
       }
       return;
     }
-    menu = data.menu || [];
-    currentSettings = data.settings || {};
-    applyBranding(currentSettings);
+    if (Array.isArray(data.menu) && data.menu.length) {
+      menu = data.menu;
+      await window.posDB.saveMenu(menu);
+    } else if (!menu.length) {
+      const cachedMenu = await window.posDB.loadMenu();
+      if (cachedMenu.length) menu = cachedMenu;
+    }
+    if (data.settings && typeof data.settings === 'object') {
+      currentSettings = data.settings;
+      applyBranding(currentSettings);
+    }
     currentTables = data.tables || [];
     const tableOrders = (data.orders || []).filter((order) => Number(order.target_id) === Number(lockedTableId));
     const lastOrder = [...tableOrders].sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')))[0];
@@ -613,7 +621,6 @@ async function loadLive() {
       }
     }
     version = data.version || version;
-    await window.posDB.saveMenu(menu);
     setLockedTableUI();
     updateTableStatus(data.tables || []);
     updateOrderAckIndicator(data.orders || []);
