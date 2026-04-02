@@ -460,6 +460,54 @@ function normalizeCategoryName(value, fallback = 'ทั่วไป') {
   return cleaned || fallback;
 }
 
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error('file_read_failed'));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function optimizeImageFile(file, options = {}) {
+  if (!(file instanceof File)) return '';
+  const {
+    maxWidth = 720,
+    maxHeight = 720,
+    quality = 0.76,
+    crop = 'none',
+    mimeType = 'image/webp',
+  } = options;
+  const source = await readFileAsDataUrl(file);
+  const image = await new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('image_decode_failed'));
+    img.src = source;
+  });
+  const canvas = document.createElement('canvas');
+  let sourceX = 0;
+  let sourceY = 0;
+  let sourceWidth = image.width;
+  let sourceHeight = image.height;
+  if (crop === 'square') {
+    const side = Math.min(image.width, image.height);
+    sourceX = Math.floor((image.width - side) / 2);
+    sourceY = Math.floor((image.height - side) / 2);
+    sourceWidth = side;
+    sourceHeight = side;
+  }
+  const ratio = Math.min(maxWidth / sourceWidth, maxHeight / sourceHeight, 1);
+  canvas.width = Math.max(1, Math.round(sourceWidth * ratio));
+  canvas.height = Math.max(1, Math.round(sourceHeight * ratio));
+  const context = canvas.getContext('2d');
+  if (!context) return source;
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = 'high';
+  context.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL(mimeType, quality);
+}
+
 function getMenuCategoryChoices() {
   const categories = new Set(DEFAULT_MENU_CATEGORIES);
   const customCategories = Array.isArray(db?.settings?.menuCategories) ? db.settings.menuCategories : [];
@@ -823,8 +871,7 @@ async function openBill(targetId) {
   }
   qs('bill-total').textContent = money(bill.total);
   const paymentImage = resolvePaymentQrImage(db.settings, Number(bill.total || 0));
-  qs('bill-payment-qr-image').src = paymentImage;
-  qs('bill-payment-qr-wrap').classList.remove('hidden');
+  setPaymentQrDisplay(paymentImage);
   qs('payment-modal').classList.remove('hidden');
 }
 
@@ -874,7 +921,7 @@ function buildPromptPayPayload(promptPayId, amount = 0, dynamic = true) {
 
 function buildPromptPayQrImage(promptPayId, amount, dynamic) {
   const payload = buildPromptPayPayload(promptPayId, amount, dynamic);
-  if (!payload) return buildQrImageUrl('promptpay-not-configured');
+  if (!payload) return '';
   return buildQrImageUrl(payload);
 }
 
@@ -887,6 +934,28 @@ function resolvePaymentQrImage(settings, totalAmount) {
   }
   if (hasUploadedQrImage) return cfg.qrImage;
   return buildPromptPayQrImage(promptPayId, Number(totalAmount || 0), false);
+}
+
+function setPaymentQrDisplay(imageUrl) {
+  const wrap = qs('bill-payment-qr-wrap');
+  const image = qs('bill-payment-qr-image');
+  const note = qs('bill-payment-qr-note');
+  const safeImageUrl = String(imageUrl || '').trim();
+  if (!safeImageUrl) {
+    image?.removeAttribute('src');
+    wrap?.classList.add('hidden');
+    if (note) {
+      note.textContent = 'ไม่มี QR สำหรับรับชำระ (ยังไม่ได้ตั้งค่าพร้อมเพย์หรืออัปโหลดรูป QR)';
+      note.classList.remove('hidden');
+    }
+    return;
+  }
+  image.src = safeImageUrl;
+  wrap?.classList.remove('hidden');
+  if (note) {
+    note.textContent = '';
+    note.classList.add('hidden');
+  }
 }
 
 function renderCashier() {
@@ -1696,7 +1765,12 @@ function bind() {
   qs('menu-image-file').addEventListener('change', async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    menuImagePreviewData = await new Promise((resolve) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.readAsDataURL(file); });
+    menuImagePreviewData = await optimizeImageFile(file, {
+      maxWidth: 720,
+      maxHeight: 720,
+      quality: 0.74,
+      crop: 'square',
+    });
     const compressed = await api('/api/menu/upload-image', { method: 'POST', body: JSON.stringify({ image: menuImagePreviewData }) });
     menuImagePreviewData = compressed.image || menuImagePreviewData;
     qs('menu-image-preview').src = menuImagePreviewData;
@@ -1726,7 +1800,12 @@ function bind() {
   qs('shop-logo-file').addEventListener('change', async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    const dataUrl = await new Promise((resolve) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.readAsDataURL(file); });
+    const dataUrl = await optimizeImageFile(file, {
+      maxWidth: 420,
+      maxHeight: 420,
+      quality: 0.78,
+      crop: 'square',
+    });
     qs('shop-logo-preview').src = dataUrl;
   });
 
@@ -1942,7 +2021,15 @@ function bind() {
     let qrImage = db.settings?.qrImage || '';
     const logoImage = qs('shop-logo-preview').src || db.settings?.logoImage || '';
     const qrFile = qs('qr-image').files?.[0];
-    if (qrFile) qrImage = await new Promise((resolve) => { const r = new FileReader(); r.onload = () => resolve(r.result); r.readAsDataURL(qrFile); });
+    if (qrFile) {
+      qrImage = await optimizeImageFile(qrFile, {
+        maxWidth: 820,
+        maxHeight: 820,
+        quality: 0.86,
+        crop: 'none',
+        mimeType: 'image/png',
+      });
+    }
     const activeThemePreset = document.querySelector('.theme-preset.is-active')?.dataset.presetId || 'custom';
     await api('/api/settings', {
       method: 'POST',

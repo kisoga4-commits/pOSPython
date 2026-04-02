@@ -25,7 +25,7 @@ function buildQrImageUrl(rawText) {
 
 function buildPromptPayQrImage(promptPayId, amount, dynamic) {
   const payload = buildPromptPayPayload(promptPayId, amount, dynamic);
-  if (!payload) return buildQrImageUrl('promptpay-not-configured');
+  if (!payload) return '';
   return buildQrImageUrl(payload);
 }
 
@@ -38,6 +38,28 @@ function resolvePaymentQrImage(cfg, amount) {
   }
   if (hasUploadedQrImage) return settings.qrImage;
   return buildPromptPayQrImage(promptPayId, Number(amount || 0), false);
+}
+
+function renderPaymentQrImage(imageUrl) {
+  const qrWrap = qs('customer-facing-qr-wrap');
+  const qrImage = qs('customer-facing-qr-image');
+  const qrNote = qs('customer-facing-qr-note');
+  const safeImageUrl = String(imageUrl || '').trim();
+  if (!safeImageUrl) {
+    qrImage?.removeAttribute('src');
+    qrWrap?.classList.add('hidden');
+    if (qrNote) {
+      qrNote.textContent = 'ไม่มี QR ชำระเงิน (ร้านยังไม่ได้ตั้งค่าพร้อมเพย์หรือรูป QR)';
+      qrNote.classList.remove('hidden');
+    }
+    return;
+  }
+  qrWrap?.classList.remove('hidden');
+  qrImage.src = safeImageUrl;
+  if (qrNote) {
+    qrNote.textContent = '';
+    qrNote.classList.add('hidden');
+  }
 }
 
 function summarizeItems(items = []) {
@@ -92,7 +114,6 @@ function renderBill(bill) {
     return;
   }
 
-  qrWrap?.classList.remove('hidden');
   groupedItems.forEach((item) => {
     const row = document.createElement('div');
     row.className = 'list-card bill-row-item';
@@ -103,16 +124,19 @@ function renderBill(bill) {
   });
   qs('customer-facing-total').textContent = money(bill.total);
   const qrImage = resolvePaymentQrImage(settings, Number(bill.total || 0));
-  qs('customer-facing-qr-image').src = qrImage;
+  renderPaymentQrImage(qrImage);
 }
 
 function renderWaitingDisplay() {
   const list = qs('customer-facing-items');
   const qrWrap = qs('customer-facing-qr-wrap');
+  const qrNote = qs('customer-facing-qr-note');
   list.innerHTML = '<div class="empty">หน้าจอพร้อมใช้งาน<br/>รอการเช็คบิลถัดไป</div>';
   qs('customer-facing-total').textContent = money(0);
   qs('customer-facing-qr-image').removeAttribute('src');
   qrWrap?.classList.add('hidden');
+  qrNote?.classList.add('hidden');
+  if (qrNote) qrNote.textContent = '';
 }
 
 function clearDisplaySelection() {
