@@ -1,4 +1,5 @@
 (function attachPromptPayQR(global) {
+  const qrImageCache = new Map();
   function tlv(id, value) {
     const val = String(value ?? '');
     return `${id}${String(val.length).padStart(2, '0')}${val}`;
@@ -7,10 +8,27 @@
   function sanitizePromptPay(raw) {
     const digits = String(raw || '').replace(/\D/g, '');
     if (!digits) return { type: '', value: '' };
-    if (digits.length === 13) return { type: 'tax_id', value: digits };
-    if (digits.length === 10 && digits.startsWith('0')) return { type: 'mobile', value: `0066${digits.slice(1)}` };
-    if (digits.length === 9) return { type: 'mobile', value: `0066${digits}` };
-    if (digits.length === 11 && digits.startsWith('66')) return { type: 'mobile', value: `0066${digits.slice(2)}` };
+
+    // Thai mobile (0XXXXXXXXX)
+    if (digits.length === 10 && digits.startsWith('0')) {
+      return { type: 'mobile', value: `0066${digits.slice(1)}` };
+    }
+
+    // Thai mobile in country-code format (66XXXXXXXXX)
+    if (digits.length === 11 && digits.startsWith('66')) {
+      return { type: 'mobile', value: `0066${digits.slice(2)}` };
+    }
+
+    // Already-normalized PromptPay mobile (0066XXXXXXXXX)
+    if (digits.length === 13 && digits.startsWith('0066')) {
+      return { type: 'mobile', value: digits };
+    }
+
+    // Thai national ID / tax ID
+    if (digits.length === 13) {
+      return { type: 'tax_id', value: digits };
+    }
+
     return { type: '', value: '' };
   }
 
@@ -51,8 +69,14 @@
   }
 
   function buildQrImageUrl(text) {
-    const value = String(text || '').trim() || 'promptpay-not-configured';
-    return `https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=0&data=${encodeURIComponent(value)}`;
+    const value = String(text || '').trim();
+    if (!value) return '';
+    if (qrImageCache.has(value)) return qrImageCache.get(value);
+
+    // Higher error correction + margin makes physical scanning easier on phone cameras.
+    const imageUrl = `https://quickchart.io/qr?size=512&margin=2&ecLevel=Q&format=png&text=${encodeURIComponent(value)}`;
+    qrImageCache.set(value, imageUrl);
+    return imageUrl;
   }
 
   global.PromptPayQR = {
