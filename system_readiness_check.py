@@ -16,9 +16,12 @@ from __future__ import annotations
 
 import os
 import tempfile
+import base64
+import io
 
 import db
 from app import app, build_table_token
+from PIL import Image
 
 
 def assert_status(response, expected: int, label: str) -> None:
@@ -75,6 +78,46 @@ def main() -> None:
         customer_scan = client.get("/scan/customer/1")
         assert_status(customer_scan, 200, "scan customer page")
         assert_contains(customer_scan.get_data(as_text=True), 'name="viewport"', "scan customer mobile viewport")
+
+        # PromptPay setting should be persisted and available to UI checks.
+        save_settings = client.post(
+            "/api/settings",
+            headers={"X-POS-Role": "owner"},
+            environ_overrides={"REMOTE_ADDR": "127.0.0.1"},
+            json={"settings": {"promptPay": "0812345678"}},
+        )
+        assert_status(save_settings, 200, "save promptpay setting")
+
+        data_after_promptpay = client.get(
+            "/api/data",
+            headers={"X-POS-Role": "owner"},
+            environ_overrides={"REMOTE_ADDR": "127.0.0.1"},
+        )
+        assert_status(data_after_promptpay, 200, "api data after promptpay")
+        if str((data_after_promptpay.get_json() or {}).get("settings", {}).get("promptPay", "")).strip() != "0812345678":
+            raise AssertionError("promptpay setting was not persisted correctly")
+
+        # Uploaded menu image should be normalized into square WEBP (420x420).
+        sample_image = Image.new("RGB", (1200, 400), (255, 60, 60))
+        sample_io = io.BytesIO()
+        sample_image.save(sample_io, format="PNG")
+        sample_data_url = f"data:image/png;base64,{base64.b64encode(sample_io.getvalue()).decode('utf-8')}"
+        upload_image = client.post(
+            "/api/menu/upload-image",
+            headers={"X-POS-Role": "owner"},
+            json={"image": sample_data_url},
+        )
+        assert_status(upload_image, 200, "menu image normalize")
+        upload_payload = upload_image.get_json() or {}
+        normalized_data_url = str(upload_payload.get("image", ""))
+        if not normalized_data_url.startswith("data:image/webp;base64,"):
+            raise AssertionError("menu image normalize did not return webp data URL")
+        normalized_binary = base64.b64decode(normalized_data_url.split(",", 1)[1])
+        normalized_image = Image.open(io.BytesIO(normalized_binary))
+        if normalized_image.width != 420 or normalized_image.height != 420:
+            raise AssertionError(
+                f"normalized menu image should be 420x420, got {normalized_image.width}x{normalized_image.height}"
+            )
 
         customer_with_token = client.get(f"/customer?t={table_token}")
         assert_status(customer_with_token, 200, "customer token page")

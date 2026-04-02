@@ -79,6 +79,7 @@ async function compressImageFileClient(file, options = {}) {
     });
   }
   const maxWidth = Number(options.maxWidth || 960);
+  const squareSize = Number(options.squareSize || 0);
   const quality = Number(options.quality || 0.72);
   const preferredFormat = typeof options.format === 'string' ? options.format : 'image/webp';
   const imageBitmap = await createImageBitmap(file);
@@ -86,10 +87,22 @@ async function compressImageFileClient(file, options = {}) {
   const width = Math.max(1, Math.round(imageBitmap.width * ratio));
   const height = Math.max(1, Math.round(imageBitmap.height * ratio));
   const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
+  const normalizedSquare = squareSize > 0 ? Math.max(64, Math.round(squareSize)) : 0;
+  canvas.width = normalizedSquare || width;
+  canvas.height = normalizedSquare || height;
   const context = canvas.getContext('2d', { alpha: false });
-  context.drawImage(imageBitmap, 0, 0, width, height);
+  context.fillStyle = '#FFFFFF';
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  if (normalizedSquare) {
+    const drawScale = Math.min(normalizedSquare / width, normalizedSquare / height);
+    const drawWidth = Math.max(1, Math.round(width * drawScale));
+    const drawHeight = Math.max(1, Math.round(height * drawScale));
+    const offsetX = Math.round((normalizedSquare - drawWidth) / 2);
+    const offsetY = Math.round((normalizedSquare - drawHeight) / 2);
+    context.drawImage(imageBitmap, offsetX, offsetY, drawWidth, drawHeight);
+  } else {
+    context.drawImage(imageBitmap, 0, 0, width, height);
+  }
   imageBitmap.close();
   let dataUrl = '';
   try {
@@ -232,6 +245,7 @@ async function checkSystemHealth() {
   const lanIp = qs('system-lan-ip');
   const hostCheck = qs('system-host-check');
   const displaySyncStatus = qs('system-display-sync-status');
+  const promptPayStatus = qs('system-promptpay-status');
   const staffScanStatus = qs('system-staff-scan-status');
   const customerScanStatus = qs('system-customer-scan-status');
   if (serverStatus) {
@@ -248,6 +262,19 @@ async function checkSystemHealth() {
     displaySyncStatus.textContent = displaySync.error
       ? `ไม่พร้อม (${displaySync.error})`
       : `พร้อม (Table ${syncedTable || 0} · v${displaySync.version || '-'})`;
+  }
+  if (promptPayStatus) {
+    const settings = db?.settings || {};
+    const resolvedPaymentQr = resolvePaymentQrImage(settings, 1);
+    const hasUploadedQr = Boolean(String(settings.qrImage || '').trim());
+    const qrReady = Boolean(resolvedPaymentQr) && !String(resolvedPaymentQr).includes('promptpay-not-configured');
+    if (qrReady && hasUploadedQr) {
+      promptPayStatus.textContent = 'พร้อมใช้งาน (ใช้รูป QR ที่อัปโหลด)';
+    } else if (qrReady) {
+      promptPayStatus.textContent = 'พร้อมใช้งาน (สร้าง QR พร้อมเพย์จากระบบ)';
+    } else {
+      promptPayStatus.textContent = 'ไม่พร้อม (ยังไม่ตั้งค่า PromptPay/QR)';
+    }
   }
 
   const staffScanReady = await safeFetchOk('/scan/staff', { headers: { Accept: 'text/html' } });
@@ -951,7 +978,15 @@ async function syncCustomerDisplayActiveTable(tableId) {
 }
 
 function buildDynamicPromptPayImage(promptPayId, amount) {
-  return window.PromptPayQR?.buildPromptPayApiUrl(promptPayId, amount) || '';
+  const payload = window.PromptPayQR?.buildPromptPayPayload(promptPayId, amount, true) || '';
+  if (!payload) return '';
+  return buildQrImageUrl(payload);
+}
+
+function buildStaticPromptPayImage(promptPayId) {
+  const payload = window.PromptPayQR?.buildPromptPayPayload(promptPayId, 0, false) || '';
+  if (!payload) return '';
+  return buildQrImageUrl(payload);
 }
 
 function resolvePaymentQrImage(settings, totalAmount) {
@@ -963,6 +998,10 @@ function resolvePaymentQrImage(settings, totalAmount) {
     if (dynamicImage) return dynamicImage;
   }
   if (hasUploadedQrImage) return cfg.qrImage;
+  if (promptPayId) {
+    const staticPromptPayImage = buildStaticPromptPayImage(promptPayId);
+    if (staticPromptPayImage) return staticPromptPayImage;
+  }
   return buildQrImageUrl('promptpay-not-configured');
 }
 
@@ -1361,19 +1400,22 @@ function renderPaymentReadiness() {
   const wrap = qs('payment-readiness');
   if (!wrap) return;
   const settings = db.settings || {};
-  const hasPromptPay = Boolean(String(settings.promptPay || '').trim());
+  const hasPromptPay = Boolean(window.PromptPayQR?.sanitizePromptPay(String(settings.promptPay || '').trim())?.value);
   const hasQrImage = Boolean(String(settings.qrImage || '').trim());
   const onlineReady = navigator.onLine && Boolean(resolveRuntimeHost());
   const dynamicEnabled = Boolean(settings.dynamicPromptPay);
+  const resolvedQr = resolvePaymentQrImage(settings, 1);
+  const qrReady = Boolean(resolvedQr) && !String(resolvedQr).includes('promptpay-not-configured');
 
   const rows = [
-    { label: 'พร้อมเพย์ถูกตั้งค่า', ok: hasPromptPay, okText: 'พร้อม', warnText: 'ยังไม่กรอกหมายเลขพร้อมเพย์' },
+    { label: 'พร้อมเพย์ถูกตั้งค่า', ok: hasPromptPay, okText: 'พร้อม', warnText: 'รูปแบบหมายเลขพร้อมเพย์ไม่ถูกต้อง/ยังไม่กรอก' },
     {
       label: 'อัปโหลดรูป QR พร้อมเพย์ (โหมด Static)',
       ok: dynamicEnabled ? true : hasQrImage,
       okText: dynamicEnabled ? 'ไม่จำเป็นเมื่อใช้ Dynamic' : 'มีไฟล์แล้ว',
       warnText: 'ยังไม่อัปโหลดรูป',
     },
+    { label: 'สร้าง/แสดง QR พร้อมเพย์ได้จริง', ok: qrReady, okText: 'พร้อมใช้งาน', warnText: 'ยังสร้าง QR ไม่ได้' },
     { label: 'สแกนแบบมีเน็ต', ok: onlineReady, okText: 'ออนไลน์', warnText: 'ออฟไลน์ (ตรวจเน็ตอีกครั้ง)' },
     { label: 'Dynamic PromptPay', ok: dynamicEnabled, okText: 'เปิดใช้งาน', warnText: 'ปิดใช้งาน' },
   ];
@@ -1773,7 +1815,12 @@ function bind() {
   qs('menu-image-file').addEventListener('change', async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    menuImagePreviewData = await compressImageFileClient(file, { maxWidth: 960, quality: 0.72, format: 'image/webp' });
+    menuImagePreviewData = await compressImageFileClient(file, {
+      maxWidth: 960,
+      squareSize: 640,
+      quality: 0.72,
+      format: 'image/webp',
+    });
     const compressed = await api('/api/menu/upload-image', { method: 'POST', body: JSON.stringify({ image: menuImagePreviewData || '' }) });
     menuImagePreviewData = compressed.image || menuImagePreviewData;
     qs('menu-image-preview').src = menuImagePreviewData;
@@ -1803,7 +1850,7 @@ function bind() {
   qs('shop-logo-file').addEventListener('change', async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    const dataUrl = await compressImageFileClient(file, { maxWidth: 512, quality: 0.7, format: 'image/webp' });
+    const dataUrl = await compressImageFileClient(file, { maxWidth: 320, quality: 0.68, format: 'image/webp' });
     qs('shop-logo-preview').src = dataUrl;
   });
 
@@ -2019,7 +2066,14 @@ function bind() {
     let qrImage = db.settings?.qrImage || '';
     const logoImage = qs('shop-logo-preview').src || db.settings?.logoImage || '';
     const qrFile = qs('qr-image').files?.[0];
-    if (qrFile) qrImage = await new Promise((resolve) => { const r = new FileReader(); r.onload = () => resolve(r.result); r.readAsDataURL(qrFile); });
+    if (qrFile) {
+      qrImage = await compressImageFileClient(qrFile, {
+        maxWidth: 640,
+        squareSize: 640,
+        quality: 0.74,
+        format: 'image/webp',
+      });
+    }
     const activeThemePreset = document.querySelector('.theme-preset.is-active')?.dataset.presetId || 'custom';
     await api('/api/settings', {
       method: 'POST',
