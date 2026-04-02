@@ -1172,6 +1172,7 @@ def api_staff_live():
 @require_license
 def api_customer_live():
     since = _safe_parse_int(request.args.get("since", "0"), default=0)
+    include_static = request.args.get("include_static", "0") in {"1", "true", "yes"}
     token = request.args.get("t", type=str) or request.args.get("table_token", type=str)
     table_id = request.args.get("table_id", type=int)
     db = load_db()
@@ -1187,9 +1188,8 @@ def api_customer_live():
     tables = db["tables"]
     if table_id is not None:
         tables = [table for table in db["tables"] if table.get("id") == table_id]
-    return jsonify({
+    response_payload = {
         "changed": True,
-        "menu": db["menu"],
         "tables": tables,
         "orders": [
             order for order in db["orders"]
@@ -1197,9 +1197,12 @@ def api_customer_live():
             and (table_id is None or order.get("target_id") == table_id)
             and order.get("source") == "customer"
         ],
-        "settings": db["settings"],
         "version": db["meta"]["version"],
-    })
+    }
+    if since <= 0 or include_static:
+        response_payload["menu"] = db["menu"]
+        response_payload["settings"] = db["settings"]
+    return jsonify(response_payload)
 
 
 @app.route("/api/customer-display/active", methods=["GET"])
