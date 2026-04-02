@@ -52,17 +52,13 @@
     return `https://promptpay.io/${encodeURIComponent(idText)}/${encodeURIComponent(amountText)}.png`;
   }
 
-  function createDynamicRefFromAmount(amountText) {
-    if (!amountText) return '';
-    return amountText.replace('.', '');
-  }
-
   function buildPromptPayPayload(promptPayId, amount = 0, dynamic = true) {
     const normalized = sanitizePromptPay(promptPayId);
     if (!normalized.value) return '';
     const proxyId = normalized.type === 'tax_id' ? '02' : '01';
     const merchantInfo = `${tlv('00', 'A000000677010111')}${tlv(proxyId, normalized.value)}`;
     let payload = '';
+    // EMVCo required fields
     payload += tlv('00', '01');
     payload += tlv('01', dynamic ? '12' : '11');
     payload += tlv('29', merchantInfo);
@@ -71,10 +67,7 @@
     payload += tlv('58', 'TH');
     const amountText = dynamic ? formatAmount(amount) : '';
     if (amountText) payload += tlv('54', amountText);
-    if (dynamic && amountText) {
-      payload += tlv('62', tlv('04', createDynamicRefFromAmount(amountText)));
-    }
-    payload += tlv('63', '');
+    payload += '6304';
     return payload + crc16ccitt(payload);
   }
 

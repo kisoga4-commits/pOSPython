@@ -28,9 +28,7 @@ log.setLevel(logging.ERROR)
 
 app = Flask(__name__)
 
-ASSET_VERSION = "20260402-image-normalize-v1"
-
-ASSET_VERSION = "20260402-customer-qr-menuperf-v1"
+ASSET_VERSION = "20260402-image-promptpay-fix-v1"
 
 
 
@@ -667,22 +665,14 @@ def api_menu_upload_image():
     except Exception:
         return jsonify({"error": "decode_failed"}), 400
 
-    max_edge = 420
-    scale_ratio = min(max_edge / float(image.width), max_edge / float(image.height))
-    scaled_size = (
-        max(1, int(round(image.width * scale_ratio))),
-        max(1, int(round(image.height * scale_ratio))),
-    )
-    image = image.resize(scaled_size, Image.Resampling.LANCZOS)
-
-    square = Image.new("RGB", (max_edge, max_edge), (255, 255, 255))
-    offset_x = (max_edge - image.width) // 2
-    offset_y = (max_edge - image.height) // 2
-    square.paste(image, (offset_x, offset_y))
-    image = square
+    crop_edge = min(image.width, image.height)
+    offset_x = max(0, (image.width - crop_edge) // 2)
+    offset_y = max(0, (image.height - crop_edge) // 2)
+    image = image.crop((offset_x, offset_y, offset_x + crop_edge, offset_y + crop_edge))
+    image = image.resize((300, 300), Image.Resampling.LANCZOS)
 
     out = io.BytesIO()
-    image.save(out, format="WEBP", optimize=True, quality=56, method=6)
+    image.save(out, format="WEBP", optimize=True, quality=70, method=6)
     compressed = base64.b64encode(out.getvalue()).decode("utf-8")
     return jsonify({"status": "success", "image": f"data:image/webp;base64,{compressed}"})
 
