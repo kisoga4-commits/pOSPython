@@ -2,6 +2,7 @@ import logging
 import base64
 import io
 import importlib.util
+import os
 import re
 import json
 import hashlib
@@ -32,6 +33,7 @@ app = Flask(__name__)
 ASSET_VERSION = "20260402-ui-sync-perf-fix-v2"
 STATIC_IMAGE_CACHE_SECONDS = 7 * 24 * 60 * 60
 STATIC_IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg", ".avif")
+MENU_IMAGE_DIR = os.path.join(app.static_folder, "menu")
 @app.after_request
 def add_cors_headers(response):
     response.headers["Access-Control-Allow-Origin"] = request.headers.get("Origin", "*")
@@ -769,8 +771,13 @@ def api_menu_upload_image():
     image.save(out, format="WEBP", optimize=True, quality=62, method=6)
     binary = out.getvalue()
     digest = hashlib.sha1(binary).hexdigest()[:16]
-    image_data_url = f"data:image/webp;base64,{base64.b64encode(binary).decode('utf-8')}"
-    return jsonify({"status": "success", "image": image_data_url, "sha1": digest})
+    os.makedirs(MENU_IMAGE_DIR, exist_ok=True)
+    file_name = f"{digest}.webp"
+    file_path = os.path.join(MENU_IMAGE_DIR, file_name)
+    with open(file_path, "wb") as image_file:
+        image_file.write(binary)
+    image_url = url_for("static", filename=f"menu/{file_name}")
+    return jsonify({"status": "success", "image": image_url, "sha1": digest})
 
 
 @app.route("/api/table/accept", methods=["POST"])
