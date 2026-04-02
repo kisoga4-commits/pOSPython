@@ -27,7 +27,11 @@ log = logging.getLogger("werkzeug")
 log.setLevel(logging.ERROR)
 
 app = Flask(__name__)
+
+ASSET_VERSION = "20260402-image-normalize-v1"
+
 ASSET_VERSION = "20260402-customer-qr-menuperf-v1"
+
 
 
 @app.after_request
@@ -663,11 +667,19 @@ def api_menu_upload_image():
     except Exception:
         return jsonify({"error": "decode_failed"}), 400
 
-    max_width = 420
-    if image.width > max_width:
-        ratio = max_width / float(image.width)
-        new_size = (max_width, int(image.height * ratio))
-        image = image.resize(new_size, Image.Resampling.LANCZOS)
+    max_edge = 420
+    scale_ratio = min(max_edge / float(image.width), max_edge / float(image.height))
+    scaled_size = (
+        max(1, int(round(image.width * scale_ratio))),
+        max(1, int(round(image.height * scale_ratio))),
+    )
+    image = image.resize(scaled_size, Image.Resampling.LANCZOS)
+
+    square = Image.new("RGB", (max_edge, max_edge), (255, 255, 255))
+    offset_x = (max_edge - image.width) // 2
+    offset_y = (max_edge - image.height) // 2
+    square.paste(image, (offset_x, offset_y))
+    image = square
 
     out = io.BytesIO()
     image.save(out, format="WEBP", optimize=True, quality=56, method=6)

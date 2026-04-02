@@ -20,7 +20,15 @@ function buildQrImageUrl(rawText) {
 }
 
 function buildDynamicPromptPayImage(promptPayId, amount) {
-  return window.PromptPayQR?.buildPromptPayApiUrl(promptPayId, amount) || '';
+  const payload = window.PromptPayQR?.buildPromptPayPayload(promptPayId, amount, true) || '';
+  if (!payload) return '';
+  return buildQrImageUrl(payload);
+}
+
+function buildStaticPromptPayImage(promptPayId) {
+  const payload = window.PromptPayQR?.buildPromptPayPayload(promptPayId, 0, false) || '';
+  if (!payload) return '';
+  return buildQrImageUrl(payload);
 }
 
 function resolvePaymentQrImage(cfg, amount) {
@@ -32,7 +40,15 @@ function resolvePaymentQrImage(cfg, amount) {
     if (dynamicImage) return dynamicImage;
   }
   if (hasUploadedQrImage) return settings.qrImage;
+
+  if (promptPayId) {
+    const staticPromptPayImage = buildStaticPromptPayImage(promptPayId);
+    if (staticPromptPayImage) return staticPromptPayImage;
+  }
+  return buildQrImageUrl('promptpay-not-configured');
+
   return '';
+
 }
 
 function summarizeItems(items = []) {
