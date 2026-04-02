@@ -10,6 +10,7 @@ from threading import Lock
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 DB_FILE = os.path.join(BASE_DIR, "pos_local.sqlite3")
 _db_lock = Lock()
+_initialized_db_file = None
 
 
 def now_iso() -> str:
@@ -85,7 +86,12 @@ def default_db() -> dict:
 
 
 def ensure_db_exists() -> None:
+    global _initialized_db_file
+    if _initialized_db_file == DB_FILE:
+        return
     with _db_lock:
+        if _initialized_db_file == DB_FILE:
+            return
         with sqlite3.connect(DB_FILE) as conn:
             conn.execute(
                 """
@@ -105,6 +111,7 @@ def ensure_db_exists() -> None:
                     ("main", payload, now_iso()),
                 )
             conn.commit()
+        _initialized_db_file = DB_FILE
 
 
 def _normalize_db(data: dict) -> dict:
