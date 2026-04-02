@@ -27,7 +27,7 @@ log = logging.getLogger("werkzeug")
 log.setLevel(logging.ERROR)
 
 app = Flask(__name__)
-ASSET_VERSION = "20260402-promptpay-fix-v5"
+ASSET_VERSION = "20260402-promptpay-fix-v6"
 
 
 @app.after_request
