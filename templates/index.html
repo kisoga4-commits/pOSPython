@@ -180,15 +180,6 @@
             <span>ใช้ Dynamic PromptPay</span>
           </label>
           <input id="qr-image" type="file" accept="image/*" />
-          <div class="promptpay-live-box">
-            <strong>PromptPay QR ทดสอบสแกน</strong>
-            <small class="muted">กรอกหมายเลขพร้อมเพย์และยอดเงิน ระบบจะ Generate Payload EMVCo + CRC16 ใหม่ทันที</small>
-            <div class="form-grid two-col">
-              <input id="promptpay-live-amount" type="number" min="0" step="0.01" placeholder="ยอดเงินสำหรับทดสอบ (บาท)" />
-              <input id="promptpay-live-payload" type="text" readonly placeholder="Payload ที่สร้าง" />
-            </div>
-            <img id="promptpay-live-qr-image" class="qr-preview" alt="PromptPay Dynamic QR Preview" />
-          </div>
           <div id="payment-readiness" class="payment-readiness"></div>
         </div>
 

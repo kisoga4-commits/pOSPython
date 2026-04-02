@@ -903,14 +903,8 @@ async function syncCustomerDisplayActiveTable(tableId) {
   });
 }
 
-function buildPromptPayPayload(promptPayId, amount = 0, dynamic = true) {
-  return window.PromptPayQR?.buildPromptPayPayload(promptPayId, amount, dynamic) || '';
-}
-
-function buildPromptPayQrImage(promptPayId, amount, dynamic) {
-  const payload = buildPromptPayPayload(promptPayId, amount, dynamic);
-  if (!payload) return buildQrImageUrl('promptpay-not-configured');
-  return buildQrImageUrl(payload);
+function buildDynamicPromptPayImage(promptPayId, amount) {
+  return window.PromptPayQR?.buildPromptPayApiUrl(promptPayId, amount) || '';
 }
 
 function resolvePaymentQrImage(settings, totalAmount) {
@@ -918,10 +912,11 @@ function resolvePaymentQrImage(settings, totalAmount) {
   const promptPayId = String(cfg.promptPay || '').trim();
   const hasUploadedQrImage = Boolean(String(cfg.qrImage || '').trim());
   if (cfg.dynamicPromptPay && promptPayId) {
-    return buildPromptPayQrImage(cfg.promptPay || '', Number(totalAmount || 0), true);
+    const dynamicImage = buildDynamicPromptPayImage(cfg.promptPay || '', Number(totalAmount || 0));
+    if (dynamicImage) return dynamicImage;
   }
   if (hasUploadedQrImage) return cfg.qrImage;
-  return buildPromptPayQrImage(promptPayId, Number(totalAmount || 0), false);
+  return buildQrImageUrl('promptpay-not-configured');
 }
 
 function renderCashier() {
@@ -1311,21 +1306,7 @@ function renderSystem() {
   updateReceiptPreview();
   renderTableQRList();
   renderPaymentReadiness();
-  renderLivePromptPayPreview();
   renderBackupList();
-}
-
-function renderLivePromptPayPreview() {
-  const amountNode = qs('promptpay-live-amount');
-  const payloadNode = qs('promptpay-live-payload');
-  const qrNode = qs('promptpay-live-qr-image');
-  if (!amountNode || !payloadNode || !qrNode) return;
-  const amount = Number(amountNode.value || 0);
-  const promptPayId = qs('promptpay')?.value?.trim() || '';
-  const dynamic = qs('dynamic-qr')?.checked !== false;
-  const payload = buildPromptPayPayload(promptPayId, amount, dynamic);
-  payloadNode.value = payload || '';
-  qrNode.src = buildQrImageUrl(payload || 'promptpay-not-configured');
 }
 
 function renderPaymentReadiness() {
@@ -1695,10 +1676,6 @@ function bind() {
   });
   qs('paper-size')?.addEventListener('change', updateReceiptPreview);
   qs('store-name')?.addEventListener('input', updateReceiptPreview);
-  qs('promptpay')?.addEventListener('input', renderLivePromptPayPreview);
-  qs('dynamic-qr')?.addEventListener('change', renderLivePromptPayPreview);
-  qs('promptpay-live-amount')?.addEventListener('input', renderLivePromptPayPreview);
-
   qs('order-submit').addEventListener('click', submitOrderFromPanel);
 
   qs('bill-pay-cash').addEventListener('click', async () => {

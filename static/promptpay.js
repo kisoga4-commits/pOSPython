@@ -9,10 +9,11 @@
   function sanitizePromptPay(raw) {
     const digits = String(raw || '').replace(/\D/g, '');
     if (!digits) return { type: '', value: '' };
-    if (digits.length === 13) return { type: 'tax_id', value: digits };
+    if (digits.length === 13 && digits.startsWith('0066')) return { type: 'mobile', value: digits };
     if (digits.length === 10 && digits.startsWith('0')) return { type: 'mobile', value: `0066${digits.slice(1)}` };
     if (digits.length === 9) return { type: 'mobile', value: `0066${digits}` };
     if (digits.length === 11 && digits.startsWith('66')) return { type: 'mobile', value: `0066${digits.slice(2)}` };
+    if (digits.length === 13) return { type: 'tax_id', value: digits };
     return { type: '', value: '' };
   }
 
@@ -32,6 +33,23 @@
     const safe = Number(amount || 0);
     if (!Number.isFinite(safe) || safe <= 0) return '';
     return safe.toFixed(2);
+  }
+
+  function formatPromptPayIdForApi(raw) {
+    const normalized = sanitizePromptPay(raw);
+    if (!normalized.value) return '';
+    if (normalized.type === 'tax_id') return normalized.value;
+    if (normalized.type === 'mobile' && normalized.value.startsWith('0066') && normalized.value.length === 13) {
+      return `0${normalized.value.slice(4)}`;
+    }
+    return '';
+  }
+
+  function buildPromptPayApiUrl(promptPayId, amount = 0) {
+    const idText = formatPromptPayIdForApi(promptPayId);
+    const amountText = formatAmount(amount);
+    if (!idText || !amountText) return '';
+    return `https://promptpay.io/${encodeURIComponent(idText)}/${encodeURIComponent(amountText)}.png`;
   }
 
   function createDynamicRefFromAmount(amountText) {
@@ -91,5 +109,6 @@
     sanitizePromptPay,
     buildPromptPayPayload,
     buildQrImageUrl,
+    buildPromptPayApiUrl,
   };
 }(window));

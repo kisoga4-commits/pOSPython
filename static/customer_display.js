@@ -15,18 +15,12 @@ async function api(path, options = {}) {
   return response.json();
 }
 
-function buildPromptPayPayload(promptPayId, amount = 0, dynamic = true) {
-  return window.PromptPayQR?.buildPromptPayPayload(promptPayId, amount, dynamic) || '';
-}
-
 function buildQrImageUrl(rawText) {
   return window.PromptPayQR?.buildQrImageUrl(rawText) || '';
 }
 
-function buildPromptPayQrImage(promptPayId, amount, dynamic) {
-  const payload = buildPromptPayPayload(promptPayId, amount, dynamic);
-  if (!payload) return buildQrImageUrl('promptpay-not-configured');
-  return buildQrImageUrl(payload);
+function buildDynamicPromptPayImage(promptPayId, amount) {
+  return window.PromptPayQR?.buildPromptPayApiUrl(promptPayId, amount) || '';
 }
 
 function resolvePaymentQrImage(cfg, amount) {
@@ -34,10 +28,11 @@ function resolvePaymentQrImage(cfg, amount) {
   const promptPayId = String(settings.promptPay || '').trim();
   const hasUploadedQrImage = Boolean(String(settings.qrImage || '').trim());
   if (settings.dynamicPromptPay && promptPayId) {
-    return buildPromptPayQrImage(settings.promptPay || '', Number(amount || 0), true);
+    const dynamicImage = buildDynamicPromptPayImage(settings.promptPay || '', Number(amount || 0));
+    if (dynamicImage) return dynamicImage;
   }
   if (hasUploadedQrImage) return settings.qrImage;
-  return buildPromptPayQrImage(promptPayId, Number(amount || 0), false);
+  return buildQrImageUrl('promptpay-not-configured');
 }
 
 function summarizeItems(items = []) {
