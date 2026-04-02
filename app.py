@@ -6,6 +6,7 @@ import re
 import json
 import hashlib
 import time
+from pathlib import Path
 from urllib.parse import quote
 from datetime import datetime
 from collections import defaultdict
@@ -30,6 +31,9 @@ log.setLevel(logging.ERROR)
 app = Flask(__name__)
 
 ASSET_VERSION = "20260402-ui-sync-perf-fix-v2"
+STATIC_IMAGE_CACHE_SECONDS = 7 * 24 * 60 * 60
+STATIC_IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg", ".avif")
+MENU_IMAGE_DIR = Path(app.static_folder or "static") / "menu"
 
 
 
@@ -40,6 +44,9 @@ def add_cors_headers(response):
     response.headers["Access-Control-Allow-Methods"] = "GET,POST,PATCH,DELETE,OPTIONS"
     response.headers["Access-Control-Allow-Headers"] = "Content-Type,X-POS-Role"
     response.headers["Access-Control-Allow-Credentials"] = "true"
+    request_path = request.path.lower()
+    if request_path.startswith("/static/") and request_path.endswith(STATIC_IMAGE_EXTENSIONS):
+        response.headers["Cache-Control"] = f"public, max-age={STATIC_IMAGE_CACHE_SECONDS}, immutable"
     return response
 
 
@@ -739,7 +746,7 @@ def api_menu_upload_image():
     if not raw_image.startswith("data:image/"):
         return jsonify({"error": "invalid_image"}), 400
     try:
-        header, encoded = raw_image.split(",", 1)
+        _, encoded = raw_image.split(",", 1)
         binary = base64.b64decode(encoded)
         image = Image.open(io.BytesIO(binary)).convert("RGB")
     except Exception:
@@ -753,8 +760,13 @@ def api_menu_upload_image():
 
     out = io.BytesIO()
     image.save(out, format="WEBP", optimize=True, quality=62, method=6)
-    compressed = base64.b64encode(out.getvalue()).decode("utf-8")
-    return jsonify({"status": "success", "image": f"data:image/webp;base64,{compressed}"})
+    binary = out.getvalue()
+    digest = hashlib.sha1(binary).hexdigest()[:16]
+    filename = f"menu-{digest}.webp"
+    MENU_IMAGE_DIR.mkdir(parents=True, exist_ok=True)
+    (MENU_IMAGE_DIR / filename).write_bytes(binary)
+    image_url = url_for("static", filename=f"menu/{filename}")
+    return jsonify({"status": "success", "image": image_url})
 
 
 @app.route("/api/table/accept", methods=["POST"])
