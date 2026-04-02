@@ -10,7 +10,18 @@ let activeCategory = 'ทั้งหมด';
 let submitState = 'idle';
 let lastSubmittedOrderId = '';
 const params = new URLSearchParams(window.location.search);
-const lockedTableId = Number(params.get('table') || document.body.dataset.tableId || 0);
+function parseCombinedTableParam(rawValue = '') {
+  const token = String(rawValue || '').trim();
+  if (token.length < 5) return { tableId: 0, suffix: '', token: '' };
+  const tablePrefix = token.slice(0, -4);
+  const suffix = token.slice(-4);
+  if (!/^\d+$/u.test(tablePrefix) || !/^[A-Za-z0-9]{4}$/u.test(suffix)) return { tableId: 0, suffix: '', token: '' };
+  return { tableId: Number(tablePrefix), suffix, token };
+}
+
+const parsedToken = parseCombinedTableParam(params.get('t') || document.body.dataset.tableToken || '');
+const lockedTableId = parsedToken.tableId || Number(params.get('table') || document.body.dataset.tableId || 0);
+const lockedTableToken = parsedToken.token || '';
 const masterBaseUrl = window.location.origin;
 let liveEventSource = null;
 const cartStorageKey = `customer_cart_table_${lockedTableId || 'unknown'}`;
@@ -40,7 +51,10 @@ async function api(path, options = {}) {
 
 function connectLiveEvents() {
   if (liveEventSource || !window.EventSource || !lockedTableId) return;
-  liveEventSource = new EventSource(`/api/events?table_id=${encodeURIComponent(lockedTableId)}`);
+  const query = lockedTableToken
+    ? `t=${encodeURIComponent(lockedTableToken)}`
+    : `table_id=${encodeURIComponent(lockedTableId)}`;
+  liveEventSource = new EventSource(`/api/events?${query}`);
   liveEventSource.addEventListener('update', () => loadLive());
   liveEventSource.onerror = () => {
     if (liveEventSource) liveEventSource.close();
@@ -500,7 +514,10 @@ function renderExistingOrders() {
 
 async function loadLive() {
   try {
-    const data = await api(`/api/customer/live?since=${version}&table_id=${encodeURIComponent(lockedTableId)}`);
+    const query = lockedTableToken
+      ? `since=${encodeURIComponent(version)}&t=${encodeURIComponent(lockedTableToken)}`
+      : `since=${encodeURIComponent(version)}&table_id=${encodeURIComponent(lockedTableId)}`;
+    const data = await api(`/api/customer/live?${query}`);
     if (!data.changed) {
       if (!menu.length) {
         const cachedMenu = await window.posDB.loadMenu();
@@ -551,7 +568,10 @@ async function loadLive() {
 async function validateCartAgainstTableStatus() {
   if (!lockedTableId) return;
   try {
-    const data = await api(`/api/customer/live?since=0&table_id=${encodeURIComponent(lockedTableId)}`);
+    const query = lockedTableToken
+      ? `since=0&t=${encodeURIComponent(lockedTableToken)}`
+      : `since=0&table_id=${encodeURIComponent(lockedTableId)}`;
+    const data = await api(`/api/customer/live?${query}`);
     const table = (data.tables || []).find((item) => Number(item.id) === Number(lockedTableId));
     if (!table) return;
     const isFreshTable = ['available', 'closed'].includes(table.status);
@@ -647,6 +667,7 @@ function bind() {
       client_order_id: `mobile-${lockedTableId}-${Date.now()}`,
       target: 'table',
       target_id: lockedTableId,
+      table_token: lockedTableToken,
       cart: payloadCart,
       total_price: calculateCartTotal(cart),
       source: 'customer',

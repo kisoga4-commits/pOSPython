@@ -1,6 +1,8 @@
 import json
 import os
 import sqlite3
+import random
+import string
 from copy import deepcopy
 from datetime import datetime
 from threading import Lock
@@ -19,6 +21,11 @@ def normalize_table_status(status: str) -> str:
     normalized = mapping.get(str(status), str(status))
     valid = {"available", "pending_order", "accepted_order", "checkout_requested", "closed"}
     return normalized if normalized in valid else "available"
+
+
+def generate_table_suffix(length: int = 4) -> str:
+    alphabet = string.ascii_letters + string.digits
+    return "".join(random.choice(alphabet) for _ in range(length))
 
 
 def default_db() -> dict:
@@ -41,6 +48,7 @@ def default_db() -> dict:
                 "call_staff_ack_at": "",
                 "last_order_event": "",
                 "last_order_event_at": "",
+                "suffix": generate_table_suffix(),
             }
             for i in range(1, table_count + 1)
         ],
@@ -114,6 +122,12 @@ def _normalize_db(data: dict) -> dict:
             "call_staff_ack_at": table.get("call_staff_ack_at", ""),
             "last_order_event": table.get("last_order_event", ""),
             "last_order_event_at": table.get("last_order_event_at", ""),
+            "suffix": (
+                str(table.get("suffix", "")).strip()
+                if len(str(table.get("suffix", "")).strip()) == 4
+                and str(table.get("suffix", "")).strip().isalnum()
+                else generate_table_suffix()
+            ),
         }
         for table in merged.get("tables", [])
     ]
@@ -176,6 +190,7 @@ def reset_tables(data: dict) -> dict:
             "call_staff_ack_at": "",
             "last_order_event": "",
             "last_order_event_at": "",
+            "suffix": generate_table_suffix(),
         }
         for i in range(1, table_count + 1)
     ]

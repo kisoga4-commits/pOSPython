@@ -67,7 +67,19 @@ function resolveRuntimeHost() {
   return networkBaseUrl || window.location.origin;
 }
 
-function customerScanUrl(tableId) { return `${resolveRuntimeHost()}/customer?table=${tableId}`; }
+function buildTableToken(table) {
+  const tableId = Number(table?.id || 0);
+  const suffix = String(table?.suffix || '');
+  if (!tableId || suffix.length !== 4) return '';
+  return `${tableId}${suffix}`;
+}
+
+function customerScanUrl(tableId) {
+  const table = (db?.tables || []).find((item) => Number(item.id) === Number(tableId));
+  const token = buildTableToken(table);
+  if (token) return `${resolveRuntimeHost()}/customer?t=${encodeURIComponent(token)}`;
+  return `${resolveRuntimeHost()}/customer?table=${tableId}`;
+}
 function buildQrImageUrl(text) { return `${qrApiBase}?size=320x320&margin=8&data=${encodeURIComponent(text)}`; }
 function playAlert(id) {
   if (!uiSoundEnabled) return;

@@ -77,6 +77,45 @@ def _safe_parse_int(value, default: int = 0) -> int:
         return default
 
 
+def parse_table_token(raw_value: str) -> tuple[int, str]:
+    token = str(raw_value or "").strip()
+    if len(token) < 5:
+        raise ValueError("invalid_table_token")
+    table_prefix = token[:-4]
+    suffix = token[-4:]
+    if not table_prefix.isdigit() or not suffix.isalnum():
+        raise ValueError("invalid_table_token")
+    table_id = int(table_prefix)
+    if table_id < 1:
+        raise ValueError("invalid_table_token")
+    return table_id, suffix
+
+
+def encode_table_token(table_id: int, suffix: str) -> str:
+    return f"{int(table_id)}{str(suffix)}"
+
+
+def build_table_token(table: dict) -> str:
+    if not isinstance(table, dict):
+        return ""
+    table_id = _safe_parse_int(table.get("id"), default=0)
+    suffix = str(table.get("suffix", "")).strip()
+    if table_id < 1 or len(suffix) != 4 or not suffix.isalnum():
+        return ""
+    return encode_table_token(table_id, suffix)
+
+
+def find_table_by_token(db: dict, token: str) -> dict | None:
+    try:
+        table_id, suffix = parse_table_token(token)
+    except ValueError:
+        return None
+    for table in db.get("tables", []):
+        if table.get("id") == table_id and str(table.get("suffix", "")) == suffix:
+            return table
+    return None
+
+
 @app.route("/")
 def index():
     scanner_mode = request.args.get("mode") == "scanner" or not is_server_request()
@@ -111,18 +150,31 @@ def manifest():
 
 @app.route("/customer")
 def customer_page():
-    table_id = request.args.get("table", type=int)
-    if table_id is None or table_id < 1:
-        abort(400, description="missing_or_invalid_table")
     db = load_db()
-    if not any(table.get("id") == table_id for table in db.get("tables", [])):
-        abort(404, description="table_not_found")
+    token = request.args.get("t", type=str)
+    table_id = request.args.get("table", type=int)
+    table = None
+    table_token = ""
+    if token:
+        table = find_table_by_token(db, token)
+        if table is None:
+            abort(403, description="forbidden_invalid_table_token")
+        table_id = int(table.get("id"))
+        table_token = token
+    else:
+        if table_id is None or table_id < 1:
+            abort(400, description="missing_or_invalid_table")
+        table = next((row for row in db.get("tables", []) if row.get("id") == table_id), None)
+        if table is None:
+            abort(404, description="table_not_found")
+        table_token = encode_table_token(table_id, str(table.get("suffix", "")))
     local_ip = get_local_ip()
     port = request.environ.get("SERVER_PORT", "5000")
     local_base_url = f"{request.scheme}://{local_ip}:{port}"
     return render_template(
         "customer.html",
         table_id=table_id,
+        table_token=table_token,
         asset_version=ASSET_VERSION,
         local_base_url=local_base_url,
     )
@@ -131,7 +183,8 @@ def customer_page():
 @app.route("/scan/customer/<int:table_id>")
 def customer_scan_page(table_id: int):
     db = load_db()
-    if not any(table.get("id") == table_id for table in db.get("tables", [])):
+    table = next((row for row in db.get("tables", []) if row.get("id") == table_id), None)
+    if table is None:
         abort(404, description="table_not_found")
     local_ip = get_local_ip()
     port = request.environ.get("SERVER_PORT", "5000")
@@ -139,6 +192,7 @@ def customer_scan_page(table_id: int):
     return render_template(
         "customer.html",
         table_id=table_id,
+        table_token=encode_table_token(table_id, str(table.get("suffix", ""))),
         asset_version=ASSET_VERSION,
         local_base_url=local_base_url,
     )
@@ -147,7 +201,8 @@ def customer_scan_page(table_id: int):
 @app.route("/table/<int:table_id>")
 def customer_table_page(table_id: int):
     db = load_db()
-    if not any(table.get("id") == table_id for table in db.get("tables", [])):
+    table = next((row for row in db.get("tables", []) if row.get("id") == table_id), None)
+    if table is None:
         abort(404, description="table_not_found")
     local_ip = get_local_ip()
     port = request.environ.get("SERVER_PORT", "5000")
@@ -155,6 +210,7 @@ def customer_table_page(table_id: int):
     return render_template(
         "customer.html",
         table_id=table_id,
+        table_token=encode_table_token(table_id, str(table.get("suffix", ""))),
         asset_version=ASSET_VERSION,
         local_base_url=local_base_url,
     )
@@ -219,6 +275,8 @@ def api_order():
     payload = read_json()
     try:
         return jsonify(_create_order(payload))
+    except PermissionError as exc:
+        return jsonify({"error": str(exc)}), 403
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
 
@@ -233,14 +291,20 @@ def _create_order(payload: dict) -> dict:
     if not cart:
         raise ValueError("cart is empty")
 
+    source = payload.get("source", "customer")
     db = load_db()
     if target == "table":
         if not isinstance(target_id, int):
             raise ValueError("invalid table target_id")
-        if not any(table.get("id") == target_id for table in db.get("tables", [])):
+        table = next((item for item in db.get("tables", []) if item.get("id") == target_id), None)
+        if table is None:
             raise ValueError("table not found")
+        if source == "customer":
+            raw_token = str(payload.get("table_token") or "").strip()
+            parsed_id, parsed_suffix = parse_table_token(raw_token)
+            if parsed_id != target_id or str(table.get("suffix", "")) != parsed_suffix:
+                raise PermissionError("forbidden_invalid_table_token")
     order_id = f"ORD-{int(datetime.now().timestamp())}-{len(db['orders']) + 1}"
-    source = payload.get("source", "customer")
     initial_status = "request_pending" if source == "customer" else "accepted"
     normalized_cart = _normalize_cart_items(cart, db.get("menu", []))
     if not normalized_cart:
@@ -617,16 +681,16 @@ def api_menu_upload_image():
     except Exception:
         return jsonify({"error": "decode_failed"}), 400
 
-    max_width = 800
+    max_width = 500
     if image.width > max_width:
         ratio = max_width / float(image.width)
         new_size = (max_width, int(image.height * ratio))
         image = image.resize(new_size, Image.Resampling.LANCZOS)
 
     out = io.BytesIO()
-    image.save(out, format="JPEG", optimize=True, quality=70)
+    image.save(out, format="WEBP", optimize=True, quality=62, method=6)
     compressed = base64.b64encode(out.getvalue()).decode("utf-8")
-    return jsonify({"status": "success", "image": f"data:image/jpeg;base64,{compressed}"})
+    return jsonify({"status": "success", "image": f"data:image/webp;base64,{compressed}"})
 
 
 @app.route("/api/table/accept", methods=["POST"])
@@ -954,6 +1018,12 @@ def _compute_staff_delta(previous: dict, current: dict) -> dict:
 @require_license
 def api_events():
     table_id = request.args.get("table_id", type=int)
+    token = request.args.get("t", type=str)
+    if token:
+        table = find_table_by_token(load_db(), token)
+        if table is None:
+            return jsonify({"error": "forbidden_invalid_table_token"}), 403
+        table_id = int(table.get("id"))
 
     @stream_with_context
     def generate_events():
@@ -1036,9 +1106,15 @@ def api_staff_live():
 @require_license
 def api_customer_live():
     since = _safe_parse_int(request.args.get("since", "0"), default=0)
+    token = request.args.get("t", type=str) or request.args.get("table_token", type=str)
     table_id = request.args.get("table_id", type=int)
     db = load_db()
-    if table_id is not None and not any(table.get("id") == table_id for table in db.get("tables", [])):
+    if token:
+        table = find_table_by_token(db, token)
+        if table is None:
+            return jsonify({"error": "forbidden_invalid_table_token"}), 403
+        table_id = int(table.get("id"))
+    elif table_id is not None and not any(table.get("id") == table_id for table in db.get("tables", [])):
         return jsonify({"error": "table_not_found"}), 404
     if db["meta"]["version"] <= since:
         return jsonify({"changed": False, "version": db["meta"]["version"]})
