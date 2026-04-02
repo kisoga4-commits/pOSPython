@@ -61,6 +61,17 @@ function playCallStaffSound() {
   audio.play().catch(() => {});
 }
 
+function applyBranding(settings = {}) {
+  const logoSlot = document.getElementById('staff-logo-slot');
+  const nameNode = document.getElementById('staff-store-name');
+  const storeName = String(settings.storeName || 'FAKDU').trim() || 'FAKDU';
+  if (nameNode) nameNode.textContent = storeName;
+  if (logoSlot) {
+    const logoImage = String(settings.logoImage || '').trim();
+    logoSlot.innerHTML = logoImage ? `<img src="${logoImage}" alt="${storeName} logo" />` : '📱';
+  }
+}
+
 function cartIdentity(item) {
   const addonKey = (item.addons || []).map((addon) => addon.name || addon).join('|');
   return `${item.id || item.name}__${addonKey}__${item.note || ''}`;
@@ -352,7 +363,11 @@ function bindTabs() {
 
 async function loadLive() {
   if (!authState) return;
-  const data = await api('/api/staff/bootstrap');
+  const [data, rawData] = await Promise.all([
+    api('/api/staff/bootstrap'),
+    api('/api/data'),
+  ]);
+  applyBranding(rawData?.settings || {});
   applySnapshot(data.snapshot || {});
 }
 

@@ -109,6 +109,17 @@ function money(n) {
   return Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
 
+function applyBranding(settings = {}) {
+  const logoSlot = document.getElementById('customer-logo-slot');
+  const nameNode = document.getElementById('customer-store-name');
+  const storeName = String(settings.storeName || 'FAKDU').trim() || 'FAKDU';
+  if (nameNode) nameNode.textContent = storeName;
+  if (logoSlot) {
+    const logoImage = String(settings.logoImage || '').trim();
+    logoSlot.innerHTML = logoImage ? `<img src="${logoImage}" alt="${storeName} logo" />` : '📱';
+  }
+}
+
 function normalizeAddonOptions(item) {
   if (Array.isArray(item?.addons)) return item.addons.filter(Boolean).map((value) => String(value).trim()).filter(Boolean);
   if (Array.isArray(item?.modifiers)) return item.modifiers.filter(Boolean).map((value) => String(value).trim()).filter(Boolean);
@@ -561,6 +572,7 @@ async function loadLive() {
     }
     menu = data.menu || [];
     currentSettings = data.settings || {};
+    applyBranding(currentSettings);
     currentTables = data.tables || [];
     const tableOrders = (data.orders || []).filter((order) => Number(order.target_id) === Number(lockedTableId));
     const lastOrder = [...tableOrders].sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')))[0];
