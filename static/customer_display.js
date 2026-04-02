@@ -89,6 +89,7 @@ const ACTIVE_TABLE_KEY = 'customer_display_active_table';
 let settings = {};
 let tableId = Number(document.body.dataset.tableId || localStorage.getItem(ACTIVE_TABLE_KEY) || 0);
 let liveEventSource = null;
+let syncedTableId = 0;
 
 async function loadSettings() {
   const data = await api('/api/data');
@@ -149,6 +150,19 @@ function clearDisplaySelection() {
 
 async function refreshBill() {
   await loadSettings();
+  try {
+    const remote = await api('/api/customer-display/active');
+    const remoteTableId = Number(remote.table_id || 0);
+    if (remoteTableId !== syncedTableId) {
+      syncedTableId = remoteTableId;
+      if (remoteTableId > 0 || !document.body.dataset.tableId) {
+        tableId = remoteTableId;
+        localStorage.setItem(ACTIVE_TABLE_KEY, String(remoteTableId));
+      }
+    }
+  } catch (error) {
+    // fallback to local storage when active-table sync endpoint is unavailable
+  }
   if (!tableId) {
     updateTableHeader();
     renderWaitingDisplay();

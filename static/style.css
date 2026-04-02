@@ -979,6 +979,53 @@ main{display:grid;gap:10px}
   grid-template-rows:auto 1fr auto;
 }
 
+/* mobile scanner/staff/customer hardening */
+.menu-category-tabs{
+  flex-wrap:wrap;
+  overflow-x:visible;
+}
+
+@media (max-width: 900px) and (orientation: portrait){
+  .scanner-ui .app-shell.desktop-shell{
+    padding:8px!important;
+    max-width:100%!important;
+  }
+  .scanner-ui .tab-bar{
+    display:flex;
+    overflow-x:auto;
+    gap:8px;
+    padding:8px;
+    scroll-snap-type:x proximity;
+  }
+  .scanner-ui .tab-bar .main-tab{
+    min-width:120px;
+    flex:0 0 auto;
+    scroll-snap-align:start;
+  }
+  .scanner-ui #customer .full-width-pane{
+    max-height:calc(100vh - 210px);
+  }
+  .scanner-ui .table-grid{
+    grid-template-columns:repeat(auto-fill,minmax(calc(130px * var(--table-scale)),1fr));
+    gap:8px;
+  }
+  .scanner-ui .table-card{
+    min-height:118px;
+    padding:10px;
+  }
+  .scanner-ui .head-actions .icon-btn{
+    width:48px;
+    height:48px;
+    font-size:1.2rem;
+  }
+  .staff-shell .order-list{
+    grid-template-columns:1fr;
+  }
+  .staff-shell .mobile-table-card{
+    min-height:unset;
+  }
+}
+
 .customer-facing-items{
   min-height:0;
   max-height:calc(100vh - 250px);

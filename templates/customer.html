@@ -37,6 +37,7 @@
       <section class="mobile-panel menu-panel compact-panel">
         <h3>เมนู</h3>
         <div class="btn-row">
+          <button id="call-staff-mini-btn" class="btn-call-staff btn-call-staff-mini" type="button">🔔 เรียกพนักงาน</button>
           <button id="toggle-current-cart" class="btn-soft" type="button">🧺 ▸</button>
         </div>
         <div id="inline-cart-panel" class="order-list hidden"></div>
@@ -97,6 +98,7 @@
   <div id="cart-toast" class="cart-toast hidden" role="status" aria-live="polite">เพิ่มลงตะกร้าแล้ว</div>
   <audio id="customer-confirm-sound" src="{{ url_for('static', filename='sounds/warning.mp3') }}"></audio>
   <audio id="add-to-cart-sound" src="{{ url_for('static', filename='sounds/new_order.mp3') }}"></audio>
+  <audio id="customer-call-staff-sound" src="{{ url_for('static', filename='sounds/warning.mp3') }}"></audio>
 
   <script src="{{ url_for('static', filename='db.js') }}?v={{ asset_version }}"></script>
   <script src="{{ url_for('static', filename='sync.js') }}?v={{ asset_version }}"></script>

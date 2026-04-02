@@ -7,6 +7,7 @@ const blinkTimers = new Map();
 const USER_ROLE_KEY = 'user_role';
 let authState = null;
 let liveEventSource = null;
+let callStaffAlertUntil = 0;
 
 if (document.body?.dataset.autoStaff === '1') {
   localStorage.setItem(USER_ROLE_KEY, 'staff');
@@ -59,6 +60,16 @@ function playCallStaffSound() {
   audio.playbackRate = 1;
   audio.preservesPitch = false;
   audio.play().catch(() => {});
+}
+
+function playCallStaffAlertBurst(durationMs = 5000) {
+  callStaffAlertUntil = Math.max(callStaffAlertUntil, Date.now() + durationMs);
+  const tick = () => {
+    if (Date.now() > callStaffAlertUntil) return;
+    playCallStaffSound();
+    setTimeout(tick, 900);
+  };
+  tick();
 }
 
 function applyBranding(settings = {}) {
@@ -416,7 +427,7 @@ function refreshRealtimeIndicators() {
   if (hasNewPending) playNewOrderSound();
   if (hasNewCheckout) {
     playCheckoutSound();
-    playCallStaffSound();
+    playCallStaffAlertBurst(5000);
   }
   checkoutNow.forEach((tableId) => {
     if (!lastCheckoutIds.has(tableId)) blinkTableCard(tableId);

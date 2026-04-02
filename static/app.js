@@ -44,6 +44,7 @@ let networkBaseUrl = document.body.dataset.localBaseUrl || '';
 let liveEventSource = null;
 const scannerMode = document.body.dataset.scannerMode === '1';
 let activeBackupId = '';
+let checkoutAlertUntil = 0;
 const ADMIN_SESSION_KEY = 'admin_logged_in';
 const adminAllowedScreens = new Set(['customer', 'cashier', 'backstore', 'system']);
 const nonAdminAllowedScreens = new Set(['customer', 'cashier']);
@@ -105,6 +106,16 @@ function playUISound() {
   g.connect(ctx.destination);
   o.start();
   o.stop(ctx.currentTime + 0.05);
+}
+
+function playCheckoutAlertBurst(durationMs = 5000) {
+  checkoutAlertUntil = Math.max(checkoutAlertUntil, Date.now() + durationMs);
+  const tick = () => {
+    if (Date.now() > checkoutAlertUntil) return;
+    playAlert('checkout-request-sound');
+    setTimeout(tick, 900);
+  };
+  tick();
 }
 
 async function api(path, options = {}) {
@@ -832,11 +843,17 @@ async function deleteBillItem(item) {
 
 function openCustomerDisplayWindow(tableId) {
   const nextTableId = Number(tableId || 0);
-  if (nextTableId > 0) {
-    localStorage.setItem(CUSTOMER_DISPLAY_ACTIVE_TABLE_KEY, String(nextTableId));
-  }
+  localStorage.setItem(CUSTOMER_DISPLAY_ACTIVE_TABLE_KEY, String(nextTableId > 0 ? nextTableId : 0));
+  syncCustomerDisplayActiveTable(nextTableId > 0 ? nextTableId : 0);
   const popup = window.open(nextTableId > 0 ? `/customer-display?table=${encodeURIComponent(nextTableId)}` : '/customer-display', 'customer-bill-display');
   if (popup) popup.focus();
+}
+
+async function syncCustomerDisplayActiveTable(tableId) {
+  await api('/api/customer-display/active', {
+    method: 'POST',
+    body: JSON.stringify({ table_id: Number(tableId || 0) }),
+  });
 }
 
 function sanitizePromptPay(raw) {
@@ -927,6 +944,7 @@ function renderCashier() {
       <strong>รวม ${money(total)} บาท</strong>`;
     row.addEventListener('click', () => {
       localStorage.setItem(CUSTOMER_DISPLAY_ACTIVE_TABLE_KEY, String(table.id));
+      syncCustomerDisplayActiveTable(table.id);
       openBill(table.id);
     });
     wrap.appendChild(row);
@@ -1594,6 +1612,7 @@ function bind() {
   });
   qs('close-payment-modal').addEventListener('click', () => {
     localStorage.setItem(CUSTOMER_DISPLAY_ACTIVE_TABLE_KEY, '0');
+    syncCustomerDisplayActiveTable(0);
     activeCashierTableId = 0;
     qs('bill-payment-qr-wrap')?.classList.add('hidden');
     qs('payment-modal').classList.add('hidden');
@@ -1643,6 +1662,7 @@ function bind() {
     if (!activeCashierTableId) return;
     await api('/api/checkout', { method: 'POST', body: JSON.stringify({ target: 'table', target_id: activeCashierTableId, payment_method: 'cash' }) });
     localStorage.setItem(CUSTOMER_DISPLAY_ACTIVE_TABLE_KEY, '0');
+    syncCustomerDisplayActiveTable(0);
     qs('payment-modal').classList.add('hidden');
     await loadData();
   });
@@ -1650,6 +1670,7 @@ function bind() {
     if (!activeCashierTableId) return;
     await api('/api/checkout', { method: 'POST', body: JSON.stringify({ target: 'table', target_id: activeCashierTableId, payment_method: 'qr' }) });
     localStorage.setItem(CUSTOMER_DISPLAY_ACTIVE_TABLE_KEY, '0');
+    syncCustomerDisplayActiveTable(0);
     qs('payment-modal').classList.add('hidden');
     await loadData();
   });
@@ -1981,7 +2002,7 @@ async function poll() {
       [...pendingSet].filter((id) => !lastPendingTableIds.has(id)).forEach((tableId) => blinkTableCard(tableId));
     }
     if (hasNewCheckoutRequest) {
-      playAlert('checkout-request-sound');
+      playCheckoutAlertBurst(5000);
       [...checkoutSet].filter((id) => !lastCheckoutRequestIds.has(id)).forEach((tableId) => blinkTableCard(tableId));
     }
     lastPendingTableIds = pendingSet;
