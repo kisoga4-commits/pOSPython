@@ -121,7 +121,7 @@ function renderBill(bill) {
     list.appendChild(row);
   });
   qs('customer-facing-total').textContent = money(bill.total);
-  const qrImage = resolvePaymentQrImage(settings, Number(bill.total || 0));
+  const qrImage = String(bill.payment_qr || '').trim() || resolvePaymentQrImage(settings, Number(bill.total || 0));
   if (qrImage) {
     qs('customer-facing-qr-image').src = qrImage;
     qrWrap?.classList.remove('hidden');
