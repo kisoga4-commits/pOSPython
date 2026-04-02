@@ -947,3 +947,53 @@ main{display:grid;gap:10px}
 @media (max-width:860px){
   .sales-modal-grid{grid-template-columns:1fr}
 }
+
+/* UI stability improvements: prevent blur/fade and keep long lists scrollable */
+.section-card,.mobile-panel,.mobile-header{
+  backdrop-filter:none;
+}
+
+#customer .full-width-pane{
+  max-height:calc(100vh - 260px);
+  overflow:auto;
+  padding-right:4px;
+}
+
+#cashier #checkout-list{
+  max-height:calc(100vh - 250px);
+  overflow:auto;
+  padding-right:4px;
+  align-content:start;
+}
+
+.customer-facing-wrap{
+  min-height:100vh;
+  grid-template-rows:auto 1fr auto;
+}
+
+.customer-facing-items{
+  min-height:0;
+  max-height:calc(100vh - 250px);
+  overflow:auto;
+  padding-right:4px;
+}
+
+.item-detail-qty-row{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  margin-top:10px;
+}
+
+.item-detail-qty-control{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+@media (max-width: 860px){
+  #customer .full-width-pane{max-height:calc(100vh - 220px)}
+  #cashier #checkout-list{max-height:calc(100vh - 220px)}
+  .customer-facing-items{max-height:calc(100vh - 210px)}
+}

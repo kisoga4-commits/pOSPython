@@ -10,6 +10,7 @@ let activeCategory = 'ทั้งหมด';
 let submitState = 'idle';
 let lastSubmittedOrderId = '';
 let renderMenuTaskToken = 0;
+let activeItemDraftQty = 1;
 const params = new URLSearchParams(window.location.search);
 function parseCombinedTableParam(rawValue = '') {
   const token = String(rawValue || '').trim();
@@ -337,7 +338,9 @@ function renderMenu() {
 
 function openItemDetailModal(item, addonOptions) {
   activeItemDraft = item;
+  activeItemDraftQty = 1;
   document.getElementById('item-detail-title').textContent = menuVisualLabel(item.name);
+  document.getElementById('item-detail-qty-value').textContent = String(activeItemDraftQty);
   const addonWrap = document.getElementById('item-addon-checkboxes');
   addonWrap.innerHTML = '';
   addonOptions.forEach((option) => {
@@ -359,6 +362,13 @@ function openItemDetailModal(item, addonOptions) {
 function closeItemDetailModal() {
   document.getElementById('item-detail-modal').classList.add('hidden');
   activeItemDraft = null;
+  activeItemDraftQty = 1;
+}
+
+function updateItemDraftQty(diff) {
+  activeItemDraftQty = Math.max(1, Number(activeItemDraftQty || 1) + Number(diff || 0));
+  const qtyNode = document.getElementById('item-detail-qty-value');
+  if (qtyNode) qtyNode.textContent = String(activeItemDraftQty);
 }
 
 function updateCartItemQty(index, diff) {
@@ -645,14 +655,16 @@ function bind() {
     if (!activeItemDraft) return;
     const checked = [...document.querySelectorAll('#item-addon-checkboxes input[type="checkbox"]:checked')].map((node) => node.value.trim()).filter(Boolean);
     const selectedAddons = checked.map((label) => parseAddonOption(label));
-    addToCart(activeItemDraft, { addons: selectedAddons, qty: 1 });
+    addToCart(activeItemDraft, { addons: selectedAddons, qty: activeItemDraftQty });
     closeItemDetailModal();
   });
   document.getElementById('item-detail-skip-addon-btn').addEventListener('click', () => {
     if (!activeItemDraft) return;
-    addToCart(activeItemDraft, { addons: [], qty: 1 });
+    addToCart(activeItemDraft, { addons: [], qty: activeItemDraftQty });
     closeItemDetailModal();
   });
+  document.getElementById('item-detail-qty-minus').addEventListener('click', () => updateItemDraftQty(-1));
+  document.getElementById('item-detail-qty-plus').addEventListener('click', () => updateItemDraftQty(1));
 
   document.getElementById('submit-order').addEventListener('click', async () => {
     if (!lockedTableId) return;
