@@ -27,7 +27,7 @@ log = logging.getLogger("werkzeug")
 log.setLevel(logging.ERROR)
 
 app = Flask(__name__)
-ASSET_VERSION = "20260402-promptpay-fix-v4"
+ASSET_VERSION = "20260402-ui-scan-fix-v5"
 
 
 @app.after_request
@@ -243,7 +243,7 @@ def customer_display_page():
 
 @app.route("/scan/staff")
 def staff_scan_page():
-    return redirect(url_for("staff_page"))
+    return redirect(f"{url_for('index')}?mode=scanner")
 
 
 @app.route("/authorize-staff")

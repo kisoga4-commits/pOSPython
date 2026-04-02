@@ -52,7 +52,7 @@
 
   function buildQrImageUrl(text) {
     const value = String(text || '').trim() || 'promptpay-not-configured';
-    return `https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=0&data=${encodeURIComponent(value)}`;
+    return `https://api.qrserver.com/v1/create-qr-code/?size=512x512&margin=12&ecc=H&data=${encodeURIComponent(value)}`;
   }
 
   global.PromptPayQR = {
