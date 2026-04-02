@@ -78,8 +78,9 @@ async function compressImageFileClient(file, options = {}) {
       reader.readAsDataURL(file);
     });
   }
-  const maxWidth = Number(options.maxWidth || 1280);
-  const quality = Number(options.quality || 0.78);
+  const maxWidth = Number(options.maxWidth || 960);
+  const quality = Number(options.quality || 0.72);
+  const preferredFormat = typeof options.format === 'string' ? options.format : 'image/webp';
   const imageBitmap = await createImageBitmap(file);
   const ratio = imageBitmap.width > maxWidth ? maxWidth / imageBitmap.width : 1;
   const width = Math.max(1, Math.round(imageBitmap.width * ratio));
@@ -90,7 +91,16 @@ async function compressImageFileClient(file, options = {}) {
   const context = canvas.getContext('2d', { alpha: false });
   context.drawImage(imageBitmap, 0, 0, width, height);
   imageBitmap.close();
-  return canvas.toDataURL('image/jpeg', quality);
+  let dataUrl = '';
+  try {
+    dataUrl = canvas.toDataURL(preferredFormat, quality);
+  } catch (error) {
+    dataUrl = '';
+  }
+  if (!dataUrl || dataUrl === 'data:,') {
+    dataUrl = canvas.toDataURL('image/jpeg', quality);
+  }
+  return dataUrl;
 }
 
 async function loadNetworkBaseUrl() {
@@ -488,7 +498,7 @@ function renderOrderMenuChoices() {
       const item = filteredMenu[index];
       const btn = document.createElement('article');
       btn.className = 'menu-choice visual large-thumb';
-      btn.innerHTML = `<div class="menu-choice-thumb">${item.image ? `<img src="${item.image}" alt="${item.name}" />` : 'Image'}</div><strong>${item.name}</strong><small>฿${money(item.price)}</small>`;
+      btn.innerHTML = `<div class="menu-choice-thumb">${createThumbMarkup(item.image, item.name, 'menu-grid-thumb', 'fallback')}</div><strong>${item.name}</strong><small>฿${money(item.price)}</small>`;
       btn.addEventListener('click', () => {
         const addonOptions = normalizeAddonOptions(item);
         if (!addonOptions.length) {
@@ -1008,7 +1018,7 @@ function renderMenu() {
     const idx = (db.menu || []).findIndex((entry) => entry.id === item.id);
     const row = document.createElement('div');
     row.className = 'list-card menu-admin-row';
-    row.innerHTML = `<div class="menu-admin-meta"><div class="menu-thumb menu-admin-thumb">${item.image ? `<img src="${item.image}" alt="${item.name}" />` : 'IMG'}</div><div class="menu-admin-copy"><strong>${item.name}</strong><small>${normalizeCategoryName(item.category)} • ${money(item.price)} บาท</small></div></div><div class="btn-row"><button data-a="e" class="btn-soft">แก้ไข</button><button data-a="d" class="btn-soft">ลบ</button></div>`;
+    row.innerHTML = `<div class="menu-admin-meta"><div class="menu-thumb menu-admin-thumb">${createThumbMarkup(item.image, item.name, 'menu-admin-grid-thumb', 'fallback')}</div><div class="menu-admin-copy"><strong>${item.name}</strong><small>${normalizeCategoryName(item.category)} • ${money(item.price)} บาท</small></div></div><div class="btn-row"><button data-a="e" class="btn-soft">แก้ไข</button><button data-a="d" class="btn-soft">ลบ</button></div>`;
     row.querySelector('[data-a="e"]').addEventListener('click', () => openEditMenuModal(item));
     row.querySelector('[data-a="d"]').addEventListener('click', async () => { db.menu.splice(idx, 1); await api('/api/settings', { method: 'POST', body: JSON.stringify({ menu: db.menu }) }); await loadData(); });
     list.appendChild(row);
@@ -1763,7 +1773,7 @@ function bind() {
   qs('menu-image-file').addEventListener('change', async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    menuImagePreviewData = await compressImageFileClient(file, { maxWidth: 1280, quality: 0.8 });
+    menuImagePreviewData = await compressImageFileClient(file, { maxWidth: 960, quality: 0.72, format: 'image/webp' });
     const compressed = await api('/api/menu/upload-image', { method: 'POST', body: JSON.stringify({ image: menuImagePreviewData || '' }) });
     menuImagePreviewData = compressed.image || menuImagePreviewData;
     qs('menu-image-preview').src = menuImagePreviewData;
@@ -1793,7 +1803,7 @@ function bind() {
   qs('shop-logo-file').addEventListener('change', async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    const dataUrl = await new Promise((resolve) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.readAsDataURL(file); });
+    const dataUrl = await compressImageFileClient(file, { maxWidth: 512, quality: 0.7, format: 'image/webp' });
     qs('shop-logo-preview').src = dataUrl;
   });
 
