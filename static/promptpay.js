@@ -64,8 +64,8 @@
     payload += tlv('58', 'TH');
     const amountText = dynamic ? formatAmount(amount) : '';
     if (amountText) payload += tlv('54', amountText);
-    payload += tlv('63', '');
-    return payload + crc16ccitt(payload);
+    const crcBase = `${payload}6304`;
+    return crcBase + crc16ccitt(crcBase);
   }
 
   function buildQrImageUrl(text) {
