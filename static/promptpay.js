@@ -45,7 +45,8 @@
   }
 
   function formatAmount(amount) {
-    const safe = Number(amount || 0);
+    const normalized = String(amount ?? '').replace(/,/g, '').trim();
+    const safe = Number(normalized || 0);
     if (!Number.isFinite(safe) || safe <= 0) return '';
     return safe.toFixed(2);
   }
@@ -62,10 +63,10 @@
     payload += tlv('52', '0000');
     payload += tlv('53', '764');
     payload += tlv('58', 'TH');
-    const amountText = dynamic ? formatAmount(amount) : '';
+    const amountText = formatAmount(amount);
     if (amountText) payload += tlv('54', amountText);
-    payload += tlv('63', '');
-    return payload + crc16ccitt(payload);
+    const crcBase = `${payload}6304`;
+    return crcBase + crc16ccitt(crcBase);
   }
 
   function buildQrImageUrl(text) {
