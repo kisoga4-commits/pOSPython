@@ -747,6 +747,8 @@ input,select{
 .customer-facing-foot{display:grid;grid-template-columns:1.2fr .8fr;gap:16px;align-items:center}
 .customer-facing-total{font-size:1.8rem;font-weight:700}
 .customer-facing-qr .qr-preview{max-width:280px;border:2px solid rgba(148,163,184,.4);background:#fff}
+.promptpay-live-box{margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:12px;background:#fff;display:grid;gap:8px}
+.promptpay-live-box .qr-preview{max-width:280px;background:#fff;image-rendering:pixelated}
 .customer-facing-wrap{min-height:100vh;grid-template-rows:auto 1fr auto}
 .customer-facing-items{overflow:auto;max-height:62vh;padding-right:6px}
 .customer-facing-foot{position:sticky;bottom:0;padding:10px 0;background:linear-gradient(180deg,rgba(15,23,42,0),#0f172a 18%)}
