@@ -265,7 +265,16 @@ def api_activate():
 @app.route("/api/data", methods=["GET"])
 @require_roles("owner", "staff")
 def api_data():
-    return jsonify(load_db())
+    role = request.headers.get("X-POS-Role", "").strip().lower()
+    data = load_db()
+    if role != "staff":
+        return jsonify(data)
+    staff_safe = dict(data)
+    settings = dict(staff_safe.get("settings", {}) or {})
+    for sensitive_key in ("promptPay", "dynamicPromptPay", "qrImage"):
+        settings.pop(sensitive_key, None)
+    staff_safe["settings"] = settings
+    return jsonify(staff_safe)
 
 
 @app.route("/api/order", methods=["POST"])
